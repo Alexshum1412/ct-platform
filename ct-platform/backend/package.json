@@ -35,18 +35,16 @@
     "zod": "^3.22.4",
     "rate-limiter-flexible": "^5.0.0",
     "ua-parser-js": "^1.0.37",
-    "geoip-lite": "^1.4.9"
-  },
-  "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.5",
+    "geoip-lite": "^1.4.9",
+    "prisma": "^5.8.0",
+    "typescript": "^5.3.3",
     "@types/node": "^20.10.6",
-    "@types/nodemailer": "^6.4.14",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
-    "@types/ua-parser-js": "^0.7.39",
-    "prisma": "^5.8.0",
-    "typescript": "^5.3.3"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/nodemailer": "^6.4.14",
+    "@types/ua-parser-js": "^0.7.39"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
