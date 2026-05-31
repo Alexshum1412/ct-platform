@@ -3,8 +3,7 @@
 // Read-only. Run: node prisma/audit.js
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
-const dbPath = path.join(__dirname, 'dev.db');
-const prisma = new PrismaClient({ datasources: { db: { url: `file:${dbPath}` } } });
+const prisma = new PrismaClient(); // uses DATABASE_URL from env (.env) — Postgres/Neon
 
 const norm = (s) => (s || '').replace(/\s+/g, ' ').trim().toLowerCase();
 function safeJson(s, fallback) { try { return JSON.parse(s); } catch { return fallback; } }

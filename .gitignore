@@ -2,10 +2,14 @@ node_modules/
 dist/
 build/
 .next/
+*.tsbuildinfo
 *.log
 .env
 *.tmp
 .understand-anything/
 ruvector.db
+# local SQLite (legacy — project uses PostgreSQL/Neon now)
+*.db
+*.db-journal
 # transient migration/export artifacts (may contain data dumps)
 ct-platform/backend/prisma/_*

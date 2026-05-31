@@ -7,7 +7,7 @@
  */
 const path = require('path');
 const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient({ datasources: { db: { url: `file:${path.join(__dirname, 'dev.db')}` } } });
+const prisma = new PrismaClient(); // uses DATABASE_URL from env (.env) — Postgres/Neon
 
 // keyword overrides (checked first, against title + topic name)
 const OVERRIDES = [

@@ -1,14 +1,13 @@
-// CT-Platform Database Schema (SQLite compatible)
-// Run: npx prisma migrate dev --name init
+// CT-Platform Database Schema — PostgreSQL (Neon)
+// Apply migrations: npx prisma migrate deploy  |  Create: npx prisma migrate dev --name <x>
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ==================== USER MODELS ====================
