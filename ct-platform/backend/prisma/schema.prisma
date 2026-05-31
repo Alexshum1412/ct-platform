@@ -1,0 +1,470 @@
+// CT-Platform Database Schema (SQLite compatible)
+// Run: npx prisma migrate dev --name init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== USER MODELS ====================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String?
+  name          String?
+  image         String?
+  role          String    @default("USER")
+  plan          String    @default("FREE")
+
+  city          String?
+  school        String?
+  grade         Int?
+  birthDate     DateTime?
+
+  emailVerified DateTime?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  progress      UserProgress[]
+  examAttempts  ExamAttempt[]
+  favorites     Favorite[]
+  comments      Comment[]
+  reports       QuestionReport[]
+  notifications Notification[]
+  subscriptions Subscription[]
+  achievements  UserAchievement[]
+  dailyProgress DailyProgress[]
+
+  xp            Int       @default(0)
+  level         Int       @default(1)
+  streakDays    Int       @default(0)
+  lastStudyDate DateTime?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ==================== SUBJECT MODELS ====================
+
+model Subject {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  nameShort   String?
+  description String?
+  icon        String?
+  color       String?
+  gradient    String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+
+  questionsCount Int   @default(0)
+  topicsCount    Int   @default(0)
+  rating         Float @default(0)
+
+  topics      Topic[]
+  questions   Question[]
+  examConfigs ExamConfig[]
+  theory      Theory[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("subjects")
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  subjectId   String
+  name        String
+  description String?
+  order       Int      @default(0)
+
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subtopics   Subtopic[]
+  questions   Question[]
+  theory      Theory[]
+
+  @@map("topics")
+}
+
+model Subtopic {
+  id          String   @id @default(cuid())
+  topicId     String
+  name        String
+  description String?
+  order       Int      @default(0)
+
+  topic       Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  theory      Theory[]
+
+  @@map("subtopics")
+}
+
+// ==================== QUESTION MODELS ====================
+
+model Question {
+  id              String   @id @default(cuid())
+  externalId      String?  @unique
+
+  subjectId       String
+  topicId         String?
+  subtopicId      String?
+
+  type            String   @default("SINGLE_CHOICE")
+  difficulty      Int      @default(1)
+  part            String   @default("A")   // "A" = multiple choice, "B" = open answer
+  section         String?                  // official РИКЗ section name
+  content         String
+  options         String?  // JSON: [{id, text, isCorrect}]
+  correctAnswer   String
+  explanation     String
+  solution        String?
+  isPremium       Boolean  @default(false)
+
+  hints           String?  // JSON: {small, detailed, stepByStep}
+
+  videoUrl        String?
+  videoDuration   Int?
+  imageUrl        String?  // Image attached to question
+  images          String?  // JSON array of additional images
+
+  tags            String   @default("[]")  // JSON array
+  year            Int?
+  source          String?
+
+  timesSolved     Int      @default(0)
+  timesCorrect    Int      @default(0)
+  avgTimeSeconds  Int?
+
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+  topic           Topic?   @relation(fields: [topicId], references: [id])
+  subtopic        Subtopic? @relation(fields: [subtopicId], references: [id])
+  progress        UserProgress[]
+  examQuestions   ExamQuestion[]
+  favorites       Favorite[]
+  comments        Comment[]
+  reports         QuestionReport[]
+
+  status          String   @default("ACTIVE")
+  createdBy       String?
+  reviewedBy      String?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("questions")
+}
+
+// ==================== THEORY MODELS ====================
+
+model Theory {
+  id          String   @id @default(cuid())
+
+  subjectId   String
+  topicId     String?
+  subtopicId  String?
+
+  title       String
+  content     String
+  formulas    String?  // JSON array
+  examples    String?  // JSON array
+
+  order       Int      @default(0)
+  tags        String   @default("[]")  // JSON array
+
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  topic       Topic?   @relation(fields: [topicId], references: [id])
+  subtopic    Subtopic? @relation(fields: [subtopicId], references: [id])
+
+  status      String   @default("ACTIVE")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("theory")
+}
+
+// ==================== PROGRESS MODELS ====================
+
+model UserProgress {
+  id              String   @id @default(cuid())
+  userId          String
+  questionId      String
+
+  isCorrect       Boolean
+  userAnswer      String
+  timeSpent       Int
+  attemptNumber   Int      @default(1)
+  sessionId       String?
+
+  hintsUsed       Int      @default(0)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, questionId, attemptNumber])
+  @@map("user_progress")
+}
+
+// ==================== DAILY LIMIT TRACKING ====================
+
+model DailyProgress {
+  id       String   @id @default(cuid())
+  userId   String
+  date     String   // ISO date string "2024-01-15"
+  count    Int      @default(0)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("daily_progress")
+}
+
+// ==================== EXAM MODELS ====================
+
+model ExamAttempt {
+  id              String   @id @default(cuid())
+  userId          String
+  subjectId       String
+
+  score           Int
+  maxScore        Int
+  percentage      Float
+  grade           Int?
+
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  totalTime       Int
+
+  isCompleted     Boolean  @default(false)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questions       ExamQuestion[]
+
+  @@map("exam_attempts")
+}
+
+model ExamQuestion {
+  id              String   @id @default(cuid())
+  examAttemptId   String
+  questionId      String
+
+  order           Int
+  userAnswer      String?
+  isCorrect       Boolean?
+  timeSpent       Int?
+
+  examAttempt     ExamAttempt @relation(fields: [examAttemptId], references: [id], onDelete: Cascade)
+  question        Question    @relation(fields: [questionId], references: [id])
+
+  @@map("exam_questions")
+}
+
+model ExamConfig {
+  id              String   @id @default(cuid())
+  subjectId       String
+
+  durationMinutes Int
+  totalQuestions  Int
+  passingScore    Int
+  structure       String   // JSON: [{type, count, points, description}]
+
+  subject         Subject  @relation(fields: [subjectId], references: [id])
+
+  @@map("exam_configs")
+}
+
+// ==================== SOCIAL MODELS ====================
+
+model Comment {
+  id          String   @id @default(cuid())
+  questionId  String
+  userId      String
+  content     String
+
+  likes       Int      @default(0)
+  parentId    String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  status      String   @default("ACTIVE")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("comments")
+}
+
+model Favorite {
+  id          String   @id @default(cuid())
+  userId      String
+  questionId  String
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, questionId])
+  @@map("favorites")
+}
+
+// ==================== REPORT MODELS ====================
+
+model QuestionReport {
+  id          String   @id @default(cuid())
+  questionId  String
+  userId      String
+
+  reason      String
+  description String?
+
+  status      String   @default("PENDING")
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+  resolvedAt  DateTime?
+  resolvedBy  String?
+
+  @@map("question_reports")
+}
+
+// ==================== ACHIEVEMENT MODELS ====================
+
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  icon        String
+  xp          Int
+  rarity      String   @default("COMMON")
+  category    String   @default("PRACTICE")
+
+  condition   String   // JSON: {type, value}
+
+  users       UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+
+  unlockedAt    DateTime @default(now())
+
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+// ==================== SUBSCRIPTION MODELS ====================
+
+model Subscription {
+  id            String   @id @default(cuid())
+  userId        String
+
+  plan          String
+  startDate     DateTime
+  endDate       DateTime
+  isActive      Boolean  @default(true)
+  autoRenew     Boolean  @default(true)
+
+  paymentId     String?
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+// ==================== NOTIFICATION MODELS ====================
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+
+  type        String
+  title       String
+  message     String
+  actionUrl   String?
+
+  isRead      Boolean  @default(false)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now())
+
+  @@map("notifications")
+}
+
+// ==================== ANALYTICS MODELS ====================
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+
+  type        String
+  userId      String?
+
+  data        String   // JSON
+
+  ip          String?
+  userAgent   String?
+  country     String?
+  city        String?
+
+  createdAt   DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@map("analytics_events")
+}

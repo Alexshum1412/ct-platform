@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.next/
+*.log
+.env
+*.tmp
+.understand-anything/
+ruvector.db

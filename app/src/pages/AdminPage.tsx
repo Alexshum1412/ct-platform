@@ -1,0 +1,954 @@
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import {
+  Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
+  CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
+  TrendingUp, Award, Flag,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAppStore } from '@/store/useAppStore';
+import { subjects } from '@/data/subjects';
+import { apiClient, API_BASE_URL } from '@/lib/api/client';
+import { ImageUpload } from '@/components/admin/ImageUpload';
+import type { Question } from '@/types';
+
+interface AdminStats {
+  totalUsers: number; totalQuestions: number; totalSolved: number;
+  pendingReview: number; newUsersToday: number; activeUsers: number;
+}
+
+interface PendingQuestion {
+  id: string; content: string; subject: string; author: string; date: string; status: string;
+}
+
+interface AdminUser {
+  id: string; email: string; name?: string; role: string; plan: string;
+  city?: string; school?: string; xp: number; level: number;
+  streakDays: number; createdAt: string; solvedCount: number; examCount: number;
+}
+
+interface ReportRow {
+  id: string;
+  reason: string;
+  description?: string;
+  status: string;
+  createdAt: string;
+  user: { id: string; email: string; name?: string };
+  question: {
+    id: string; externalId?: string; content: string;
+    subjectName: string; subjectSlug: string; topicName?: string;
+  } | null;
+}
+
+interface Analytics {
+  users: { total: number; premium: number; free: number; newToday: number; newWeek: number; newMonth: number; activeWeek: number };
+  questions: { total: number; totalSolved: number; solvedToday: number; solvedWeek: number };
+  exams: { total: number; today: number };
+  reports: { total: number; pending: number; top: Array<{ questionId: string; count: number; content: string; externalId: string }> };
+  activity: Array<{ date: string; solved: number; users: number }>;
+}
+
+interface NewQuestionForm {
+  subjectId: string; topicId: string; type: 'SINGLE_CHOICE' | 'TEXT_INPUT';
+  difficulty: number; part: 'A' | 'B'; section: string;
+  content: string; options: { id: string; text: string }[];
+  correctAnswer: string; explanation: string;
+  imageUrl?: string;
+}
+
+export function AdminPage() {
+  const navigate = useNavigate();
+  const { user, token } = useAppStore();
+
+  const [activeTab, setActiveTab] = useState('questions');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState('all');
+  const [selectedPartFilter, setSelectedPartFilter] = useState<string>('all');
+  const [selectedDifficultyFilter, setSelectedDifficultyFilter] = useState<string>('all');
+  const [showAddDialog, setShowAddDialog] = useState(false);
+
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [userPlanFilter, setUserPlanFilter] = useState<string>('all');
+  const [reports, setReports] = useState<ReportRow[]>([]);
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>('PENDING');
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const emptyForm: NewQuestionForm = {
+    subjectId: subjects[0]?.id ?? '',
+    topicId: '', type: 'SINGLE_CHOICE', difficulty: 2,
+    part: 'A', section: '',
+    content: '',
+    options: [
+      { id: 'A', text: '' }, { id: 'B', text: '' },
+      { id: 'C', text: '' }, { id: 'D', text: '' },
+      { id: 'E', text: '' },
+    ],
+    correctAnswer: 'A', explanation: '',
+    imageUrl: '',
+  };
+  const [newQuestion, setNewQuestion] = useState<NewQuestionForm>(emptyForm);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Real subject/topic/subtopic for dropdowns (from API)
+  const [apiSubjects, setApiSubjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
+  const [formTopics, setFormTopics] = useState<Array<{ id: string; name: string }>>([]);
+  const [formSubtopics, setFormSubtopics] = useState<Array<{ id: string; name: string }>>([]);
+  const [formSelectedSubjectId, setFormSelectedSubjectId] = useState<string>('');
+  const [formSelectedTopicId, setFormSelectedTopicId] = useState<string>('');
+  const [formSelectedSubtopicId, setFormSelectedSubtopicId] = useState<string>('');
+
+  // Load API subjects on mount
+  useEffect(() => {
+    void apiClient('/subjects').then(res => {
+      if (res.data) {
+        const items = (res.data as { subjects: Array<{ id: string; name: string; slug: string }> }).subjects ?? [];
+        setApiSubjects(items.map(s => ({ id: s.id, name: s.name, slug: s.slug })));
+      }
+    });
+  }, []);
+
+  // Load topics when subject chosen
+  useEffect(() => {
+    if (!formSelectedSubjectId) { setFormTopics([]); setFormSelectedTopicId(''); return; }
+    void apiClient(`/subjects/${formSelectedSubjectId}/topics`).then(res => {
+      if (res.data) {
+        const t = (res.data as Array<{ id: string; name: string }>) ?? [];
+        setFormTopics(t.map(x => ({ id: x.id, name: x.name })));
+      }
+    });
+    setFormSelectedTopicId('');
+    setFormSelectedSubtopicId('');
+  }, [formSelectedSubjectId]);
+
+  // Load subtopics when topic chosen
+  useEffect(() => {
+    if (!formSelectedTopicId) { setFormSubtopics([]); setFormSelectedSubtopicId(''); return; }
+    void apiClient(`/topics/${formSelectedTopicId}/subtopics`).then(res => {
+      if (res.data) {
+        const s = (res.data as Array<{ id: string; name: string }>) ?? [];
+        setFormSubtopics(s.map(x => ({ id: x.id, name: x.name })));
+      }
+    });
+  }, [formSelectedTopicId]);
+
+  const loadData = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true); setError(null);
+    try {
+      const [statsRes, qRes, pendRes] = await Promise.all([
+        apiClient('/admin/stats', { token }),
+        apiClient('/questions?limit=500', { token }),
+        apiClient('/admin/pending', { token }),
+      ]);
+      if (statsRes.data) setStats(statsRes.data as AdminStats);
+      if (qRes.data) {
+        const d = qRes.data as { questions: Question[] };
+        setQuestions(d.questions ?? []);
+      }
+      if (pendRes.data) setPendingQuestions(pendRes.data as PendingQuestion[]);
+    } catch {
+      setError('Ошибка загрузки данных');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
+
+  const loadUsers = useCallback(async () => {
+    if (!token) return;
+    const res = await apiClient(`/admin/users?search=${encodeURIComponent(userSearch)}&plan=${userPlanFilter}&limit=50`, { token });
+    if (res.data) setUsers((res.data as { users: AdminUser[] }).users ?? []);
+  }, [token, userSearch, userPlanFilter]);
+
+  const loadAnalytics = useCallback(async () => {
+    if (!token) return;
+    const res = await apiClient('/admin/analytics', { token });
+    if (res.data) setAnalytics(res.data as Analytics);
+  }, [token]);
+
+  const loadReports = useCallback(async () => {
+    if (!token) return;
+    const res = await apiClient(`/admin/reports?status=${reportStatusFilter}`, { token });
+    if (res.data) setReports((res.data as { reports: ReportRow[] }).reports ?? []);
+  }, [token, reportStatusFilter]);
+
+  const handleResolveReport = async (id: string, action: 'resolve' | 'reject') => {
+    if (!token) return;
+    await fetch(`${API_BASE_URL}/admin/reports/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action }),
+    });
+    setReports(reports.filter(r => r.id !== id));
+  };
+
+  const handleDeleteReport = async (id: string) => {
+    if (!token) return;
+    if (!confirm('Удалить жалобу из истории?')) return;
+    await fetch(`${API_BASE_URL}/admin/reports/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setReports(reports.filter(r => r.id !== id));
+  };
+
+  useEffect(() => { void loadData(); void loadAnalytics(); }, [loadData, loadAnalytics]);
+  useEffect(() => {
+    if (activeTab === 'users') void loadUsers();
+    if (activeTab === 'stats') void loadAnalytics();
+    if (activeTab === 'reports') void loadReports();
+  }, [activeTab, loadUsers, loadAnalytics, loadReports]);
+
+  if (!user || user.role !== 'ADMIN') {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="p-8 text-center max-w-sm">
+          <Shield className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h1 className="text-2xl font-bold mb-2">Доступ запрещён</h1>
+          <p className="text-muted-foreground mb-4">У вас нет прав администратора</p>
+          <Button onClick={() => navigate('/')}>На главную</Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const filteredQuestions = questions.filter(q => {
+    const matchesSearch = !searchQuery ||
+      q.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (q.externalId ?? '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSubject = selectedSubject === 'all' || q.subjectId === selectedSubject;
+    const matchesPart = selectedPartFilter === 'all' || q.part === selectedPartFilter;
+    const matchesDifficulty = selectedDifficultyFilter === 'all' || q.difficulty === parseInt(selectedDifficultyFilter);
+    return matchesSearch && matchesSubject && matchesPart && matchesDifficulty;
+  });
+
+  const handleDeleteQuestion = async (id: string) => {
+    if (!confirm('Удалить это задание?')) return;
+    try {
+      const r = await fetch(`${API_BASE_URL}/questions/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.ok) setQuestions(questions.filter(q => q.id !== id));
+    } catch {/*ignore*/}
+  };
+
+  const handleModerate = async (id: string, action: 'approve' | 'reject') => {
+    try {
+      const r = await fetch(`${API_BASE_URL}/admin/pending/${id}?action=${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (r.ok) setPendingQuestions(pendingQuestions.filter(q => q.id !== id));
+    } catch {/*ignore*/}
+  };
+
+  const handleCreateQuestion = async () => {
+    if (!newQuestion.content.trim() || !newQuestion.explanation.trim()) return;
+    if (!formSelectedSubjectId) return;
+    setIsSaving(true);
+    try {
+      const payload = {
+        ...newQuestion,
+        subjectId: formSelectedSubjectId,
+        topicId: formSelectedTopicId || undefined,
+        subtopicId: formSelectedSubtopicId || undefined,
+        tags: [],
+      };
+      const r = await fetch(`${API_BASE_URL}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+      });
+      if (r.ok) {
+        setShowAddDialog(false);
+        setNewQuestion(emptyForm);
+        setFormSelectedSubjectId(''); setFormSelectedTopicId(''); setFormSelectedSubtopicId('');
+        void loadData();
+      } else {
+        const data = await r.json();
+        alert(data.error ?? 'Ошибка создания');
+      }
+    } catch {/*ignore*/}
+    setIsSaving(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
+              <Shield className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Админ-панель</h1>
+              <p className="text-sm text-muted-foreground">Управление контентом и пользователями</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="gap-1">
+            <CheckCircle className="w-3 h-3" />Администратор
+          </Badge>
+        </div>
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="w-4 h-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {/* Quick stats */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-20 rounded-xl" />)}
+          </div>
+        ) : stats && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            {[
+              { icon: Users, value: stats.totalUsers.toLocaleString(), label: 'Пользователей' },
+              { icon: BookOpen, value: stats.totalQuestions.toLocaleString(), label: 'Заданий' },
+              { icon: CheckCircle, value: stats.totalSolved.toLocaleString(), label: 'Решений' },
+              { icon: FileText, value: stats.pendingReview, label: 'На проверке', color: 'text-amber-500' },
+              { icon: Users, value: stats.newUsersToday, label: 'Новых сегодня', color: 'text-green-500' },
+              { icon: BarChart3, value: stats.activeUsers, label: 'Активных', color: 'text-blue-500' },
+            ].map(({ icon: Icon, value, label, color }) => (
+              <Card key={label}>
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className={`p-2 rounded-lg bg-muted ${color ?? 'text-primary'}`}>
+                    <Icon className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{value}</p>
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-6">
+            <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              <FileText className="w-4 h-4" />На проверке
+              {pendingQuestions.length > 0 && <Badge variant="destructive" className="text-xs">{pendingQuestions.length}</Badge>}
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="gap-2">
+              <Flag className="w-4 h-4" />Жалобы
+              {analytics && analytics.reports.pending > 0 && (
+                <Badge variant="destructive" className="text-xs">{analytics.reports.pending}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
+            <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
+          </TabsList>
+
+          {/* Questions tab */}
+          <TabsContent value="questions">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <CardTitle>Управление заданиями</CardTitle>
+                  <Button onClick={() => setShowAddDialog(true)}>
+                    <Plus className="w-4 h-4 mr-2" />Добавить задание
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4 mb-6">
+                  <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text" placeholder="Поиск заданий..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background"
+                      />
+                    </div>
+                  </div>
+                  <select value={selectedSubject} onChange={e => setSelectedSubject(e.target.value)} className="px-4 py-2 rounded-lg border bg-background text-sm">
+                    <option value="all">Все предметы</option>
+                    {apiSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                  <select value={selectedPartFilter} onChange={e => setSelectedPartFilter(e.target.value)} className="px-4 py-2 rounded-lg border bg-background text-sm">
+                    <option value="all">Все части</option>
+                    <option value="A">Часть А</option>
+                    <option value="B">Часть Б</option>
+                  </select>
+                  <select value={selectedDifficultyFilter} onChange={e => setSelectedDifficultyFilter(e.target.value)} className="px-4 py-2 rounded-lg border bg-background text-sm">
+                    <option value="all">Все уровни</option>
+                    <option value="1">Уровень I</option>
+                    <option value="2">Уровень II</option>
+                    <option value="3">Уровень III</option>
+                    <option value="4">Уровень IV</option>
+                    <option value="5">Уровень V</option>
+                  </select>
+                </div>
+
+                {isLoading ? (
+                  <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+                ) : filteredQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">Задания не найдены под фильтры</div>
+                ) : (
+                  <>
+                    <div className="text-xs text-muted-foreground mb-3">
+                      Показано {filteredQuestions.length} из {questions.length} заданий
+                    </div>
+                    <div className="divide-y divide-border">
+                      {filteredQuestions.slice(0, 50).map((question, i) => (
+                        <motion.div key={question.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
+                          className="flex items-center justify-between py-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <Badge variant="outline" className="text-xs">#{question.externalId ?? question.id.slice(-6)}</Badge>
+                              <Badge className="text-xs">{apiSubjects.find(s => s.id === question.subjectId)?.name ?? subjects.find(s => s.id === question.subjectId)?.name ?? '?'}</Badge>
+                              {question.part && <Badge variant="secondary" className="text-xs">Часть {question.part}</Badge>}
+                              <Badge variant="secondary" className="text-xs">Ур. {question.difficulty}</Badge>
+                              {question.section && <span className="text-xs text-muted-foreground truncate max-w-[200px]">{question.section}</span>}
+                            </div>
+                            <p className="text-sm truncate text-muted-foreground">{question.content.substring(0, 120)}...</p>
+                          </div>
+                          <div className="flex items-center gap-1 ml-4">
+                            <Button variant="ghost" size="icon" onClick={() => navigate(`/practice/${apiSubjects.find(s => s.id === question.subjectId)?.slug ?? question.subjectId}?question=${question.id}`)}>
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDeleteQuestion(question.id)}>
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                    {filteredQuestions.length > 50 && (
+                      <div className="text-xs text-muted-foreground text-center mt-3">
+                        Показаны первые 50. Уточните фильтры для других.
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Pending tab */}
+          <TabsContent value="pending">
+            <Card>
+              <CardHeader><CardTitle>Задания на модерации</CardTitle></CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="space-y-3">{[1,2].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
+                ) : pendingQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    Нет заданий на проверке
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {pendingQuestions.map((q) => (
+                      <div key={q.id} className="flex items-center justify-between py-4">
+                        <div className="flex-1">
+                          <p className="font-medium text-sm">{q.content.substring(0, 100)}...</p>
+                          <p className="text-xs text-muted-foreground">{q.subject} · {q.author} · {q.date && new Date(q.date).toLocaleDateString('ru-RU')}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleModerate(q.id, 'reject')}>
+                            <XCircle className="w-4 h-4 mr-1" />Отклонить
+                          </Button>
+                          <Button size="sm" onClick={() => handleModerate(q.id, 'approve')}>
+                            <CheckCircle className="w-4 h-4 mr-1" />Одобрить
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Reports tab */}
+          <TabsContent value="reports">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <Flag className="w-5 h-5" />Жалобы на задания
+                  </CardTitle>
+                  <div className="flex gap-1">
+                    {['PENDING', 'RESOLVED', 'REJECTED', 'all'].map(s => (
+                      <Button
+                        key={s}
+                        size="sm"
+                        variant={reportStatusFilter === s ? 'default' : 'outline'}
+                        onClick={() => setReportStatusFilter(s)}
+                      >
+                        {s === 'PENDING' ? 'Ожидают' : s === 'RESOLVED' ? 'Решено' : s === 'REJECTED' ? 'Отклонено' : 'Все'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {reports.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Flag className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    {reportStatusFilter === 'PENDING' ? 'Нет ожидающих жалоб' : 'Нет жалоб в этом статусе'}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {reports.map(r => {
+                      const reasonLabel: Record<string, string> = {
+                        ERROR: '❌ Ошибка в условии/ответе',
+                        UNCLEAR: '❓ Непонятная формулировка',
+                        INAPPROPRIATE: '🚫 Неподходящий контент',
+                        DUPLICATE: '📋 Дубликат',
+                        OTHER: '📝 Другое',
+                      };
+                      return (
+                        <Card key={r.id} className="border-l-4 border-l-amber-400">
+                          <CardContent className="p-4">
+                            <div className="flex items-start justify-between gap-4 mb-3 flex-wrap">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                  <Badge variant="outline" className="text-xs">{reasonLabel[r.reason] ?? r.reason}</Badge>
+                                  {r.question && (
+                                    <Badge className="text-xs">{r.question.subjectName}</Badge>
+                                  )}
+                                  {r.question?.topicName && (
+                                    <Badge variant="secondary" className="text-xs">{r.question.topicName}</Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-xs">
+                                    {new Date(r.createdAt).toLocaleDateString('ru-RU')}
+                                  </Badge>
+                                </div>
+
+                                {r.question ? (
+                                  <p className="text-sm font-medium mb-2 line-clamp-2">{r.question.content}...</p>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground italic mb-2">Задание удалено</p>
+                                )}
+
+                                {r.description && (
+                                  <div className="bg-muted/40 rounded-lg p-2 mb-2 text-sm">
+                                    <span className="text-xs text-muted-foreground">Комментарий: </span>
+                                    {r.description}
+                                  </div>
+                                )}
+
+                                <p className="text-xs text-muted-foreground">
+                                  от {r.user.name ?? r.user.email}
+                                </p>
+                              </div>
+
+                              <div className="flex flex-col gap-1.5 shrink-0 min-w-[180px]">
+                                {r.question && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="justify-start"
+                                    onClick={() => navigate(`/practice/${r.question!.subjectSlug}?question=${r.question!.id}`)}
+                                  >
+                                    <Eye className="w-3 h-3 mr-1.5" />Перейти к заданию
+                                  </Button>
+                                )}
+                                {r.question && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="justify-start"
+                                    onClick={() => alert('Открыть редактор задания (в разработке)')}
+                                  >
+                                    <Edit2 className="w-3 h-3 mr-1.5" />Исправить задание
+                                  </Button>
+                                )}
+                                {r.question && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="justify-start text-destructive hover:text-destructive"
+                                    onClick={() => {
+                                      if (confirm('Удалить задание целиком?')) {
+                                        handleDeleteQuestion(r.question!.id);
+                                        handleResolveReport(r.id, 'resolve');
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1.5" />Удалить задание
+                                  </Button>
+                                )}
+                                {r.status === 'PENDING' && (
+                                  <>
+                                    <Button
+                                      size="sm"
+                                      className="justify-start"
+                                      onClick={() => handleResolveReport(r.id, 'resolve')}
+                                    >
+                                      <CheckCircle className="w-3 h-3 mr-1.5" />Отметить решённым
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="justify-start"
+                                      onClick={() => handleResolveReport(r.id, 'reject')}
+                                    >
+                                      <XCircle className="w-3 h-3 mr-1.5" />Отклонить
+                                    </Button>
+                                  </>
+                                )}
+                                {r.status !== 'PENDING' && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="justify-start text-destructive"
+                                    onClick={() => handleDeleteReport(r.id)}
+                                  >
+                                    <Trash2 className="w-3 h-3 mr-1.5" />Удалить запись
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Users tab */}
+          <TabsContent value="users">
+            <Card>
+              <CardHeader>
+                <CardTitle>Пользователи</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-3 mb-4">
+                  <div className="flex-1 min-w-[200px] relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      type="text" placeholder="Поиск по email или имени..."
+                      value={userSearch}
+                      onChange={e => setUserSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 rounded-lg border bg-background"
+                    />
+                  </div>
+                  <select value={userPlanFilter} onChange={e => setUserPlanFilter(e.target.value)} className="px-4 py-2 rounded-lg border bg-background">
+                    <option value="all">Все планы</option>
+                    <option value="FREE">Free</option>
+                    <option value="PREMIUM_MONTHLY">Premium (мес)</option>
+                    <option value="PREMIUM_YEARLY">Premium (год)</option>
+                  </select>
+                </div>
+
+                {users.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">Нет пользователей</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
+                          <th className="text-left p-2">Пользователь</th>
+                          <th className="text-left p-2">План</th>
+                          <th className="text-left p-2">Уровень</th>
+                          <th className="text-left p-2">Решено</th>
+                          <th className="text-left p-2">Серия</th>
+                          <th className="text-left p-2">Регистрация</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {users.map(u => (
+                          <tr key={u.id} className="border-b hover:bg-muted/40">
+                            <td className="p-2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
+                                  {(u.name ?? u.email).charAt(0).toUpperCase()}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate">{u.name ?? '—'}</p>
+                                  <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="p-2">
+                              {u.plan !== 'FREE' ? (
+                                <Badge className="bg-amber-100 text-amber-700"><Crown className="w-3 h-3 mr-1" />Premium</Badge>
+                              ) : (
+                                <Badge variant="outline">Free</Badge>
+                              )}
+                            </td>
+                            <td className="p-2">Lv.{u.level} ({u.xp} XP)</td>
+                            <td className="p-2">{u.solvedCount}</td>
+                            <td className="p-2">{u.streakDays}🔥</td>
+                            <td className="p-2 text-muted-foreground">{new Date(u.createdAt).toLocaleDateString('ru-RU')}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Analytics tab */}
+          <TabsContent value="stats">
+            {!analytics ? (
+              <div className="space-y-4">
+                <Skeleton className="h-32 rounded-xl" />
+                <Skeleton className="h-32 rounded-xl" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" />Пользователи</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold mb-2">{analytics.users.total.toLocaleString()}</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Premium</span><span className="font-medium text-amber-600">{analytics.users.premium}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Free</span><span className="font-medium">{analytics.users.free}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">+ сегодня</span><span className="font-medium text-green-600">+{analytics.users.newToday}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">+ за неделю</span><span className="font-medium text-green-600">+{analytics.users.newWeek}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Активных (нед.)</span><span className="font-medium">{analytics.users.activeWeek}</span></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><BookOpen className="w-4 h-4" />Задания</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold mb-2">{analytics.questions.totalSolved.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mb-2">всего решений</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Сегодня</span><span className="font-medium text-green-600">+{analytics.questions.solvedToday}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">За неделю</span><span className="font-medium">{analytics.questions.solvedWeek}</span></div>
+                        <div className="flex justify-between"><span className="text-muted-foreground">Активных заданий</span><span className="font-medium">{analytics.questions.total}</span></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><Award className="w-4 h-4" />Экзамены</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold mb-2">{analytics.exams.total.toLocaleString()}</p>
+                      <p className="text-xs text-muted-foreground mb-2">пройдено</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between"><span className="text-muted-foreground">Сегодня</span><span className="font-medium text-green-600">+{analytics.exams.today}</span></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Activity chart */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4" />Активность за 7 дней</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-7 gap-2 items-end h-32">
+                      {analytics.activity.map((d, i) => {
+                        const maxSolved = Math.max(...analytics.activity.map(a => a.solved), 1);
+                        const h = (d.solved / maxSolved) * 100;
+                        return (
+                          <div key={i} className="text-center flex flex-col items-center gap-1">
+                            <span className="text-xs font-medium">{d.solved}</span>
+                            <div className="w-full bg-primary/20 rounded-t" style={{ height: `${Math.max(h, 4)}%` }}>
+                              <div className="w-full bg-primary rounded-t h-full" />
+                            </div>
+                            <span className="text-xs text-muted-foreground">{new Date(d.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Reports */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm flex items-center gap-2"><Flag className="w-4 h-4" />Жалобы на задания</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex gap-4 mb-3 text-sm">
+                      <span>Всего: <strong>{analytics.reports.total}</strong></span>
+                      <span>Ожидают: <strong className="text-amber-600">{analytics.reports.pending}</strong></span>
+                    </div>
+                    {analytics.reports.top.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Нет жалоб</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {analytics.reports.top.map(r => (
+                          <div key={r.questionId} className="flex items-center gap-2 text-sm py-1.5 border-b border-border/40">
+                            <Badge variant="destructive" className="text-xs">{r.count}</Badge>
+                            <span className="text-xs text-muted-foreground">#{r.externalId}</span>
+                            <span className="truncate flex-1">{r.content}...</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Add Question Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Добавить новое задание</DialogTitle>
+              <DialogDescription>Заполните поля по формату РИКЗ</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Subject / Topic / Subtopic — cascade dropdowns */}
+              <div className="grid grid-cols-1 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">
+                    Предмет <span className="text-destructive">*</span>
+                  </label>
+                  <select
+                    value={formSelectedSubjectId}
+                    onChange={e => setFormSelectedSubjectId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border bg-background text-sm"
+                  >
+                    <option value="">— выберите предмет —</option>
+                    {apiSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Тема (раздел)</label>
+                    <select
+                      value={formSelectedTopicId}
+                      onChange={e => {
+                        setFormSelectedTopicId(e.target.value);
+                        const topic = formTopics.find(t => t.id === e.target.value);
+                        if (topic) setNewQuestion(q => ({ ...q, section: topic.name }));
+                      }}
+                      disabled={!formSelectedSubjectId}
+                      className="w-full px-3 py-2 rounded-lg border bg-background text-sm disabled:opacity-50"
+                    >
+                      <option value="">{formSelectedSubjectId ? '— выберите тему —' : 'Сначала предмет'}</option>
+                      {formTopics.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Подтема (опционально)</label>
+                    <select
+                      value={formSelectedSubtopicId}
+                      onChange={e => setFormSelectedSubtopicId(e.target.value)}
+                      disabled={!formSelectedTopicId || formSubtopics.length === 0}
+                      className="w-full px-3 py-2 rounded-lg border bg-background text-sm disabled:opacity-50"
+                    >
+                      <option value="">— не выбрано —</option>
+                      {formSubtopics.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Часть теста</label>
+                  <select value={newQuestion.part} onChange={e => setNewQuestion({ ...newQuestion, part: e.target.value as 'A' | 'B' })} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                    <option value="A">Часть А (выбор)</option>
+                    <option value="B">Часть Б (открытый)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Тип задания</label>
+                  <select value={newQuestion.type} onChange={e => setNewQuestion({ ...newQuestion, type: e.target.value as 'SINGLE_CHOICE' | 'TEXT_INPUT' })} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                    <option value="SINGLE_CHOICE">Один верный ответ</option>
+                    <option value="TEXT_INPUT">Текстовый ввод</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Уровень сложности: {newQuestion.difficulty}</label>
+                <input type="range" min={1} max={5} value={newQuestion.difficulty} onChange={e => setNewQuestion({ ...newQuestion, difficulty: parseInt(e.target.value) })} className="w-full" />
+                <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                  <span>I (базовый)</span><span>II</span><span>III</span><span>IV</span><span>V (повышенный)</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Условие задачи (поддерживает KaTeX: $...$)</label>
+                <textarea value={newQuestion.content} onChange={e => setNewQuestion({ ...newQuestion, content: e.target.value })} placeholder="Введите текст задания..." rows={3} className="w-full px-3 py-2 rounded-lg border bg-background text-sm resize-none" />
+              </div>
+
+              {newQuestion.type === 'SINGLE_CHOICE' && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Варианты ответов</label>
+                  <div className="space-y-2">
+                    {newQuestion.options.map((opt) => (
+                      <div key={opt.id} className="flex items-center gap-2">
+                        <input type="radio" name="correctAnswer" checked={newQuestion.correctAnswer === opt.id} onChange={() => setNewQuestion({ ...newQuestion, correctAnswer: opt.id })} />
+                        <span className="text-sm font-medium w-6">{opt.id})</span>
+                        <input type="text" value={opt.text} onChange={e => setNewQuestion({ ...newQuestion, options: newQuestion.options.map(o => o.id === opt.id ? { ...o, text: e.target.value } : o) })} placeholder={`Вариант ${opt.id}`} className="flex-1 px-3 py-1.5 rounded-lg border bg-background text-sm" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {newQuestion.type === 'TEXT_INPUT' && (
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Правильный ответ</label>
+                  <input value={newQuestion.correctAnswer} onChange={e => setNewQuestion({ ...newQuestion, correctAnswer: e.target.value })} placeholder="Введите правильный ответ" className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
+                </div>
+              )}
+
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Объяснение</label>
+                <textarea value={newQuestion.explanation} onChange={e => setNewQuestion({ ...newQuestion, explanation: e.target.value })} placeholder="Как решается задача..." rows={3} className="w-full px-3 py-2 rounded-lg border bg-background text-sm resize-none" />
+              </div>
+
+              <ImageUpload
+                value={newQuestion.imageUrl}
+                onChange={(url) => setNewQuestion({ ...newQuestion, imageUrl: url })}
+                label="Изображение к заданию (опционально)"
+              />
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowAddDialog(false)}>Отмена</Button>
+                <Button onClick={handleCreateQuestion} disabled={isSaving || !newQuestion.content.trim() || !formSelectedSubjectId || !newQuestion.explanation.trim()}>
+                  {isSaving ? <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Сохранение...</> : 'Создать задание'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    </div>
+  );
+}
+
+export default AdminPage;

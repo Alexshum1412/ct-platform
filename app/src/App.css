@@ -1,0 +1,115 @@
+/* App-specific styles */
+
+/* Smooth page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity 300ms;
+}
+
+/* Math formula styling */
+.math-inline {
+  font-family: 'KaTeX_Math', 'Times New Roman', serif;
+  font-style: italic;
+}
+
+.math-display {
+  font-family: 'KaTeX_Main', 'Times New Roman', serif;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: hsl(var(--muted));
+  border-radius: var(--radius);
+  overflow-x: auto;
+}
+
+/* Question option hover effect */
+.question-option {
+  transition: all 0.2s ease;
+}
+
+.question-option:hover:not(:disabled) {
+  transform: translateX(4px);
+}
+
+/* Timer pulse animation for low time */
+@keyframes timer-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.timer-low {
+  animation: timer-pulse 1s ease-in-out infinite;
+}
+
+/* Progress bar animation */
+.progress-bar-animated {
+  transition: width 0.5s ease-out;
+}
+
+/* Card lift effect */
+.card-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+}
+
+/* Subject color themes */
+.subject-math { --subject-color: hsl(263 70% 50%); }
+.subject-russian { --subject-color: hsl(330 80% 60%); }
+.subject-physics { --subject-color: hsl(189 94% 43%); }
+.subject-chemistry { --subject-color: hsl(160 84% 39%); }
+.subject-biology { --subject-color: hsl(84 81% 44%); }
+.subject-history { --subject-color: hsl(24 95% 53%); }
+.subject-english { --subject-color: hsl(239 84% 67%); }
+.subject-belarusian { --subject-color: hsl(0 84% 60%); }
+
+/* Focus ring for accessibility */
+.focus-ring:focus-visible {
+  outline: none;
+  ring: 2px;
+  ring-offset: 2px;
+  ring-color: hsl(var(--primary));
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+}

@@ -1,0 +1,245 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Light theme — slightly more contrast on borders/cards */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 30% 94%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 30% 94%;
+    --muted-foreground: 215 16% 40%;
+    --accent: 210 30% 92%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 70% 38%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 214 25% 85%;
+    --input: 214 25% 85%;
+    --ring: 217 91% 55%;
+    --radius: 0.875rem;
+
+    /* Subject Colors */
+    --subject-math: 263 70% 50%;
+    --subject-russian: 330 80% 60%;
+    --subject-physics: 189 94% 43%;
+    --subject-chemistry: 160 84% 39%;
+    --subject-biology: 84 81% 44%;
+    --subject-history: 24 95% 53%;
+    --subject-english: 239 84% 67%;
+    --subject-belarusian: 0 84% 60%;
+    --subject-geography: 199 89% 48%;
+    --subject-social: 280 65% 60%;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+    --card: 222 47% 14%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222 47% 14%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 224 76% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* =====================================================================
+     DESKTOP-FIRST COMFORTABLE SCALING
+     The whole UI is rem-based, so bumping the root font-size on larger
+     viewports proportionally enlarges every font, padding, gap, card and
+     control — the single most effective fix for the "too small on PC"
+     problem — without touching hundreds of utility classes. Mobile keeps
+     the 16px base so the responsive layout is never broken.
+     ===================================================================== */
+  @media (min-width: 1024px) { html { font-size: 17px; } }
+  @media (min-width: 1280px) { html { font-size: 17.5px; } }
+  @media (min-width: 1536px) { html { font-size: 18px; } }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    letter-spacing: -0.01em;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Headings get tighter tracking + leading and a distinctive display weight */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Manrope', system-ui, sans-serif;
+    line-height: 1.15;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  /* Comfortable tap/click targets on selects & native controls */
+  select {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Constrain long-form reading content for comfortable line length */
+  .reading-width {
+    max-width: 72ch;
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(217 91% 50%) 100%);
+  }
+
+  .gradient-math {
+    background: linear-gradient(135deg, hsl(var(--subject-math)) 0%, hsl(263 70% 60%) 100%);
+  }
+
+  .gradient-russian {
+    background: linear-gradient(135deg, hsl(var(--subject-russian)) 0%, hsl(330 80% 70%) 100%);
+  }
+
+  .gradient-physics {
+    background: linear-gradient(135deg, hsl(var(--subject-physics)) 0%, hsl(189 94% 53%) 100%);
+  }
+
+  .gradient-chemistry {
+    background: linear-gradient(135deg, hsl(var(--subject-chemistry)) 0%, hsl(160 84% 49%) 100%);
+  }
+
+  .card-hover {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .card-hover:hover {
+    @apply -translate-y-1 shadow-soft;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.5s ease-out forwards;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.25);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.45);
+  background-clip: content-box;
+}
+
+/* Math formula styling */
+.math-formula {
+  font-family: 'KaTeX_Math', 'Times New Roman', serif;
+  font-style: italic;
+}
+
+/* Preserve spaces and line breaks in question text */
+.preserve-spaces {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Cards in light theme get slightly more visible shadow */
+:root .card-shadow {
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.08), 0 1px 2px -1px rgb(0 0 0 / 0.05);
+}
+
+/* Input rings more visible */
+input, select, textarea {
+  border-width: 1.5px;
+}
+
+/* Focus styles */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
