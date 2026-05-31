@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { Header } from './Header';
 import { CookieConsentBanner } from '@/components/CookieConsent';
+import { NotificationStack } from '@/components/NotificationStack';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -26,6 +27,8 @@ export function Layout({ children }: LayoutProps) {
       </main>
       {/* Cookie consent banner — hidden during distraction-free Focus mode */}
       {!focusMode && <CookieConsentBanner />}
+      {/* Global toast notifications (level-ups, achievements, feedback) */}
+      <NotificationStack />
     </div>
   );
 }
