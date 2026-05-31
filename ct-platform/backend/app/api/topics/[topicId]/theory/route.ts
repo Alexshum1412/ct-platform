@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseTags, parseJson } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 function formatTheory(t: { tags: string; formulas: string | null; examples: string | null; commonMistakes?: string | null; examTraps?: string | null; [key: string]: unknown }) {
   return {
     ...t,

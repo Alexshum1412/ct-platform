@@ -122,20 +122,67 @@ const TOPIC = {
   },
 };
 
+// Subject-level defaults — applied to humanities/languages/biology theory
+// (and any STEM article without a topic/override match). Correct, useful, general.
+const SUBJECT_DEFAULT = {
+  biology: {
+    summary: 'Биология изучает живое на всех уровнях — от клетки до экосистемы. Связывайте строение с функцией.',
+    commonMistakes: ['Путают митоз и мейоз.', 'Путают артериальную и венозную кровь.', 'Смешивают понятия «ген», «хромосома» и «ДНК».'],
+    examTraps: ['В заданиях про кровообращение важны направление и тип крови.', 'Фотосинтез идёт на свету, дыхание — постоянно.'],
+  },
+  geography: {
+    summary: 'География изучает природу Земли, население и хозяйство. Уверенно работайте с картой, координатами и масштабом.',
+    commonMistakes: ['Путают параллели и меридианы.', 'Путают погоду и климат.', 'Ошибаются со сторонами горизонта и направлением течения рек.'],
+    examTraps: ['Масштаб: чем больше знаменатель, тем мельче карта.', 'К востоку поясное время увеличивается.'],
+  },
+  english: {
+    summary: 'Английский проверяет грамматику, лексику и чтение. Определяйте время по маркерам и следите за согласованием.',
+    commonMistakes: ['Забывают -s у глагола в 3-м лице ед. ч. (Present Simple).', 'Путают since и for.', 'Путают формы неправильных глаголов.'],
+    examTraps: ['Маркеры (always, yesterday, since, already) подсказывают видо-временную форму.', 'Артикль the — с уникальными и уже упомянутыми объектами.'],
+  },
+  'social-studies': {
+    summary: 'Обществоведение охватывает право, экономику, политику и духовную сферу. Опирайтесь на точные определения понятий.',
+    commonMistakes: ['Путают «право» и «мораль».', 'Смешивают форму правления и политический режим.', 'Путают функции денег.'],
+    examTraps: ['Конституция — высший по юридической силе акт.', 'Читайте формулировку: «не относится» / «является» меняет ответ.'],
+  },
+  'world-history': {
+    summary: 'Всемирная история — это даты, причины и следствия. Стройте хронологию и связывайте причины с итогами событий.',
+    commonMistakes: ['Путают даты мировых войн (1914–1918 и 1939–1945).', 'Путают причины и последствия.', 'Смешивают деятелей разных эпох.'],
+    examTraps: ['Век и год: XVIII век — это 1700-е годы.', 'Соотносите событие с правильной страной/регионом.'],
+  },
+  history: {
+    summary: 'История Беларуси изучается в контексте всемирной. Запоминайте ключевые даты, деятелей и государственные образования (Полоцкое княжество, ВКЛ, Речь Посполитая, БССР, Республика Беларусь).',
+    commonMistakes: ['Путают периоды ВКЛ и Речи Посполитой.', 'Путают деятелей культуры разных эпох.', 'Ошибаются в ключевых датах.'],
+    examTraps: ['Соотносите событие с правильным веком и государством.', 'Внимательно к формулировкам дат и имён.'],
+  },
+  russian: {
+    summary: 'Русский язык проверяет орфографию, пунктуацию и грамматику. Применяйте правила и проверяйте написание по составу слова.',
+    commonMistakes: ['Путают части речи.', 'Ошибаются в безударных гласных в корне (проверяйте ударением).', 'Забывают об исключениях из правил.'],
+    examTraps: ['Запятые при однородных членах и в сложном предложении.', 'Жи-ши, ча-ща, чу-щу — помните словарные правила.'],
+  },
+  belarusian: {
+    summary: 'Беларуская мова правярае арфаграфію (аканне, дзеканне, цеканне), пунктуацыю і лексіку. Звяртайце ўвагу на правапіс паводле вымаўлення.',
+    commonMistakes: ['Блытаюць правілы акання.', 'Памыляюцца ў правапісе мяккага знака.', 'Блытаюць часціны мовы.'],
+    examTraps: ['Аканне: ненаціскное «о» вымаўляецца як «а».', 'Улічвайце дзеканне і цеканне пры напісанні.'],
+  },
+};
+
 async function main() {
-  const subjects = await prisma.subject.findMany({ where: { slug: { in: ['math', 'physics', 'chemistry'] } } });
+  const subjects = await prisma.subject.findMany();
   const subjIds = subjects.map(s => s.id);
+  const slugById = new Map(subjects.map(s => [s.id, s.slug]));
   const topics = await prisma.topic.findMany({ where: { subjectId: { in: subjIds } } });
   const topicName = new Map(topics.map(t => [t.id, t.name]));
   const theory = await prisma.theory.findMany({ where: { subjectId: { in: subjIds } } });
 
-  let updated = 0, viaOverride = 0, viaTopic = 0, skipped = 0;
+  let updated = 0, viaOverride = 0, viaTopic = 0, viaSubject = 0, skipped = 0;
   for (const th of theory) {
     const tn = topicName.get(th.topicId) || '';
     const hay = (th.title + ' ' + tn);
     let data = OVERRIDES.find(o => o.re.test(hay))?.data;
     if (data) viaOverride++;
     if (!data) { data = TOPIC[tn]; if (data) viaTopic++; }
+    if (!data) { data = SUBJECT_DEFAULT[slugById.get(th.subjectId)]; if (data) viaSubject++; }
     if (!data) { skipped++; continue; }
     await prisma.theory.update({
       where: { id: th.id },
@@ -147,6 +194,6 @@ async function main() {
     });
     updated++;
   }
-  console.log(`Theory updated: ${updated} (override: ${viaOverride}, topic-default: ${viaTopic}), skipped: ${skipped}`);
+  console.log(`Theory updated: ${updated} (override: ${viaOverride}, topic: ${viaTopic}, subject: ${viaSubject}), skipped: ${skipped}`);
 }
 main().catch(e => { console.error(e); process.exit(1); }).finally(() => prisma.$disconnect());

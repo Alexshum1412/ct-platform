@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatQuestion } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   try {
     const question = await prisma.question.findUnique({

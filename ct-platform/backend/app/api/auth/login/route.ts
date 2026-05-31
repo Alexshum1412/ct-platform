@@ -4,6 +4,8 @@ import { verifyPassword, generateToken } from '@/lib/auth';
 import { loginSchema } from '@/lib/validation';
 import { authLimiter, checkRateLimit } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

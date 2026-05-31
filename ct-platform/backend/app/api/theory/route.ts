@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseTags } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/theory
  * Unified theory catalog across ALL subjects (powers the /theory hub page).

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 const FREE_DAILY_LIMIT = 20;
 
 export async function GET(req: NextRequest) {

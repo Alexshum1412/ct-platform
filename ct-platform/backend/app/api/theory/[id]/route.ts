@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseTags, parseJson } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     const item = await prisma.theory.findUnique({

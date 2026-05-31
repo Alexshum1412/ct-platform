@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { convertScore } from '@/lib/scoreConversion';
 
+export const dynamic = 'force-dynamic';
+
 const schema = z.object({
   attemptId: z.string().min(1),
   answers: z.record(z.string()),

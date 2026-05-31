@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatQuestion } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest, { params }: { params: { subjectId: string } }) {
   try {
     const subject = await prisma.subject.findFirst({

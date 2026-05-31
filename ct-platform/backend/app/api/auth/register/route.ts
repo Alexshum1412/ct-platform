@@ -4,6 +4,8 @@ import { hashPassword } from '@/lib/auth';
 import { registerSchema } from '@/lib/validation';
 import { sendEmail, getWelcomeEmail } from '@/lib/email';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

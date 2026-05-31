@@ -4,6 +4,8 @@ import { existsSync } from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   try {
     const role = req.headers.get('x-user-role');

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // Achievement definitions (checked against user stats)
 const ACHIEVEMENT_DEFS = [
   // Practice milestones

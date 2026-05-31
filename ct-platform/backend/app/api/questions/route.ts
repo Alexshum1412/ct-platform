@@ -4,6 +4,8 @@ import { createQuestionSchema } from '@/lib/validation';
 import { questionLimiter, checkRateLimit } from '@/lib/rate-limit';
 import { formatQuestion, stringifyTags } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);

@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { createCommentSchema } from '@/lib/validation';
 import { verifyToken } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/comments?questionId=xxx - Get comments for a question
 export async function GET(req: NextRequest) {
   try {
