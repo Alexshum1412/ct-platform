@@ -10,8 +10,8 @@
  * - Поддержка: support@ct-platform.by
  */
 
-import { Suspense, lazy, Component, type ReactNode, type ErrorInfo } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { Suspense, lazy, Component, useEffect, type ReactNode, type ErrorInfo } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout/Layout';
 import { HomePage } from '@/pages/HomePage';
@@ -126,11 +126,19 @@ function PageLoader() {
 // ГЛАВНЫЙ КОМПОНЕНТ ПРИЛОЖЕНИЯ
 // =====================================================
 
+/** Сбрасывает прокрутку наверх при смене маршрута (иначе новая страница открывается прокрученной). */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, left: 0 }); }, [pathname]);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <Router>
+        <ScrollToTop />
         <Layout>
           <Suspense fallback={<PageLoader />}>
             <Routes>

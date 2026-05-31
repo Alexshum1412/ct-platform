@@ -18,7 +18,7 @@
     --secondary: 210 30% 94%;
     --secondary-foreground: 222 47% 11%;
     --muted: 210 30% 94%;
-    --muted-foreground: 215 16% 40%;
+    --muted-foreground: 216 18% 37%;
     --accent: 210 30% 92%;
     --accent-foreground: 222 47% 11%;
     --destructive: 0 84% 55%;
@@ -31,6 +31,7 @@
     --input: 214 25% 85%;
     --ring: 217 91% 55%;
     --radius: 0.875rem;
+    color-scheme: light;
 
     /* Subject Colors */
     --subject-math: 263 70% 50%;
@@ -69,6 +70,7 @@
     --border: 217 33% 20%;
     --input: 217 33% 20%;
     --ring: 224 76% 48%;
+    color-scheme: dark;
   }
 }
 
@@ -79,6 +81,7 @@
 
   html {
     scroll-behavior: smooth;
+    scroll-padding-top: 5rem; /* keep anchored sections clear of the fixed header */
     font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -102,6 +105,7 @@
     line-height: 1.6;
     letter-spacing: -0.01em;
     text-rendering: optimizeLegibility;
+    accent-color: hsl(var(--primary)); /* checkboxes/radios/range use brand colour */
   }
 
   /* Headings get tighter tracking + leading and a distinctive display weight */
@@ -237,9 +241,27 @@ input, select, textarea {
   border-width: 1.5px;
 }
 
-/* Focus styles */
+/* Focus styles — visible keyboard focus on all interactive elements */
 button:focus-visible,
 a:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible {
   @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
+
+/* Branded text selection */
+::selection {
+  background: hsl(var(--primary) / 0.22);
+}
+
+/* Respect users who prefer reduced motion (accessibility) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
