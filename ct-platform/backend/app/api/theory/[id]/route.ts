@@ -17,6 +17,8 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       tags: parseTags(item.tags),
       formulas: parseJson(item.formulas),
       examples: parseJson(item.examples),
+      commonMistakes: parseJson(item.commonMistakes),
+      examTraps: parseJson(item.examTraps),
     });
   } catch (error) {
     console.error('Get theory error:', error);

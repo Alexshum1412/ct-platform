@@ -141,6 +141,9 @@ export interface Theory {
   content: string;
   formulas?: Formula[];
   examples?: Example[];
+  summary?: string | null;
+  commonMistakes?: string[] | null;
+  examTraps?: string[] | null;
   order: number;
   tags: string[];
 }

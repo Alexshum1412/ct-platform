@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Search, Filter, Star, Play, ChevronRight, RotateCcw,
-  PanelLeftClose, PanelLeftOpen, X, GraduationCap,
+  PanelLeftClose, PanelLeftOpen, X, GraduationCap, AlertTriangle, Target, Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,9 @@ interface TheoryItem {
   id: string;
   title: string;
   content: string;
+  summary?: string | null;
+  commonMistakes?: string[] | null;
+  examTraps?: string[] | null;
   tags: string[];
   subjectId: string;
   topicId: string | null;
@@ -338,8 +341,28 @@ export function TheoryHubPage() {
 
                           {/* Body */}
                           {isOpen ? (
-                            <div className="prose dark:prose-invert max-w-none leading-relaxed text-base">
-                              <MathFormula formula={t.content} className="text-base sm:text-lg leading-relaxed" />
+                            <div className="space-y-4">
+                              {t.summary && (
+                                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex gap-2.5">
+                                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                  <div className="text-sm sm:text-base"><span className="font-semibold text-primary">Кратко: </span><MathFormula formula={t.summary} inline /></div>
+                                </div>
+                              )}
+                              <div className="prose dark:prose-invert max-w-none leading-relaxed">
+                                <MathFormula formula={t.content} className="text-base sm:text-lg leading-relaxed" />
+                              </div>
+                              {t.commonMistakes && t.commonMistakes.length > 0 && (
+                                <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-3">
+                                  <p className="font-semibold flex items-center gap-1.5 text-red-700 dark:text-red-400 mb-1.5 text-sm"><AlertTriangle className="w-4 h-4" />Типичные ошибки</p>
+                                  <ul className="space-y-1">{t.commonMistakes.map((m, k) => (<li key={k} className="flex gap-1.5 text-sm"><span className="text-red-500 shrink-0">✗</span><span><MathFormula formula={m} inline /></span></li>))}</ul>
+                                </div>
+                              )}
+                              {t.examTraps && t.examTraps.length > 0 && (
+                                <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-3">
+                                  <p className="font-semibold flex items-center gap-1.5 text-amber-700 dark:text-amber-400 mb-1.5 text-sm"><Target className="w-4 h-4" />Ловушки на экзамене</p>
+                                  <ul className="space-y-1">{t.examTraps.map((m, k) => (<li key={k} className="flex gap-1.5 text-sm"><span className="text-amber-500 shrink-0">⚠</span><span><MathFormula formula={m} inline /></span></li>))}</ul>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <p className="text-muted-foreground leading-relaxed">{toExcerpt(t.content)}</p>

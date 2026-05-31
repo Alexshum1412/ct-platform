@@ -7,3 +7,5 @@ build/
 *.tmp
 .understand-anything/
 ruvector.db
+# transient migration/export artifacts (may contain data dumps)
+ct-platform/backend/prisma/_*

@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ==================== USER MODELS ====================
@@ -207,6 +208,11 @@ model Theory {
   content     String
   formulas    String?  // JSON array
   examples    String?  // JSON array
+
+  // Structured study-module fields
+  summary         String?  // краткий вывод (plain text / markdown)
+  commonMistakes  String?  // JSON array — типичные ошибки
+  examTraps       String?  // JSON array — экзаменационные ловушки
 
   order       Int      @default(0)
   tags        String   @default("[]")  // JSON array

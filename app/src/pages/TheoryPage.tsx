@@ -21,7 +21,10 @@ import {
   Play,
   CheckCircle,
   Copy,
-  Loader2
+  Loader2,
+  AlertTriangle,
+  Target,
+  Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -135,6 +138,17 @@ function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subj
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Краткий вывод */}
+        {theory.summary && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex gap-3">
+            <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-primary mb-1">Кратко о теме</p>
+              <div className="text-base leading-relaxed"><MathFormula formula={theory.summary} /></div>
+            </div>
+          </div>
+        )}
+
         {/* Content with KaTeX rendering */}
         <div className="prose dark:prose-invert max-w-none leading-relaxed">
           <MathFormula formula={theory.content} className="text-base sm:text-lg leading-relaxed" />
@@ -167,6 +181,34 @@ function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subj
                 <ExampleBlock key={example.id} example={example} index={index} />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Типичные ошибки */}
+        {theory.commonMistakes && theory.commonMistakes.length > 0 && (
+          <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-4">
+            <h4 className="font-semibold flex items-center gap-2 text-red-700 dark:text-red-400 mb-2">
+              <AlertTriangle className="w-5 h-5" />Типичные ошибки
+            </h4>
+            <ul className="space-y-2">
+              {theory.commonMistakes.map((m, i) => (
+                <li key={i} className="flex gap-2 text-sm sm:text-base"><span className="text-red-500 shrink-0">✗</span><span><MathFormula formula={m} inline /></span></li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Экзаменационные ловушки */}
+        {theory.examTraps && theory.examTraps.length > 0 && (
+          <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-4">
+            <h4 className="font-semibold flex items-center gap-2 text-amber-700 dark:text-amber-400 mb-2">
+              <Target className="w-5 h-5" />Ловушки на экзамене
+            </h4>
+            <ul className="space-y-2">
+              {theory.examTraps.map((t, i) => (
+                <li key={i} className="flex gap-2 text-sm sm:text-base"><span className="text-amber-500 shrink-0">⚠</span><span><MathFormula formula={t} inline /></span></li>
+              ))}
+            </ul>
           </div>
         )}
 
