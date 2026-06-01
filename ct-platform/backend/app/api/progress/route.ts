@@ -10,7 +10,7 @@ const schema = z.object({
   timeSpent: z.number().int().min(0),
 });
 
-const FREE_DAILY_LIMIT = 20;
+const FREE_DAILY_LIMIT = 10;
 
 export async function POST(req: NextRequest) {
   try {

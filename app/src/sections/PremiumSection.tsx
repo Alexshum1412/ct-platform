@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 
 const freeFeatures = [
-  { text: '20 заданий в день', included: true },
+  { text: '10 заданий в день', included: true },
   { text: 'Теория всех разделов', included: true },
   { text: 'Базовая статистика', included: true },
   { text: '1 пробный экзамен в неделю', included: true },

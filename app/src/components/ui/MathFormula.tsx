@@ -53,6 +53,18 @@ function containsLatexDelimiters(text: string): boolean {
 }
 
 /**
+ * Экранирует HTML и сохраняет переносы строк. Пробелы НЕ трогаем —
+ * они отображаются как есть (в отличие от math-режима KaTeX, который их съедает).
+ */
+function escapeText(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br />');
+}
+
+/**
  * Рендерит смешанный текст с формулами
  * Разбивает текст на части и рендерит формулы через KaTeX
  */
@@ -97,12 +109,8 @@ function renderMixedContent(text: string): string {
       }
     }
     
-    // Обычный текст - экранируем HTML
-    return part
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/\n/g, '<br />');
+    // Обычный текст — экранируем HTML, пробелы и переносы сохраняются
+    return escapeText(part);
   }).join('');
 }
 
@@ -118,12 +126,19 @@ export function MathFormula({ formula, inline = false, className = '' }: MathFor
   const renderedContent = useMemo(() => {
     if (!formula) return '';
     
-    // Если есть разделители LaTeX - рендерим как смешанный контент
+    // Есть разделители LaTeX ($...$ / $$...$$) — смешанный текст с формулами
     if (containsLatexDelimiters(formula)) {
       return renderMixedContent(formula);
     }
-    
-    // Если нет разделителей - это чистая формула
+
+    // Нет разделителей, но есть кириллица — это обычный текст (условие/ответ/теория),
+    // а НЕ формула. KaTeX в math-режиме игнорирует пробелы и склеивает слова, поэтому
+    // такой контент рендерим как простой текст, сохраняя пробелы и переносы.
+    if (/[а-яё]/i.test(formula)) {
+      return escapeText(formula);
+    }
+
+    // Иначе считаем строку «чистой» формулой (латиница/символы: "E=mc^2", "x^2", "16")
     try {
       return katex.renderToString(formula, {
         throwOnError: false,
@@ -132,22 +147,17 @@ export function MathFormula({ formula, inline = false, className = '' }: MathFor
       });
     } catch (error) {
       console.error('KaTeX render error:', error);
-      // Fallback: показываем как обычный текст с экранированием
-      return formula
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br />');
+      return escapeText(formula);
     }
   }, [formula, inline]);
 
   return (
     <span
       className={`
-        ${inline ? 'inline' : 'block my-2'}
+        ${inline ? 'inline' : 'block my-2 max-w-full overflow-x-auto'}
         ${className}
       `}
-      style={{ whiteSpace: inline ? 'normal' : 'pre-wrap', wordBreak: 'break-word' }}
+      style={{ whiteSpace: inline ? 'normal' : 'pre-wrap', wordBreak: 'break-word', overflowWrap: 'anywhere' }}
       dangerouslySetInnerHTML={{ __html: renderedContent }}
     />
   );
