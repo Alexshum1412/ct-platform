@@ -168,7 +168,7 @@ const REG = [
   {re:/работа сил|мощност|кпд/i, gens:[P.work,P.power]},
   {re:/кинетическ.*энерги|потенциальн.*энерги|сохранен.*энерги/i, gens:[P.kinetic,P.potential]},
   {re:/давлен|паскал/i, gens:[P.pressure,P.pressure]},
-  {re:/ом|сопротивлен|сила тока|напряж/i, gens:[P.ohm,P.ohmI]},
+  {re:/сопротивлен|резистор|закон\s+ома|сила тока|напряж/i, gens:[P.ohm,P.ohmI]},
   {re:/последовательн|параллельн.*соединен/i, gens:[P.seriesR,P.seriesR]},
   {re:/работа и мощност тока|джоул/i, gens:[P.powerEl,P.powerEl]},
   {re:/полураспад|радиоактивн/i, gens:[P.halflife,P.halflife]},
@@ -180,6 +180,11 @@ const REG = [
 ];
 // math fallback for any unmatched math subtopic (still correct, generic numeracy)
 const MATH_FALLBACK=[M.arith,M.percent,M.power,M.sqrt];
+
+// Domain of a generator fn — used to ensure a subtopic only ever matches generators
+// from its OWN subject (prevents e.g. a chemistry subtopic containing "...ом..." or
+// "степен" from receiving physics/math questions).
+const _domOf=(g)=>Object.values(M).includes(g)?'math':(Object.values(P).includes(g)?'physics':'chemistry');
 
 function tagsFromName(name){
   return name.toLowerCase().replace(/[^a-zа-яё0-9 ]/gi,' ').split(/\s+/)
@@ -212,7 +217,7 @@ async function main(){
     const subj=subjects.find(s=>s.id===topic.subjectId);
     const slug=subj.slug;
     const hay=(st.name+' '+topic.name).toLowerCase();
-    let entry=REG.find(e=>e.re.test(hay));
+    let entry=REG.find(e=>e.re.test(hay) && _domOf(e.gens[0])===slug);
     let gens=entry?entry.gens:(slug==='math'?MATH_FALLBACK:null);
     if(!gens){skippedSub++;continue;}
     const count=entry?5:4;
