@@ -388,3 +388,51 @@ export async function fetchSubjectStats(subjectId: string): Promise<{
   }
 }
 
+// =====================================================
+// ЭКЗАМЕНЫ (созданные человеком сущности по предмету)
+// =====================================================
+
+export interface ExamSummary {
+  id: string;
+  subjectId: string;
+  title: string;
+  description?: string | null;
+  durationMinutes: number;
+  passingScore: number;
+  questionCount: number;
+}
+
+export interface ExamDetail {
+  id: string;
+  subjectId: string;
+  title: string;
+  description?: string | null;
+  durationMinutes: number;
+  passingScore: number;
+  questions: Question[];
+}
+
+/** Список экзаменов предмета. ССЫЛКА: GET /api/subjects/:subjectId/exams */
+export async function fetchExamsBySubjectId(subjectId: string): Promise<ExamSummary[]> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/${subjectId}/exams`);
+    if (!response.ok) throw new Error('Failed to fetch exams');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching exams:', error);
+    return [];
+  }
+}
+
+/** Детали экзамена с вопросами. ССЫЛКА: GET /api/exams/:id */
+export async function fetchExamById(id: string): Promise<ExamDetail | null> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/exams/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch exam');
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching exam:', error);
+    return null;
+  }
+}
+

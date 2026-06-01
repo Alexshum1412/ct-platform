@@ -60,6 +60,9 @@ const PracticePage = lazy(() => import('@/pages/PracticePage').then(m => ({ defa
 /** Страница экзамена - загружается при начале экзамена */
 const ExamPage = lazy(() => import('@/pages/ExamPage').then(m => ({ default: m.ExamPage })));
 
+/** Список пробных экзаменов по предмету */
+const ExamListPage = lazy(() => import('@/pages/ExamListPage').then(m => ({ default: m.ExamListPage })));
+
 /** Страницы аутентификации */
 const LoginPage = lazy(() => import('@/pages/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('@/pages/RegisterPage').then(m => ({ default: m.RegisterPage })));
@@ -154,7 +157,8 @@ function App() {
               */}
               <Route path="/subject/:slug" element={<SubjectPage />} />
               <Route path="/practice/:slug" element={<PracticePage />} />
-              <Route path="/exam/:slug" element={<ExamPage />} />
+              <Route path="/exam/:slug" element={<ExamListPage />} />
+              <Route path="/exam/:slug/:examId" element={<ExamPage />} />
               {/* Единый каталог теории по всем предметам (static path — выше динамического /theory/:slug) */}
               <Route path="/theory" element={<TheoryHubPage />} />
               <Route path="/theory/:slug/:topicId?" element={<TheoryPage />} />

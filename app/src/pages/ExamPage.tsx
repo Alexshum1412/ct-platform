@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MathFormula } from '@/components/ui/MathFormula';
 import { ExamTimer } from '@/components/exam/ExamTimer';
-import { getSubjectBySlug, fetchQuestionsBySubjectId, fetchExamConfigBySubjectId } from '@/data/subjects';
+import { getSubjectBySlug, fetchExamById, type ExamDetail } from '@/data/subjects';
 import { examApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 import type { ExamConfig, Question } from '@/types';
 
 export function ExamPage() {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, examId } = useParams<{ slug: string; examId?: string }>();
   const navigate = useNavigate();
   const {
     token,
@@ -24,23 +24,34 @@ export function ExamPage() {
 
   const subject = slug ? getSubjectBySlug(slug) : undefined;
   const [examConfig, setExamConfig] = useState<ExamConfig | null>(null);
-  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
+  const [examTitle, setExamTitle] = useState<string>('Пробный экзамен');
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const attemptIdRef = useRef<string | null>(null);
 
+  // Load the specific exam chosen on the exam list page.
   useEffect(() => {
-    if (!subject) return;
+    if (!examId) return;
     setIsLoading(true);
     setLoadError(null);
-    void Promise.all([fetchExamConfigBySubjectId(subject.id), fetchQuestionsBySubjectId(subject.id)])
-      .then(([config, questions]) => {
-        setExamConfig(config);
-        setAllQuestions(questions);
+    void fetchExamById(examId)
+      .then((exam: ExamDetail | null) => {
+        if (!exam) { setLoadError('Экзамен не найден'); return; }
+        setExamTitle(exam.title);
+        setExamConfig({
+          id: exam.id,
+          subjectId: exam.subjectId,
+          durationMinutes: exam.durationMinutes,
+          totalQuestions: exam.questions.length,
+          passingScore: exam.passingScore,
+          structure: [],
+        } as unknown as ExamConfig);
+        setExamQuestions(exam.questions);
+        setTimeRemaining(exam.durationMinutes * 60);
       })
-      .catch(() => setLoadError('Не удалось загрузить данные экзамена'))
+      .catch(() => setLoadError('Не удалось загрузить экзамен'))
       .finally(() => setIsLoading(false));
-  }, [subject]);
+  }, [examId]);
 
   const [examQuestions, setExamQuestions] = useState<Question[]>([]);
   const [isStarted, setIsStarted] = useState(false);
@@ -50,17 +61,6 @@ export function ExamPage() {
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  // Initialize exam
-  useEffect(() => {
-    if (examConfig && allQuestions.length > 0) {
-      // Select random questions for exam
-      const shuffled = [...allQuestions].sort(() => Math.random() - 0.5);
-      const selected = shuffled.slice(0, examConfig.totalQuestions);
-      setExamQuestions(selected);
-      setTimeRemaining(examConfig.durationMinutes * 60);
-    }
-  }, [examConfig, allQuestions]);
 
   // Timer
   useEffect(() => {
@@ -118,6 +118,18 @@ export function ExamPage() {
   };
 
   const handleTogglePause = () => setIsPaused(prev => !prev);
+
+  // Restart the same exam from its start screen.
+  const restartExam = () => {
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setIsFinished(false);
+    setIsPaused(false);
+    setTestScore(null);
+    attemptIdRef.current = null;
+    if (examConfig) setTimeRemaining(examConfig.durationMinutes * 60);
+    setIsStarted(false);
+  };
 
   // Focus mode lifecycle: clear it on unmount and whenever the exam ends,
   // so the global header is never hidden on the start/results screens.
@@ -192,8 +204,8 @@ export function ExamPage() {
               <span className="text-3xl font-bold">{subject.nameShort}</span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{subject.name}</h1>
-            <p className="text-muted-foreground mb-8 text-lg">Пробный экзамен</p>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2">{examTitle}</h1>
+            <p className="text-muted-foreground mb-8 text-lg">{subject.name} · пробный экзамен</p>
 
             <div className="grid grid-cols-3 gap-4 mb-8">
               <div className="p-4 bg-muted rounded-xl">
@@ -241,9 +253,9 @@ export function ExamPage() {
                 variant="outline"
                 size="lg"
                 className="flex-1"
-                onClick={() => navigate(`/subject/${slug}`)}
+                onClick={() => navigate(`/exam/${slug}`)}
               >
-                Отмена
+                К экзаменам
               </Button>
               <Button
                 className="flex-1"
@@ -318,10 +330,10 @@ export function ExamPage() {
               {isSaving && <p className="text-sm text-muted-foreground mb-4">Сохранение...</p>}
 
               <div className="flex gap-3">
-                <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/subject/${slug}`)}>
-                  К предмету
+                <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/exam/${slug}`)}>
+                  К экзаменам
                 </Button>
-                <Button size="lg" className="flex-1" onClick={() => navigate(`/exam/${slug}`)} style={{ background: subject.color }}>
+                <Button size="lg" className="flex-1" onClick={restartExam} style={{ background: subject.color }}>
                   Пройти ещё раз
                 </Button>
               </div>
@@ -546,13 +558,13 @@ export function ExamPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate(`/subject/${slug}`)}
+                onClick={() => navigate(`/exam/${slug}`)}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-bold truncate">{subject.name}</h1>
-                <p className="text-sm text-muted-foreground">Пробный экзамен</p>
+                <p className="text-sm text-muted-foreground truncate">{examTitle}</p>
               </div>
             </div>
 

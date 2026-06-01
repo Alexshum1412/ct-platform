@@ -102,6 +102,7 @@ model Subject {
   topics      Topic[]
   questions   Question[]
   examConfigs ExamConfig[]
+  exams       Exam[]
   theory      Theory[]
 
   createdAt   DateTime @default(now())
@@ -318,6 +319,28 @@ model ExamConfig {
   subject         Subject  @relation(fields: [subjectId], references: [id])
 
   @@map("exam_configs")
+}
+
+// Human-curated practice exams (entities) shown on the per-subject exams page.
+model Exam {
+  id              String   @id @default(cuid())
+  subjectId       String
+
+  title           String
+  description     String?
+  durationMinutes Int      @default(120)
+  passingScore    Int      @default(0)
+  questionIds     String   @default("[]")  // JSON array of curated Question ids
+  isActive        Boolean  @default(true)
+  order           Int      @default(0)
+  createdBy       String?
+
+  subject         Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("exams")
 }
 
 // ==================== SOCIAL MODELS ====================
