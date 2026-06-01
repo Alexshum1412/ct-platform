@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
   CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
-  TrendingUp, Award, Flag,
+  TrendingUp, Award, Flag, FolderTree,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { subjects } from '@/data/subjects';
 import { apiClient, API_BASE_URL } from '@/lib/api/client';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { AdminContentManager } from '@/components/admin/AdminContentManager';
 import type { Question } from '@/types';
 
 interface AdminStats {
@@ -344,6 +345,7 @@ export function AdminPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
+            <TabsTrigger value="content" className="gap-2"><FolderTree className="w-4 h-4" />Контент</TabsTrigger>
             <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
             <TabsTrigger value="pending" className="gap-2">
               <FileText className="w-4 h-4" />На проверке
@@ -358,6 +360,18 @@ export function AdminPage() {
             <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
             <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
           </TabsList>
+
+          {/* Content management — subjects / topics / subtopics / theory / exams CRUD */}
+          <TabsContent value="content">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><FolderTree className="w-5 h-5" />Управление контентом</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AdminContentManager token={token} />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Questions tab */}
           <TabsContent value="questions">
