@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { API_BASE_URL } from '@/lib/api/client';
 import { Mail, MessageCircle, Bug, HelpCircle, ChevronDown, ChevronUp, Send, CheckCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,17 +18,34 @@ const FAQ = [
 ];
 
 export function ContactPage() {
+  const [searchParams] = useSearchParams();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
+  const [form, setForm] = useState({ name: '', email: '', subject: searchParams.get('topic') || '', message: '' });
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
-    await new Promise(r => setTimeout(r, 1200));
-    setSending(false);
-    setSent(true);
+    setError(null);
+    try {
+      const r = await fetch(`${API_BASE_URL}/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      if (r.ok) {
+        setSent(true);
+      } else {
+        const d = await r.json().catch(() => ({}));
+        setError(d.error || 'Не удалось отправить сообщение. Попробуйте позже.');
+      }
+    } catch {
+      setError('Нет соединения с сервером. Проверьте интернет и попробуйте снова.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -106,7 +125,7 @@ export function ContactPage() {
                   <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                   <h3 className="text-xl font-bold mb-2">Сообщение отправлено!</h3>
                   <p className="text-muted-foreground">Мы ответим вам в течение 24 часов.</p>
-                  <Button className="mt-6" onClick={() => { setSent(false); setForm({ name: '', email: '', subject: '', message: '' }); }}>
+                  <Button className="mt-6" onClick={() => { setSent(false); setError(null); setForm({ name: '', email: '', subject: '', message: '' }); }}>
                     Отправить ещё
                   </Button>
                 </CardContent>
@@ -133,6 +152,7 @@ export function ContactPage() {
                         <option value="technical">Техническая проблема</option>
                         <option value="suggestion">Предложение</option>
                         <option value="premium">Вопрос по Premium</option>
+                        <option value="data-request">Запрос персональных данных</option>
                         <option value="other">Другое</option>
                       </select>
                     </div>
@@ -140,6 +160,9 @@ export function ContactPage() {
                       <label className="text-sm font-medium mb-1.5 block">Сообщение</label>
                       <textarea value={form.message} onChange={e => setForm(f => ({...f, message: e.target.value}))} rows={5} placeholder="Опишите подробно..." required className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
                     </div>
+                    {error && (
+                      <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40 rounded-lg px-3 py-2">{error}</p>
+                    )}
                     <Button type="submit" className="w-full" size="lg" disabled={sending}>
                       {sending ? (
                         <span className="flex items-center gap-2">

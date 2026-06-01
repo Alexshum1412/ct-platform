@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
   CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
-  TrendingUp, Award, Flag, FolderTree,
+  TrendingUp, Award, Flag, FolderTree, Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -56,6 +56,16 @@ interface Analytics {
   activity: Array<{ date: string; solved: number; users: number }>;
 }
 
+interface ContactMessageRow {
+  id: string; name: string; email: string; subject: string; message: string;
+  status: string; createdAt: string; userId?: string | null;
+}
+
+const SUBJECT_LABELS: Record<string, string> = {
+  bug: 'Ошибка в задании', technical: 'Техническая проблема', suggestion: 'Предложение',
+  premium: 'Вопрос по Premium', 'data-request': 'Запрос персональных данных', other: 'Другое',
+};
+
 interface NewQuestionForm {
   subjectId: string; topicId: string; type: 'SINGLE_CHOICE' | 'TEXT_INPUT';
   difficulty: number; part: 'A' | 'B'; section: string;
@@ -69,6 +79,8 @@ export function AdminPage() {
   const { user, token } = useAppStore();
 
   const [activeTab, setActiveTab] = useState('questions');
+  const [messages, setMessages] = useState<ContactMessageRow[]>([]);
+  const [msgFilter, setMsgFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [selectedPartFilter, setSelectedPartFilter] = useState<string>('all');
@@ -207,12 +219,39 @@ export function AdminPage() {
     setReports(reports.filter(r => r.id !== id));
   };
 
+  const loadMessages = useCallback(async () => {
+    if (!token) return;
+    const res = await apiClient(`/admin/contact${msgFilter ? `?status=${msgFilter}` : ''}`, { token });
+    if (res.data) setMessages((res.data as { messages: ContactMessageRow[] }).messages ?? []);
+  }, [token, msgFilter]);
+
+  const setMessageStatus = async (id: string, status: string) => {
+    if (!token) return;
+    await fetch(`${API_BASE_URL}/admin/contact/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ status }),
+    });
+    setMessages(prev => prev.map(m => m.id === id ? { ...m, status } : m));
+  };
+
+  const deleteMessage = async (id: string) => {
+    if (!token) return;
+    if (!confirm('Удалить сообщение?')) return;
+    await fetch(`${API_BASE_URL}/admin/contact/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    setMessages(prev => prev.filter(m => m.id !== id));
+  };
+
   useEffect(() => { void loadData(); void loadAnalytics(); }, [loadData, loadAnalytics]);
   useEffect(() => {
     if (activeTab === 'users') void loadUsers();
     if (activeTab === 'stats') void loadAnalytics();
     if (activeTab === 'reports') void loadReports();
-  }, [activeTab, loadUsers, loadAnalytics, loadReports]);
+    if (activeTab === 'messages') void loadMessages();
+  }, [activeTab, loadUsers, loadAnalytics, loadReports, loadMessages]);
 
   if (!user || user.role !== 'ADMIN') {
     return (
@@ -390,6 +429,7 @@ export function AdminPage() {
             </TabsTrigger>
             <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
             <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
+            <TabsTrigger value="messages" className="gap-2"><Mail className="w-4 h-4" />Сообщения</TabsTrigger>
           </TabsList>
 
           {/* Content management — subjects / topics / subtopics / theory / exams CRUD */}
@@ -863,6 +903,59 @@ export function AdminPage() {
                 </Card>
               </div>
             )}
+          </TabsContent>
+
+          <TabsContent value="messages">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <CardTitle className="flex items-center gap-2"><Mail className="w-5 h-5" />Обратная связь</CardTitle>
+                  <select value={msgFilter} onChange={e => setMsgFilter(e.target.value)} className="px-3 py-2 rounded-lg border bg-background text-sm">
+                    <option value="">Все</option>
+                    <option value="NEW">Новые</option>
+                    <option value="READ">Прочитанные</option>
+                    <option value="RESOLVED">Решённые</option>
+                  </select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {messages.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Mail className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p>Сообщений нет</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {messages.map(m => (
+                      <div key={m.id} className="p-4 rounded-xl border bg-card">
+                        <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold">{m.name}</span>
+                              <a href={`mailto:${m.email}`} className="text-sm text-primary hover:underline break-all">{m.email}</a>
+                              <Badge variant="secondary" className="text-xs">{SUBJECT_LABELS[m.subject] ?? m.subject}</Badge>
+                              <Badge variant={m.status === 'NEW' ? 'default' : m.status === 'RESOLVED' ? 'outline' : 'secondary'} className="text-xs">
+                                {m.status === 'NEW' ? 'Новое' : m.status === 'READ' ? 'Прочитано' : 'Решено'}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{new Date(m.createdAt).toLocaleString('ru-RU')}</p>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {m.status !== 'READ' && <Button variant="ghost" size="sm" onClick={() => setMessageStatus(m.id, 'READ')}>Прочитано</Button>}
+                            {m.status !== 'RESOLVED' && <Button variant="ghost" size="sm" onClick={() => setMessageStatus(m.id, 'RESOLVED')}>Решено</Button>}
+                            <Button variant="ghost" size="icon" onClick={() => deleteMessage(m.id)} title="Удалить"><Trash2 className="w-4 h-4 text-destructive" /></Button>
+                          </div>
+                        </div>
+                        <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>
+                        <div className="mt-2">
+                          <a href={`mailto:${m.email}?subject=${encodeURIComponent('Re: ' + (SUBJECT_LABELS[m.subject] ?? 'обращение') + ' — CT-Platform')}`} className="text-sm text-primary hover:underline">Ответить по email →</a>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 

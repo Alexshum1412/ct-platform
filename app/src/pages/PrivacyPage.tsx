@@ -361,8 +361,8 @@ export function PrivacyPage() {
             Связаться с нами
           </a>
           <span className="text-muted-foreground">•</span>
-          <a 
-            href="/data-request" 
+          <a
+            href="/contact?topic=data-request"
             className="text-sm text-primary hover:underline"
           >
             Запросить свои данные
