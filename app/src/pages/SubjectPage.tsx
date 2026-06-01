@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, BookOpen, Target, Clock, TrendingUp,
-  ChevronRight, GraduationCap, Play, Book, ChevronDown,
+  ChevronRight, GraduationCap, Play, Book, ChevronDown, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,14 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import {
   getSubjectBySlug,
   fetchTopicsBySubjectId,
-  fetchQuestionsBySubjectId,
   fetchExamConfigBySubjectId,
   fetchSubjectStats,
   fetchSubtopicsByTopicId,
 } from '@/data/subjects';
 import { useAppStore } from '@/store/useAppStore';
 import { useEffect, useState } from 'react';
-import type { ExamConfig, Question, Topic } from '@/types';
+import { CardRowsSkeleton } from '@/components/Skeletons';
+import type { ExamConfig, Topic } from '@/types';
 
 interface Subtopic {
   id: string; topicId: string; name: string; description?: string; order: number; questionsCount: number;
@@ -31,25 +31,24 @@ export function SubjectPage() {
   
   const subject = slug ? getSubjectBySlug(slug) : undefined;
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [examConfig, setExamConfig] = useState<ExamConfig | null>(null);
   const [stats, setStats] = useState(subject?.stats);
+  const [isLoading, setIsLoading] = useState(true);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [subtopicsMap, setSubtopicsMap] = useState<Record<string, Subtopic[]>>({});
 
   useEffect(() => {
     if (!subject) return;
+    setIsLoading(true);
     void Promise.all([
       fetchTopicsBySubjectId(subject.id),
-      fetchQuestionsBySubjectId(subject.id, { limit: 20 }),
       fetchExamConfigBySubjectId(subject.id),
       fetchSubjectStats(subject.id),
-    ]).then(([topicsData, questionsData, examConfigData, statsData]) => {
+    ]).then(([topicsData, examConfigData, statsData]) => {
       setTopics(topicsData);
-      setQuestions(questionsData);
       setExamConfig(examConfigData);
       setStats(statsData);
-    });
+    }).finally(() => setIsLoading(false));
   }, [subject]);
   
   useEffect(() => {
@@ -142,43 +141,41 @@ export function SubjectPage() {
                 <CardTitle>Начать подготовку</CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-auto py-6 flex flex-col items-center gap-3"
+                {/* Практика — основное действие (заливка цветом предмета) */}
+                <motion.button
+                  whileHover={{ y: -3 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => navigate(`/practice/${subject.slug}`)}
+                  className="group relative overflow-hidden rounded-2xl p-6 text-left text-white shadow-md transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  style={{ background: subject.color }}
                 >
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                    style={{ background: subject.color }}
-                  >
-                    <Target className="w-6 h-6" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                      <Target className="w-6 h-6" />
+                    </div>
+                    <ArrowRight className="w-5 h-5 ml-auto opacity-80 transition-transform group-hover:translate-x-1" />
                   </div>
-                  <div className="text-center">
-                    <p className="font-semibold">Режим практики</p>
-                    <p className="text-sm text-muted-foreground">
-                      Задания по типам
-                    </p>
-                  </div>
-                </Button>
-                
-                <Button
-                  variant="outline"
-                  className="h-auto py-6 flex flex-col items-center gap-3"
+                  <p className="text-lg font-bold">Практика</p>
+                  <p className="text-sm text-white/85">Задания по темам, подсказки и разбор решений</p>
+                </motion.button>
+
+                {/* Пробный экзамен — обведён цветом предмета */}
+                <motion.button
+                  whileHover={{ y: -3 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => navigate(`/exam/${subject.slug}`)}
+                  className="group relative overflow-hidden rounded-2xl p-6 text-left bg-card border-2 transition-all hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  style={{ borderColor: subject.color }}
                 >
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                    style={{ background: subject.color }}
-                  >
-                    <Clock className="w-6 h-6" />
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white" style={{ background: subject.color }}>
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <ArrowRight className="w-5 h-5 ml-auto transition-transform group-hover:translate-x-1" style={{ color: subject.color }} />
                   </div>
-                  <div className="text-center">
-                    <p className="font-semibold">Пробный экзамен</p>
-                    <p className="text-sm text-muted-foreground">
-                      {examConfig?.durationMinutes || 120} минут
-                    </p>
-                  </div>
-                </Button>
+                  <p className="text-lg font-bold">Пробный экзамен</p>
+                  <p className="text-sm text-muted-foreground">{examConfig?.durationMinutes || 120} минут · формат ЦТ/ЦЭ</p>
+                </motion.button>
               </CardContent>
             </Card>
             
@@ -191,7 +188,9 @@ export function SubjectPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {topics.length > 0 ? (
+                {isLoading ? (
+                  <CardRowsSkeleton rows={6} />
+                ) : topics.length > 0 ? (
                   topics.map((topic, index) => {
                     const isExpanded = expandedTopics.has(topic.id);
                     const subs = subtopicsMap[topic.id] ?? [];
@@ -292,8 +291,10 @@ export function SubjectPage() {
                     );
                   })
                 ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    Темы пока в разработке
+                  <div className="text-center py-12 text-muted-foreground">
+                    <GraduationCap className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium">Темы пока в разработке</p>
+                    <p className="text-sm mt-1">Скоро здесь появятся материалы по предмету</p>
                   </div>
                 )}
               </CardContent>
@@ -339,37 +340,7 @@ export function SubjectPage() {
               </Card>
             )}
             
-            {/* Recent Questions */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Недавние задания</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {questions.slice(0, 3).map((q, i) => (
-                  <div
-                    key={q.id}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors cursor-pointer"
-                    onClick={() => navigate(`/practice/${subject.slug}?question=${q.id}`)}
-                  >
-                    <div 
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
-                      style={{ background: subject.color }}
-                    >
-                      {q.externalId || i + 1}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {q.content.substring(0, 50)}...
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {q.tags[0] || 'Общее'}
-                      </p>
-                    </div>
-                    <Play className="w-4 h-4 text-muted-foreground" />
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            {/* Блок «Недавние задания» удалён — лишний, отвлекал от навигации */}
           </div>
         </div>
       </main>

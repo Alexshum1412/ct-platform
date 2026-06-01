@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Header } from './Header';
 import { CookieConsentBanner } from '@/components/CookieConsent';
 import { NotificationStack } from '@/components/NotificationStack';
+import { MobileTabBar } from './MobileTabBar';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -21,14 +22,17 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      {/* In Focus mode the global header is hidden, so the offset is removed too. */}
-      <main className={focusMode ? '' : 'pt-16'}>
+      {/* In Focus mode the global header is hidden, so the offset is removed too.
+          On mobile, pb-16 leaves room for the bottom tab bar. */}
+      <main className={focusMode ? '' : 'pt-16 pb-16 lg:pb-0'}>
         {children}
       </main>
       {/* Cookie consent banner — hidden during distraction-free Focus mode */}
       {!focusMode && <CookieConsentBanner />}
       {/* Global toast notifications (level-ups, achievements, feedback) */}
       <NotificationStack />
+      {/* Mobile bottom navigation (self-hides on desktop & in Focus mode) */}
+      <MobileTabBar />
     </div>
   );
 }

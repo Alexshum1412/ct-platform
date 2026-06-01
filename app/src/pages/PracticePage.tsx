@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2 } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox } from 'lucide-react';
+import { QuestionSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +76,7 @@ export function PracticePage() {
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
+  const [sortBy, setSortBy] = useState<'default' | 'newest' | 'difficulty-asc' | 'difficulty-desc'>('default');
   const [selectedPart, setSelectedPart] = useState<string>('all');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [subtopics, setSubtopics] = useState<Array<{ id: string; name: string }>>([]);
@@ -136,9 +138,17 @@ export function PracticePage() {
     if (selectedPart !== 'all') filtered = filtered.filter(q => q.part === selectedPart);
     if (selectedSection !== 'all') filtered = filtered.filter(q => q.section === selectedSection);
     if (onlyFavorites) filtered = filtered.filter(q => favorites.includes(q.id));
+    // Sorting
+    if (sortBy === 'difficulty-asc') filtered.sort((a, b) => a.difficulty - b.difficulty);
+    else if (sortBy === 'difficulty-desc') filtered.sort((a, b) => b.difficulty - a.difficulty);
+    else if (sortBy === 'newest') filtered.sort((a, b) => {
+      const da = new Date((a as { createdAt?: string }).createdAt || 0).getTime();
+      const db = new Date((b as { createdAt?: string }).createdAt || 0).getTime();
+      return db - da;
+    });
     setFilteredQuestions(filtered);
     setCurrentQuestionIndex(0);
-  }, [selectedTopic, selectedSubtopic, selectedDifficulty, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam]);
+  }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam]);
 
   // Load subtopics when topic changes
   useEffect(() => {
@@ -203,6 +213,7 @@ export function PracticePage() {
     setSelectedTopic('all');
     setSelectedSubtopic('all');
     setSelectedDifficulty('all');
+    setSortBy('default');
     setOnlyFavorites(false);
     setShowResetConfirm(false);
   };
@@ -253,20 +264,23 @@ export function PracticePage() {
 
   // Shared question renderer — identical content in normal and Focus layouts.
   const questionArea = isLoading ? (
-    <Card className="p-12 text-center">
-      <p className="text-muted-foreground">Загрузка заданий...</p>
-    </Card>
+    <div className="space-y-6">
+      <QuestionSkeleton />
+      {practiceMode === 'feed' && <QuestionSkeleton />}
+    </div>
   ) : filteredQuestions.length === 0 ? (
     <Card className="p-12 text-center">
-      <p className="text-muted-foreground mb-3">
+      <Inbox className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+      <h3 className="text-lg font-semibold mb-2">Заданий не нашлось</h3>
+      <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
         {onlyFavorites
-          ? 'В избранном нет заданий из этого предмета. Добавляйте задания через ⭐'
-          : 'Нет заданий, соответствующих выбранным фильтрам'}
+          ? 'В избранном нет заданий из этого предмета. Добавляйте их через ⭐ на карточке задания.'
+          : 'Нет заданий, соответствующих выбранным фильтрам. Попробуйте сбросить фильтры.'}
       </p>
-      {onlyFavorites && (
-        <Button variant="outline" onClick={() => setOnlyFavorites(false)}>
-          Показать все задания
-        </Button>
+      {onlyFavorites ? (
+        <Button variant="outline" onClick={() => setOnlyFavorites(false)}>Показать все задания</Button>
+      ) : (
+        <Button variant="outline" onClick={handleReset}>Сбросить фильтры</Button>
       )}
     </Card>
   ) : practiceMode === 'feed' ? (
@@ -594,6 +608,21 @@ export function PracticePage() {
                       <option value="3">Уровень III</option>
                       <option value="4">Уровень IV</option>
                       <option value="5">Уровень V (повышенный)</option>
+                    </select>
+                  </div>
+
+                  {/* Sort */}
+                  <div>
+                    <label className="text-sm font-medium mb-2 block">Сортировка</label>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                      className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-sm"
+                    >
+                      <option value="default">По умолчанию</option>
+                      <option value="newest">Сначала новые</option>
+                      <option value="difficulty-asc">Сложность ↑ (от лёгких)</option>
+                      <option value="difficulty-desc">Сложность ↓ (от сложных)</option>
                     </select>
                   </div>
 

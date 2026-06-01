@@ -21,7 +21,6 @@ import {
   Play,
   CheckCircle,
   Copy,
-  Loader2,
   AlertTriangle,
   Target,
   Sparkles
@@ -31,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSubjectBySlug, fetchTopicsBySubjectId, fetchTheoryByTopicId, fetchSubtopicsByTopicId } from '@/data/subjects';
 import { MathFormula } from '@/components/ui/MathFormula';
+import { TheoryArticleSkeleton, CardRowsSkeleton } from '@/components/Skeletons';
 import type { Theory, Formula, Example, Topic } from '@/types';
 
 interface SubtopicLite { id: string; name: string; questionsCount: number; }
@@ -326,8 +326,16 @@ export function TheoryPage() {
   
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-background">
+        <div className="container py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <div className="lg:col-span-1"><CardRowsSkeleton rows={8} /></div>
+            <div className="lg:col-span-3 space-y-6">
+              <TheoryArticleSkeleton />
+              <TheoryArticleSkeleton />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
