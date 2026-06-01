@@ -109,8 +109,8 @@ export function SubjectPage() {
       </header>
       
       <main className="container py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {/* Stats — compact, informational only (not actions) */}
+        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
           <StatCard
             icon={BookOpen}
             value={stats?.questionsCount ?? subject.stats.questionsCount}
@@ -126,7 +126,7 @@ export function SubjectPage() {
           <StatCard
             icon={TrendingUp}
             value={examConfig?.durationMinutes ?? 120}
-            label="Минут на экзамен"
+            label="Минут"
             color={subject.color}
           />
         </div>
@@ -260,16 +260,20 @@ export function SubjectPage() {
                             >
                               <div className="p-3 space-y-1">
                                 {subs.map(sub => (
-                                  <div
+                                  <button
                                     key={sub.id}
-                                    className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-sm"
+                                    type="button"
+                                    onClick={() => navigate(sub.questionsCount > 0
+                                      ? `/practice/${subject.slug}?subtopic=${sub.id}`
+                                      : `/practice/${subject.slug}?topic=${topic.id}`)}
+                                    className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors text-sm text-left"
                                   >
                                     <span className="truncate">{sub.name}</span>
                                     <div className="flex items-center gap-2 shrink-0">
                                       <span className="text-xs text-muted-foreground">{sub.questionsCount} зад.</span>
                                       <ChevronRight className="w-3 h-3 text-muted-foreground" />
                                     </div>
-                                  </div>
+                                  </button>
                                 ))}
                               </div>
                             </motion.div>
@@ -359,20 +363,20 @@ interface StatCardProps {
 }
 
 function StatCard({ icon: Icon, value, label, color }: StatCardProps) {
+  // Compact, non-interactive info tile: small on mobile (3 across, doesn't fill the
+  // screen), a bit larger on desktop. Deliberately not a clickable-looking Card.
   return (
-    <Card>
-      <CardContent className="p-6 flex items-center gap-4">
-        <div 
-          className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-          style={{ background: color }}
-        >
-          <Icon className="w-6 h-6" />
-        </div>
-        <div>
-          <p className="text-2xl font-bold">{value}</p>
-          <p className="text-sm text-muted-foreground">{label}</p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-2 py-3 text-center sm:flex-row sm:gap-3 sm:px-4 sm:py-4 sm:text-left">
+      <div
+        className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-white shrink-0"
+        style={{ background: color }}
+      >
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-base sm:text-2xl font-bold leading-tight tabular-nums">{value}</p>
+        <p className="text-[11px] sm:text-sm text-muted-foreground leading-tight">{label}</p>
+      </div>
+    </div>
   );
 }

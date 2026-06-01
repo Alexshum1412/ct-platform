@@ -59,7 +59,7 @@ export function CTASection({ onStartLearning }: CTASectionProps) {
                 variant="outline"
                 size="lg"
                 onClick={() => navigate('/contact')}
-                className="border-white/30 text-white hover:bg-white/10 gap-2 text-lg px-8"
+                className="border-white/40 bg-transparent text-white hover:bg-white/15 hover:text-white gap-2 text-lg px-8"
               >
                 Узнать больше
               </Button>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, BookOpen, Play } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, BookOpen, Play, Pause } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MathFormula } from '@/components/ui/MathFormula';
@@ -198,10 +198,10 @@ export function ExamPage() {
         <Card className="max-w-xl w-full">
           <CardContent className="p-8 sm:p-10 text-center">
             <div
-              className="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center text-white"
+              className="inline-flex max-w-full items-center justify-center mb-6 px-6 h-16 rounded-2xl text-white text-xl sm:text-2xl font-bold"
               style={{ background: subject.color }}
             >
-              <span className="text-3xl font-bold">{subject.nameShort}</span>
+              <span className="truncate">{subject.name}</span>
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-bold mb-2">{examTitle}</h1>
@@ -516,6 +516,22 @@ export function ExamPage() {
     </div>
   );
 
+  // When paused: hide the question (so it can't be answered) and show a clear resume CTA.
+  const pausedCard = (
+    <Card>
+      <CardContent className="p-10 sm:p-14 text-center flex flex-col items-center">
+        <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+          <Pause className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Экзамен на паузе</h2>
+        <p className="text-muted-foreground mb-6 max-w-sm">Таймер остановлен, задания скрыты. Нажмите «Продолжить», чтобы вернуться к экзамену.</p>
+        <Button size="lg" className="gap-2 text-white" style={{ background: subject.color }} onClick={handleTogglePause}>
+          <Play className="w-5 h-5" />Продолжить экзамен
+        </Button>
+      </CardContent>
+    </Card>
+  );
+
   // ============================ FOCUS MODE ============================
   // Distraction-free exam: only the timer, the question & the answers.
   if (focusMode) {
@@ -543,8 +559,7 @@ export function ExamPage() {
             onTogglePause={handleTogglePause}
             onFinish={handleFinish}
           />
-          {examQuestionCard}
-          {examNav}
+          {isPaused ? pausedCard : <>{examQuestionCard}{examNav}</>}
         </main>
       </div>
     );
@@ -657,8 +672,7 @@ export function ExamPage() {
 
           {/* Question — full width when navigator collapsed */}
           <div className={examSidebarCollapsed ? 'w-full max-w-4xl mx-auto' : 'lg:col-span-3'}>
-            {examQuestionCard}
-            {examNav}
+            {isPaused ? pausedCard : <>{examQuestionCard}{examNav}</>}
           </div>
         </div>
       </main>
