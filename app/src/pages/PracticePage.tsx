@@ -84,16 +84,6 @@ export function PracticePage() {
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
   const [correctAnswers, setCorrectAnswers] = useState<Set<string>>(new Set());
 
-  // Find question index if ID is provided
-  useEffect(() => {
-    if (questionId && allQuestions.length > 0) {
-      const index = allQuestions.findIndex(q => q.id === questionId);
-      if (index !== -1) {
-        setCurrentQuestionIndex(index);
-      }
-    }
-  }, [questionId, allQuestions]);
-
   // Apply URL filter parameters (topic, subtopic) on first load
   const initialTopicParam = searchParams.get('topic');
   const initialSubtopicParam = searchParams.get('subtopic');
@@ -147,8 +137,16 @@ export function PracticePage() {
       return db - da;
     });
     setFilteredQuestions(filtered);
-    setCurrentQuestionIndex(0);
-  }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam]);
+    // If a question is deep-linked (?question=id), focus it within the filtered
+    // list; otherwise start at the top. Done here (after filtering) so it isn't
+    // clobbered by a separate effect, and so the index matches filteredQuestions.
+    const focusIdx = questionId ? filtered.findIndex(q => q.id === questionId) : -1;
+    setCurrentQuestionIndex(focusIdx >= 0 ? focusIdx : 0);
+  }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam, questionId]);
+
+  // A deep-linked single question (?question=id) must show in single mode so the
+  // focused index is actually visible. Don't persist — leave the saved preference.
+  useEffect(() => { if (questionId) setPracticeMode('single'); }, [questionId]);
 
   // Load subtopics when topic changes
   useEffect(() => {
