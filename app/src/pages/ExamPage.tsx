@@ -276,10 +276,13 @@ export function ExamPage() {
   if (isFinished) {
     const results = calculateResults();
     const passed = results.score >= examConfig.passingScore;
+    // Mirror calculateResults' normalization so this count matches "неверно"
+    // and skipped questions are included in the review (they were scored as wrong).
+    const norm = (s?: string) => (s ?? '').trim().toLowerCase();
     const wrongQuestions = examQuestions.filter(q => {
       const ua = answers[q.id];
       const ca = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-      return ua && ua !== ca;
+      return norm(ua) !== norm(ca);
     });
 
     return (
