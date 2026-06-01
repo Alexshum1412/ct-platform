@@ -103,6 +103,7 @@ export function AdminPage() {
   };
   const [newQuestion, setNewQuestion] = useState<NewQuestionForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Real subject/topic/subtopic for dropdowns (from API)
   const [apiSubjects, setApiSubjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
@@ -257,31 +258,61 @@ export function AdminPage() {
     } catch {/*ignore*/}
   };
 
+  const openCreateQuestion = () => {
+    setEditingId(null);
+    setNewQuestion(emptyForm);
+    setFormSelectedSubjectId(''); setFormSelectedTopicId(''); setFormSelectedSubtopicId('');
+    setShowAddDialog(true);
+  };
+
+  const openEditQuestion = (q: Question) => {
+    setEditingId(q.id);
+    setNewQuestion({
+      subjectId: q.subjectId,
+      topicId: q.topicId ?? '',
+      type: (q.type as 'SINGLE_CHOICE' | 'TEXT_INPUT') ?? 'SINGLE_CHOICE',
+      difficulty: q.difficulty ?? 1,
+      part: (q.part as 'A' | 'B') ?? 'A',
+      section: q.section ?? '',
+      content: q.content,
+      options: q.options && q.options.length ? q.options.map((o) => ({ id: o.id, text: o.text })) : emptyForm.options,
+      correctAnswer: Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] ?? '') : q.correctAnswer,
+      explanation: q.explanation,
+      imageUrl: q.imageUrl ?? '',
+    });
+    setFormSelectedSubjectId(q.subjectId);
+    setFormSelectedTopicId(q.topicId ?? '');
+    setFormSelectedSubtopicId(q.subtopicId ?? '');
+    setShowAddDialog(true);
+  };
+
   const handleCreateQuestion = async () => {
     if (!newQuestion.content.trim() || !newQuestion.explanation.trim()) return;
     if (!formSelectedSubjectId) return;
     setIsSaving(true);
     try {
-      const payload = {
+      const base = {
         ...newQuestion,
         subjectId: formSelectedSubjectId,
         topicId: formSelectedTopicId || undefined,
         subtopicId: formSelectedSubtopicId || undefined,
-        tags: [],
       };
-      const r = await fetch(`${API_BASE_URL}/questions`, {
-        method: 'POST',
+      // On create send tags:[] (backend default); on edit omit tags so existing ones aren't wiped.
+      const payload = editingId ? base : { ...base, tags: [] };
+      const r = await fetch(`${API_BASE_URL}/questions${editingId ? `/${editingId}` : ''}`, {
+        method: editingId ? 'PATCH' : 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(payload),
       });
       if (r.ok) {
         setShowAddDialog(false);
         setNewQuestion(emptyForm);
+        setEditingId(null);
         setFormSelectedSubjectId(''); setFormSelectedTopicId(''); setFormSelectedSubtopicId('');
         void loadData();
       } else {
         const data = await r.json();
-        alert(data.error ?? 'Ошибка создания');
+        alert(data.error ?? 'Ошибка сохранения');
       }
     } catch {/*ignore*/}
     setIsSaving(false);
@@ -379,7 +410,7 @@ export function AdminPage() {
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <CardTitle>Управление заданиями</CardTitle>
-                  <Button onClick={() => setShowAddDialog(true)}>
+                  <Button onClick={openCreateQuestion}>
                     <Plus className="w-4 h-4 mr-2" />Добавить задание
                   </Button>
                 </div>
@@ -442,6 +473,9 @@ export function AdminPage() {
                           <div className="flex items-center gap-1 ml-4">
                             <Button variant="ghost" size="icon" onClick={() => navigate(`/practice/${apiSubjects.find(s => s.id === question.subjectId)?.slug ?? question.subjectId}?question=${question.id}`)}>
                               <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => openEditQuestion(question)} title="Редактировать">
+                              <Edit2 className="w-4 h-4" />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleDeleteQuestion(question.id)}>
                               <Trash2 className="w-4 h-4 text-destructive" />
@@ -836,7 +870,7 @@ export function AdminPage() {
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Добавить новое задание</DialogTitle>
+              <DialogTitle>{editingId ? 'Редактировать задание' : 'Добавить новое задание'}</DialogTitle>
               <DialogDescription>Заполните поля по формату РИКЗ</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
@@ -954,7 +988,7 @@ export function AdminPage() {
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowAddDialog(false)}>Отмена</Button>
                 <Button onClick={handleCreateQuestion} disabled={isSaving || !newQuestion.content.trim() || !formSelectedSubjectId || !newQuestion.explanation.trim()}>
-                  {isSaving ? <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Сохранение...</> : 'Создать задание'}
+                  {isSaving ? <><Loader2 className="w-3 h-3 mr-2 animate-spin" />Сохранение...</> : editingId ? 'Сохранить изменения' : 'Создать задание'}
                 </Button>
               </div>
             </div>

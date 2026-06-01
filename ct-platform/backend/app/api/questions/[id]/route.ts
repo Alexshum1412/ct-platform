@@ -29,7 +29,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
     const body = await req.json();
     const data: Record<string, unknown> = {};
-    for (const k of ['content', 'correctAnswer', 'explanation', 'solution', 'part', 'section', 'type', 'source', 'status', 'topicId', 'subtopicId', 'imageUrl', 'isPremium']) {
+    for (const k of ['content', 'correctAnswer', 'explanation', 'solution', 'part', 'section', 'type', 'source', 'status', 'subjectId', 'topicId', 'subtopicId', 'imageUrl', 'isPremium']) {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (body.difficulty !== undefined) data.difficulty = Number(body.difficulty);
