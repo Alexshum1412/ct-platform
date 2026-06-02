@@ -63,6 +63,9 @@ export const updateProfileSchema = z.object({
   city: z.string().optional(),
   school: z.string().optional(),
   grade: z.number().min(1).max(11).optional(),
+  // Avatar: a data URL (base64, resized client-side) or an empty string to reset
+  // to the initials fallback. Capped to keep the row small (~a few hundred KB max).
+  image: z.string().max(2_000_000).optional(),
 });
 
 // Types inferred from schemas

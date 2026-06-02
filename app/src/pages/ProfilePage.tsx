@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
-  Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, X, CheckCircle,
+  Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, X, CheckCircle, Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AvatarUpload } from '@/components/profile/AvatarUpload';
 import { useAppStore } from '@/store/useAppStore';
 import { userApi, apiClient } from '@/lib/api/client';
 
@@ -55,6 +56,7 @@ export function ProfilePage() {
   const [editedName, setEditedName] = useState(user?.name ?? '');
   const [editedCity, setEditedCity] = useState(user?.city ?? '');
   const [editedSchool, setEditedSchool] = useState(user?.school ?? '');
+  const [editedImage, setEditedImage] = useState(user?.image ?? '');
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [achievementFilter, setAchievementFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
@@ -87,10 +89,23 @@ export function ProfilePage() {
     );
   }
 
+  // Синхронизируем поля редактирования с текущим пользователем перед входом в режим правки
+  const startEdit = () => {
+    if (!user) return;
+    setEditedName(user.name ?? '');
+    setEditedCity(user.city ?? '');
+    setEditedSchool(user.school ?? '');
+    setEditedImage(user.image ?? '');
+    setIsEditing(true);
+  };
+
   const handleSave = async () => {
     if (!token) return;
     setIsSaving(true);
-    const result = await userApi.updateProfile({ name: editedName, city: editedCity, school: editedSchool }, token);
+    const result = await userApi.updateProfile(
+      { name: editedName, city: editedCity, school: editedSchool, image: editedImage },
+      token,
+    );
     if (result.data && user) {
       setUser({ ...user, ...(result.data as Partial<typeof user>) });
       setIsEditing(false);
@@ -134,16 +149,36 @@ export function ProfilePage() {
           <div className="lg:col-span-1 space-y-4">
             <Card>
               <CardContent className="p-6 text-center">
-                <div className="relative inline-block mb-4">
-                  <Avatar className="w-20 h-20">
-                    <AvatarImage src={user.image ?? ''} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                      {(user.name ?? user.email).charAt(0).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  {user.plan !== 'FREE' && (
-                    <div className="absolute -top-1 -right-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center">
-                      <Crown className="w-3 h-3 text-white" />
+                <div className="mb-4 flex justify-center">
+                  {isEditing ? (
+                    <AvatarUpload
+                      value={editedImage}
+                      fallback={(editedName || user.name || user.email).charAt(0).toUpperCase()}
+                      onChange={setEditedImage}
+                      displaySize={88}
+                      disabled={isSaving}
+                    />
+                  ) : (
+                    <div className="relative inline-block">
+                      <Avatar className="w-24 h-24">
+                        <AvatarImage src={user.image ?? ''} className="object-cover" />
+                        <AvatarFallback className="bg-primary/10 text-primary text-3xl font-bold">
+                          {(user.name ?? user.email).charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.plan !== 'FREE' && (
+                        <div className="absolute -top-1 -right-1 w-6 h-6 bg-amber-500 rounded-full flex items-center justify-center ring-2 ring-background">
+                          <Crown className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={startEdit}
+                        title="Сменить аватар"
+                        className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md ring-2 ring-background hover:bg-primary/90 transition-colors"
+                      >
+                        <Camera className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -170,7 +205,7 @@ export function ProfilePage() {
                       {user.school && <Badge variant="secondary" className="text-xs gap-1"><School className="w-3 h-3" />{user.school}</Badge>}
                       <Badge variant="outline" className="text-xs gap-1"><Calendar className="w-3 h-3" />С {new Date(user.createdAt).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</Badge>
                     </div>
-                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => setIsEditing(true)}>
+                    <Button variant="outline" size="sm" className="w-full gap-2" onClick={startEdit}>
                       <Edit2 className="w-3 h-3" />Редактировать
                     </Button>
                   </>

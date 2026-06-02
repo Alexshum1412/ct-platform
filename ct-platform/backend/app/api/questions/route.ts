@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
 
     const subjectId = searchParams.get('subjectId');
     const topicId = searchParams.get('topicId');
+    const subtopicId = searchParams.get('subtopicId');
     const difficulty = searchParams.get('difficulty');
     const type = searchParams.get('type');
     const part = searchParams.get('part');
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
 
     if (subjectId) where.subjectId = subjectId;
     if (topicId) where.topicId = topicId;
+    if (subtopicId) where.subtopicId = subtopicId;
     if (difficulty) where.difficulty = parseInt(difficulty);
     if (type) where.type = type;
     if (part) where.part = part;

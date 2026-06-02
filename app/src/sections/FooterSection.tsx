@@ -1,4 +1,5 @@
 import { BookOpen, Github, Mail, MessageCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 /**
  * Ссылки в футере
@@ -25,8 +26,10 @@ const footerLinks = {
   about: [
     { label: 'Контакты', href: '/contact' },
     { label: 'Избранное', href: '/favorites' },
-    { label: 'Условия использования', href: '/terms' },
     { label: 'Политика конфиденциальности', href: '/privacy' },
+    // Спрятанная между политикой и условиями ссылка на демо-мини-игру «Рулетка».
+    { label: 'Рулетка', href: '/roulette' },
+    { label: 'Условия использования', href: '/terms' },
   ],
 };
 
@@ -107,12 +110,23 @@ export function FooterSection() {
             <ul className="space-y-3">
               {footerLinks.about.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
+                  {link.href === '/roulette' ? (
+                    // Намеренно очень неприметная ссылка (приглушённый цвет) на демо-игру
+                    <Link
+                      to="/roulette"
+                      title="Мини-игра на виртуальные монеты"
+                      className="text-muted-foreground/35 hover:text-muted-foreground transition-colors text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

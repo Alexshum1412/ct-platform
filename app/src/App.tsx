@@ -94,6 +94,9 @@ const TheorySearchPage = lazy(() => import('@/pages/TheorySearchPage').then(m =>
 /** Единый каталог теории по всем предметам */
 const TheoryHubPage = lazy(() => import('@/pages/TheoryHubPage').then(m => ({ default: m.TheoryHubPage })));
 
+/** Секретная демо-страница «Рулетка» (виртуальные монеты, без реальных денег) */
+const RoulettePage = lazy(() => import('@/pages/RoulettePage').then(m => ({ default: m.RoulettePage })));
+
 // =====================================================
 // КОНФИГУРАЦИЯ REACT QUERY
 // =====================================================
@@ -194,6 +197,10 @@ function App() {
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/theory/search" element={<TheorySearchPage />} />
+
+              {/* Секретная демо-страница «Рулетка» (ссылка спрятана в подвале) */}
+              <Route path="/roulette" element={<RoulettePage />} />
+              <Route path="/рулетка" element={<RoulettePage />} />
 
               {/* 
                 404 - СТРАНИЦА НЕ НАЙДЕНА 

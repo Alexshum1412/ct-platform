@@ -140,7 +140,7 @@ export const leaderboardApi = {
 export const userApi = {
   getProfile: (token: string) => apiClient('/users/me', { token }),
   
-  updateProfile: (data: Partial<{ name: string; city: string; school: string }>, token: string) =>
+  updateProfile: (data: Partial<{ name: string; city: string; school: string; image: string }>, token: string) =>
     apiClient('/users/me', { method: 'PATCH', body: data, token }),
 
   getStats: (token: string) => apiClient('/users/stats', { token }),

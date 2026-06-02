@@ -9,12 +9,13 @@ import { Button } from '@/components/ui/button';
 import { API_BASE_URL } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 
-type Entity = 'subjects' | 'topics' | 'subtopics' | 'theory' | 'exams';
+// Экзамены вынесены в отдельную вкладку «Экзамены» (ExamBuilder) с ручной сборкой.
+type Entity = 'subjects' | 'topics' | 'subtopics' | 'theory';
 type Row = { id: string; [k: string]: unknown };
 type FormState = Record<string, unknown> & { id?: string };
 
 const ENTITY_LABEL: Record<Entity, string> = {
-  subjects: 'Предметы', topics: 'Темы', subtopics: 'Под-темы', theory: 'Теория', exams: 'Экзамены',
+  subjects: 'Предметы', topics: 'Темы', subtopics: 'Под-темы', theory: 'Теория',
 };
 
 export function AdminContentManager({ token }: { token: string | null }) {
@@ -74,12 +75,9 @@ export function AdminContentManager({ token }: { token: string | null }) {
         const q = topicId ? `topicId=${topicId}` : `subjectId=${subjectId}`;
         const d = await fetch(`${API_BASE_URL}/theory?${q}&limit=500`).then((r) => r.json());
         setItems((d.items || []) as Row[]);
-      } else if (entity === 'exams') {
-        const d = await apiCall(`/admin/exams?subjectId=${subjectId}`, 'GET');
-        setItems((d || []) as Row[]);
       }
     } catch { setItems([]); } finally { setLoading(false); }
-  }, [entity, subjectId, topicId, apiCall]);
+  }, [entity, subjectId, topicId]);
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -91,7 +89,6 @@ export function AdminContentManager({ token }: { token: string | null }) {
       topics: { name: '', description: '', order: 0 },
       subtopics: { name: '', description: '', order: 0 },
       theory: { title: '', content: '', summary: '', commonMistakes: '', examTraps: '', tags: '', order: 0, topicId, subtopicId: '' },
-      exams: { title: '', description: '', durationMinutes: 120, passingScore: 0, questionCount: 15 },
     };
     setForm(base[entity]);
   };
@@ -138,15 +135,6 @@ export function AdminContentManager({ token }: { token: string | null }) {
         };
         if (isEdit) await apiCall(`/admin/theory/${form.id}`, 'PATCH', body);
         else await apiCall('/admin/theory', 'POST', body);
-      } else if (entity === 'exams') {
-        if (isEdit) {
-          await apiCall(`/admin/exams/${form.id}`, 'PATCH', { title: form.title, description: form.description, durationMinutes: Number(form.durationMinutes), passingScore: Number(form.passingScore) });
-        } else {
-          const n = Math.max(1, Number(form.questionCount) || 15);
-          const qs = await fetch(`${API_BASE_URL}/subjects/${subjectId}/questions?limit=${n}`).then((r) => r.json());
-          const ids = (Array.isArray(qs) ? qs : (qs.questions || [])).map((q: { id: string }) => q.id).slice(0, n);
-          await apiCall('/admin/exams', 'POST', { subjectId, title: form.title, description: form.description, durationMinutes: Number(form.durationMinutes), passingScore: Number(form.passingScore), questionIds: ids });
-        }
       }
       notify('success', form.id ? 'Сохранено' : 'Создано');
       setForm(null);
@@ -220,7 +208,6 @@ export function AdminContentManager({ token }: { token: string | null }) {
             <div key={row.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40">
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{title(row)}</p>
-                {entity === 'exams' && <p className="text-xs text-muted-foreground">{Array.isArray(row.questionIds) ? (row.questionIds as unknown[]).length : 0} заданий · {String(row.durationMinutes)} мин</p>}
                 {(entity === 'theory') && row.subtopicName ? <p className="text-xs text-muted-foreground truncate">{String(row.topicName || '')}{row.subtopicName ? ` › ${row.subtopicName}` : ''}</p> : null}
               </div>
               <button onClick={() => openEdit(row)} className="p-2 rounded-lg hover:bg-muted text-muted-foreground" title="Редактировать"><Pencil className="w-4 h-4" /></button>
@@ -260,13 +247,6 @@ export function AdminContentManager({ token }: { token: string | null }) {
                 <Field label="Типичные ошибки (по одной в строке)"><textarea className={`${inputCls} min-h-[70px]`} value={String(form.commonMistakes ?? '')} onChange={(e) => setForm({ ...form, commonMistakes: e.target.value })} /></Field>
                 <Field label="Ловушки на экзамене (по одной в строке)"><textarea className={`${inputCls} min-h-[70px]`} value={String(form.examTraps ?? '')} onChange={(e) => setForm({ ...form, examTraps: e.target.value })} /></Field>
                 <Field label="Теги (через запятую)"><input className={inputCls} value={String(form.tags ?? '')} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></Field>
-              </>)}
-              {entity === 'exams' && (<>
-                <Field label="Название"><input className={inputCls} value={String(form.title ?? '')} onChange={(e) => setForm({ ...form, title: e.target.value })} /></Field>
-                <Field label="Описание"><input className={inputCls} value={String(form.description ?? '')} onChange={(e) => setForm({ ...form, description: e.target.value })} /></Field>
-                <Field label="Длительность (мин)"><input type="number" className={inputCls} value={Number(form.durationMinutes ?? 120)} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} /></Field>
-                <Field label="Проходной балл"><input type="number" className={inputCls} value={Number(form.passingScore ?? 0)} onChange={(e) => setForm({ ...form, passingScore: e.target.value })} /></Field>
-                {!form.id && <Field label="Сколько заданий взять (из предмета)"><input type="number" className={inputCls} value={Number(form.questionCount ?? 15)} onChange={(e) => setForm({ ...form, questionCount: e.target.value })} /></Field>}
               </>)}
             </div>
             <div className="flex justify-end gap-2 p-4 border-t border-border sticky bottom-0 bg-card">
