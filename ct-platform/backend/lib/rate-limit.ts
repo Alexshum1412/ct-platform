@@ -48,12 +48,29 @@ export const questionLimiter = redisClient
       duration: 3600,
     });
 
+// Anti-abuse limiter for the global team click-counter.
+// Points are CLICKS (not requests): max 600 clicks/min per IP — plenty for a
+// human masher (~10/s) while making scripted inflation expensive.
+export const clickLimiter = redisClient
+  ? new RateLimiterRedis({
+      storeClient: redisClient,
+      keyPrefix: 'click_limit',
+      points: 600,
+      duration: 60,
+    })
+  : new RateLimiterMemory({
+      keyPrefix: 'click_limit',
+      points: 600,
+      duration: 60,
+    });
+
 export async function checkRateLimit(
   limiter: RateLimiterRedis | RateLimiterMemory,
-  key: string
+  key: string,
+  points = 1,
 ): Promise<{ allowed: boolean; remaining: number; resetTime?: Date }> {
   try {
-    const result = await limiter.consume(key);
+    const result = await limiter.consume(key, points);
     return {
       allowed: true,
       remaining: result.remainingPoints,

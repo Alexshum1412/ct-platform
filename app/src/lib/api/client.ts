@@ -154,10 +154,35 @@ export const userApi = {
     apiClient(`/users/favorites/${questionId}`, { method: 'DELETE', token }),
 };
 
-// Global team click-counter API (public, no auth)
+// Global team click-counter API (public, no auth).
+// Raw fetch so we can distinguish 200 / 429 (throttled) / network-error, which the
+// batched flush needs (drop on throttle, retry on network error).
 export const clicksApi = {
-  get: () => apiClient<{ total: number }>('/clicks'),
-  add: (count = 1) => apiClient<{ total: number }>('/clicks', { method: 'POST', body: { count } }),
+  get: async (): Promise<{ total: number } | null> => {
+    try {
+      const r = await fetch(`${API_BASE_URL}/clicks`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok && r.status !== 429) return null;
+      return { total: typeof d.total === 'number' ? d.total : 0 };
+    } catch {
+      return null;
+    }
+  },
+  add: async (count = 1): Promise<{ total: number; throttled: boolean } | null> => {
+    try {
+      const r = await fetch(`${API_BASE_URL}/clicks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.status === 429) return { total: typeof d.total === 'number' ? d.total : 0, throttled: true };
+      if (!r.ok) return null;
+      return { total: typeof d.total === 'number' ? d.total : 0, throttled: false };
+    } catch {
+      return null;
+    }
+  },
 };
 
 // Demo-game balance reset API (auth-protected daily limit; premium = unlimited)

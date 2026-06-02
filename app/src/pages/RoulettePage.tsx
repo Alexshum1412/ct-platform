@@ -15,7 +15,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, RotateCcw, Play, Eraser, Undo2, Info, BookOpen, Percent, ArrowLeft, Sparkles,
-  Dices, History, Wallet, ChevronDown, Crown, Lock,
+  Dices, History, Wallet, ChevronDown, Crown, Lock, Maximize2, Minimize2, X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -125,8 +125,12 @@ export function RoulettePage() {
 
   const { token } = useAppStore();
   const [showHelp, setShowHelp] = useState(false);
+  const [zoom, setZoom] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean } | null>(null);
+
+  // В увеличенном режиме крутим медленнее — удобнее наблюдать за остановкой стрелки.
+  const spinSec = zoom ? 6.8 : 4.2;
 
   const loadResetStatus = useCallback(async () => {
     if (!token) { setResetInfo(null); return; }
@@ -243,8 +247,8 @@ export function RoulettePage() {
     const delta = fullSpins * 360 + ((targetResidue - (angle % 360)) + 360) % 360;
     setAngle((a) => a + delta);
 
-    // Длительность совпадает с CSS-переходом ниже (4.2s)
-    window.setTimeout(() => settle(number), 4300);
+    // Длительность совпадает с CSS-переходом (spinSec); +0.2с буфер на отрисовку
+    window.setTimeout(() => settle(number), spinSec * 1000 + 200);
   };
 
   // Удобный шорткат, чтобы не повторять общие пропсы на каждой клетке
@@ -254,11 +258,104 @@ export function RoulettePage() {
     </BetCell>
   );
 
+  // Колесо как переиспользуемый рендер: size — диаметр в px, showNumbers — рисовать
+  // цифры по ободу (вращаются вместе с диском, выигрышное число встаёт ровно под
+  // указатель). Используется и в обычном виде, и в увеличенном оверлее.
+  const renderWheel = (size: number, showNumbers: boolean) => {
+    const hub = Math.round(size * 0.34);
+    const numR = size * 0.40; // радиус, на котором стоят цифры
+    const numFs = Math.max(9, Math.round(size * 0.044));
+    const label = result == null || spinning ? 'спин' : colorOf(result) === 'green' ? 'зеро' : colorOf(result) === 'red' ? 'красное' : 'чёрное';
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <div className={`absolute -inset-2 rounded-full bg-gradient-to-br from-amber-300/30 to-primary/20 blur-xl transition-opacity duration-500 ${spinning ? 'opacity-90' : 'opacity-50'}`} />
+        {/* Указатель сверху */}
+        <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 z-20 drop-shadow"
+          style={{ width: 0, height: 0, borderLeft: '11px solid transparent', borderRight: '11px solid transparent', borderTop: '18px solid #f59e0b' }} />
+        {/* Вращающийся диск + цифры */}
+        <div
+          className="absolute inset-0 rounded-full border-[6px] border-amber-400/80 shadow-[0_10px_30px_rgb(0,0,0,0.18)]"
+          style={{ background: wheelGradient, transform: `rotate(${angle}deg)`, transition: spinning ? `transform ${spinSec}s cubic-bezier(0.16, 0.84, 0.16, 1)` : 'none' }}
+        >
+          {showNumbers && WHEEL.map((n, i) => {
+            const a = i * SEG + SEG / 2;
+            return (
+              <span
+                key={i}
+                className="absolute left-1/2 top-1/2 font-bold text-white leading-none"
+                style={{ fontSize: numFs, transform: `translate(-50%, -50%) rotate(${a}deg) translateY(-${numR}px)`, textShadow: '0 1px 2px rgba(0,0,0,.6)' }}
+              >
+                {n}
+              </span>
+            );
+          })}
+        </div>
+        {/* Глянцевый блик */}
+        <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 via-transparent to-black/10 pointer-events-none" />
+        {/* Втулка с результатом */}
+        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
+          <div className="rounded-full bg-card border-4 border-amber-400/70 flex flex-col items-center justify-center shadow-lg ring-1 ring-border" style={{ width: hub, height: hub }}>
+            <AnimatePresence mode="wait">
+              <motion.span
+                key={result ?? 'idle'}
+                initial={{ scale: 0.6, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className={`font-extrabold ${result == null ? 'text-muted-foreground' : colorOf(result) === 'red' ? 'text-red-500' : colorOf(result) === 'green' ? 'text-emerald-500' : 'text-foreground'}`}
+                style={{ fontSize: Math.round(hub * 0.36) }}
+              >
+                {spinning ? '…' : result ?? '—'}
+              </motion.span>
+            </AnimatePresence>
+            <span className="uppercase tracking-wide text-muted-foreground" style={{ fontSize: Math.max(9, Math.round(hub * 0.12)) }}>{label}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Размер увеличенного колеса — крупно, но влезает в любой экран.
+  const zoomSize = Math.min(380, Math.max(240, (typeof window !== 'undefined' ? window.innerWidth : 360) - 120));
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary/5 via-background to-background">
       {/* Мягкое фоновое свечение в стиле главной страницы */}
       <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-primary/10 blur-3xl opacity-60" />
       <div className="pointer-events-none absolute top-1/3 -left-24 w-80 h-80 rounded-full bg-amber-400/10 blur-3xl opacity-50" />
+
+      {/* Увеличенное колесо (оверлей для наблюдения) */}
+      <AnimatePresence>
+        {zoom && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => { if (!spinning) setZoom(false); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 24 }}
+              className="relative bg-card border border-border rounded-2xl shadow-2xl p-6 sm:p-8 flex flex-col items-center max-w-[94vw]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button onClick={() => setZoom(false)} disabled={spinning} className="absolute top-3 right-3 p-2 rounded-lg hover:bg-muted disabled:opacity-50" title="Закрыть">
+                <X className="w-5 h-5" />
+              </button>
+              <h3 className="text-lg font-bold mb-0.5">Колесо крупным планом</h3>
+              <p className="text-sm text-muted-foreground mb-5">Медленное вращение — следите, где остановится стрелка</p>
+              {renderWheel(zoomSize, true)}
+              <div className="mt-7 flex items-center gap-3">
+                <Button onClick={spin} disabled={spinning || totalBet === 0} size="lg" className="gap-2">
+                  <Play className="w-5 h-5" />{spinning ? 'Крутится…' : 'Крутить'}
+                </Button>
+                <Button onClick={() => setZoom(false)} variant="outline" size="lg" disabled={spinning} className="gap-2">
+                  <Minimize2 className="w-4 h-4" />Обычный вид
+                </Button>
+              </div>
+              {totalBet === 0 && <p className="text-xs text-muted-foreground mt-3">Сделайте ставку на поле, чтобы крутить</p>}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="relative container py-8 sm:py-10 max-w-6xl">
         {/* Назад + заголовок */}
@@ -301,40 +398,20 @@ export function RoulettePage() {
           <div className="space-y-4">
             <Card>
               <CardContent className="p-5 flex flex-col items-center">
-                {/* Колесо */}
-                <div className="relative w-60 h-60 sm:w-64 sm:h-64">
-                  {/* Свечение под колесом */}
-                  <div className={`absolute -inset-2 rounded-full bg-gradient-to-br from-amber-300/30 to-primary/20 blur-xl transition-opacity duration-500 ${spinning ? 'opacity-90' : 'opacity-50'}`} />
-                  {/* Указатель сверху */}
-                  <div className="absolute left-1/2 -translate-x-1/2 -top-1.5 z-20 drop-shadow"
-                    style={{ width: 0, height: 0, borderLeft: '11px solid transparent', borderRight: '11px solid transparent', borderTop: '18px solid #f59e0b' }} />
-                  {/* Вращающийся диск */}
-                  <div
-                    className="absolute inset-0 rounded-full border-[6px] border-amber-400/80 shadow-[0_10px_30px_rgb(0,0,0,0.18)]"
-                    style={{ background: wheelGradient, transform: `rotate(${angle}deg)`, transition: spinning ? 'transform 4.2s cubic-bezier(0.16, 0.84, 0.16, 1)' : 'none' }}
-                  />
-                  {/* Глянцевый блик (не вращается) */}
-                  <div className="absolute inset-0 rounded-full bg-gradient-to-b from-white/20 via-transparent to-black/10 pointer-events-none" />
-                  {/* Втулка с результатом (не вращается) */}
-                  <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                    <div className="w-24 h-24 rounded-full bg-card border-4 border-amber-400/70 flex flex-col items-center justify-center shadow-lg ring-1 ring-border">
-                      <AnimatePresence mode="wait">
-                        <motion.span
-                          key={result ?? 'idle'}
-                          initial={{ scale: 0.6, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className={`text-3xl font-extrabold ${result == null ? 'text-muted-foreground' : colorOf(result) === 'red' ? 'text-red-500' : colorOf(result) === 'green' ? 'text-emerald-500' : 'text-foreground'}`}
-                        >
-                          {spinning ? '…' : result ?? '—'}
-                        </motion.span>
-                      </AnimatePresence>
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                        {result == null || spinning ? 'спин' : colorOf(result) === 'green' ? 'зеро' : colorOf(result) === 'red' ? 'красное' : 'чёрное'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                {/* Колесо (обычный вид) */}
+                {renderWheel(248, false)}
+
+                {/* Кнопка увеличения колеса */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-4 gap-1.5"
+                  onClick={() => setZoom(true)}
+                  disabled={spinning}
+                  title="Увеличить колесо для наблюдения"
+                >
+                  <Maximize2 className="w-4 h-4" />Увеличить колесо
+                </Button>
 
                 {/* Баланс + ставки */}
                 <div className="mt-5 w-full grid grid-cols-2 gap-2">

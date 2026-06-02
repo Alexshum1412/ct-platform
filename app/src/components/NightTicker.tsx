@@ -70,10 +70,11 @@ export function NightTicker() {
         >
           <div className="pointer-events-auto mx-auto max-w-5xl m-3 flex items-center gap-3 rounded-xl border border-indigo-300/40 dark:border-indigo-400/20 bg-indigo-950/90 text-indigo-50 backdrop-blur px-4 py-2.5 shadow-lg overflow-hidden">
             <Moon className="w-4 h-4 shrink-0 text-indigo-300" />
-            {/* Бегущая строка */}
+            {/* Бегущая строка. min-w-full гарантирует, что бегунок не уже контейнера,
+                поэтому даже короткий текст стартует ровно за правым краем — без рывка. */}
             <div className="relative flex-1 overflow-hidden h-5">
               <motion.div
-                className="absolute whitespace-nowrap text-sm will-change-transform"
+                className="absolute left-0 top-0 min-w-full whitespace-nowrap text-sm will-change-transform"
                 initial={{ x: '100%' }}
                 animate={{ x: '-100%' }}
                 transition={{ duration: 18, ease: 'linear', repeat: Infinity }}

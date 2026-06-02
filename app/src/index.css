@@ -27,8 +27,9 @@
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
-    --border: 214 25% 85%;
-    --input: 214 25% 85%;
+    /* Borders/inputs a touch darker in light theme → cards and controls read clearly */
+    --border: 214 30% 79%;
+    --input: 214 30% 79%;
     --ring: 217 91% 55%;
     --radius: 0.875rem;
     color-scheme: light;

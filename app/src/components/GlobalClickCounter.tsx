@@ -16,12 +16,21 @@ const FLUSH_MS = 900;   // как часто отправлять накопле
 const POLL_MS = 4000;   // как часто подтягивать общий счётчик
 const MAX_PER_FLUSH = 50; // совпадает с лимитом backend, чтобы не терять клики
 
+/** Следующая «круглая» цель для полоски прогресса (10, 50, 100, 500, 1k, 5k, …). */
+function nextMilestone(n: number): number {
+  const steps = [10, 50, 100, 250, 500, 1000, 2500, 5000, 10000, 25000, 50000, 100000];
+  for (const s of steps) if (n < s) return s;
+  return Math.ceil((n + 1) / 100000) * 100000;
+}
+
 export function GlobalClickCounter() {
   const [serverTotal, setServerTotal] = useState<number | null>(null);
   const [pending, setPending] = useState(0);
   const [bump, setBump] = useState(0);
+  const [throttled, setThrottled] = useState(false);
   const pendingRef = useRef(0);
   const flushing = useRef(false);
+  const throttleTimer = useRef<number | null>(null);
 
   useEffect(() => { pendingRef.current = pending; }, [pending]);
 
@@ -32,26 +41,35 @@ export function GlobalClickCounter() {
     flushing.current = true;
     const res = await clicksApi.add(n);
     flushing.current = false;
-    if (res.data) {
-      setServerTotal(res.data.total);
-      setPending((p) => Math.max(0, p - n)); // вычитаем ровно отправленное; остаток уйдёт следующим тиком
+    if (res) {
+      // 200 или 429(throttled): в обоих случаях вычитаем отправленное —
+      // лишние при троттлинге клики просто не засчитываются (анти-накрутка).
+      setServerTotal((t) => Math.max(t ?? 0, res.total));
+      setPending((p) => Math.max(0, p - n));
+      if (res.throttled) {
+        setThrottled(true);
+        if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
+        throttleTimer.current = window.setTimeout(() => setThrottled(false), 2500);
+      }
     }
+    // res === null → сеть/сервер недоступны: pending не трогаем, повторим позже.
   }, []);
 
   // Первичная загрузка + опрос «вживую»
   useEffect(() => {
     let alive = true;
-    void clicksApi.get().then((r) => { if (alive && r.data) setServerTotal((t) => Math.max(t ?? 0, r.data!.total)); });
+    void clicksApi.get().then((r) => { if (alive && r) setServerTotal((t) => Math.max(t ?? 0, r.total)); });
     const poll = setInterval(() => {
-      void clicksApi.get().then((r) => { if (alive && r.data) setServerTotal((t) => Math.max(t ?? 0, r.data!.total)); });
+      void clicksApi.get().then((r) => { if (alive && r) setServerTotal((t) => Math.max(t ?? 0, r.total)); });
     }, POLL_MS);
     const flusher = setInterval(() => { void flush(); }, FLUSH_MS);
     return () => {
       alive = false;
       clearInterval(poll);
       clearInterval(flusher);
+      if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
       // Финальная попытка отправить остаток (fire-and-forget)
-      if (pendingRef.current > 0) void clicksApi.add(pendingRef.current);
+      if (pendingRef.current > 0) void clicksApi.add(Math.min(pendingRef.current, MAX_PER_FLUSH));
     };
   }, [flush]);
 
@@ -61,6 +79,8 @@ export function GlobalClickCounter() {
   };
 
   const displayed = (serverTotal ?? 0) + pending;
+  const goal = nextMilestone(displayed);
+  const goalPct = Math.min(100, Math.round((displayed / goal) * 100));
 
   return (
     <section className="border-t border-border bg-gradient-to-b from-muted/30 to-background">
@@ -89,6 +109,22 @@ export function GlobalClickCounter() {
             <p className="text-xs text-muted-foreground mt-1">нажатий за всё время</p>
           </div>
 
+          {/* Прогресс до следующей цели */}
+          <div className="mb-6 max-w-sm mx-auto">
+            <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+              <span>Цель команды</span>
+              <span className="font-semibold text-foreground tabular-nums">{displayed.toLocaleString('ru-RU')} / {goal.toLocaleString('ru-RU')}</span>
+            </div>
+            <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70"
+                initial={false}
+                animate={{ width: `${goalPct}%` }}
+                transition={{ type: 'spring', stiffness: 120, damping: 20 }}
+              />
+            </div>
+          </div>
+
           {/* Кнопка */}
           <motion.button
             type="button"
@@ -111,8 +147,10 @@ export function GlobalClickCounter() {
             )}
           </motion.button>
 
-          <p className="text-xs text-muted-foreground mt-4">
-            Счётчик хранится на сервере и обновляется в реальном времени для всех.
+          <p className="text-xs text-muted-foreground mt-4 h-4">
+            {throttled
+              ? <span className="text-amber-600 dark:text-amber-400">Не так быстро 🙂 засчитываем по-честному</span>
+              : 'Счётчик хранится на сервере и обновляется в реальном времени для всех.'}
           </p>
         </div>
       </div>
