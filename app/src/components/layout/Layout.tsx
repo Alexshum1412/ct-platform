@@ -3,6 +3,8 @@ import { Header } from './Header';
 import { CookieConsentBanner } from '@/components/CookieConsent';
 import { NotificationStack } from '@/components/NotificationStack';
 import { MobileTabBar } from './MobileTabBar';
+import { GlobalClickCounter } from '@/components/GlobalClickCounter';
+import { NightTicker } from '@/components/NightTicker';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -26,7 +28,12 @@ export function Layout({ children }: LayoutProps) {
           On mobile, pb-16 leaves room for the bottom tab bar. */}
       <main className={focusMode ? '' : 'pt-16 pb-16 lg:pb-0'}>
         {children}
+        {/* Командный кликер — общий счётчик в самом низу каждой страницы
+            (скрыт в фокус-режиме, чтобы не отвлекать) */}
+        {!focusMode && <GlobalClickCounter />}
       </main>
+      {/* Ночная бегущая строка (00:00–06:00) */}
+      {!focusMode && <NightTicker />}
       {/* Cookie consent banner — hidden during distraction-free Focus mode */}
       {!focusMode && <CookieConsentBanner />}
       {/* Global toast notifications (level-ups, achievements, feedback) */}

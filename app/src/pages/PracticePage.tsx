@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame } from 'lucide-react';
 import { QuestionSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,6 +83,11 @@ export function PracticePage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
   const [correctAnswers, setCorrectAnswers] = useState<Set<string>>(new Set());
+  // Серия правильных ответов подряд (в рамках сессии практики)
+  const [streak, setStreak] = useState(0);
+  const [bestStreak, setBestStreak] = useState(0);
+  useEffect(() => { setBestStreak((b) => Math.max(b, streak)); }, [streak]);
+  const handleResult = (correct: boolean) => setStreak((prev) => (correct ? prev + 1 : 0));
 
   // Apply URL filter parameters (topic, subtopic) on first load
   const initialTopicParam = searchParams.get('topic');
@@ -205,6 +210,7 @@ export function PracticePage() {
   const handleReset = () => {
     setAnsweredQuestions(new Set());
     setCorrectAnswers(new Set());
+    setStreak(0);
     setCurrentQuestionIndex(0);
     setSelectedPart('all');
     setSelectedSection('all');
@@ -288,6 +294,7 @@ export function PracticePage() {
           <QuestionCard
             question={q}
             onAnswer={handleAnswer}
+            onResult={handleResult}
             onReport={() => setReportQuestionId(q.id)}
             onShowTheory={q.topicId ? () => navigate(`/theory/${slug}/${q.topicId}`) : undefined}
           />
@@ -307,6 +314,7 @@ export function PracticePage() {
           <QuestionCard
             question={currentQuestion}
             onAnswer={handleAnswer}
+            onResult={handleResult}
             onNext={handleNext}
             onReport={() => setReportQuestionId(currentQuestion.id)}
             onShowTheory={currentQuestion.topicId ? () => navigate(`/theory/${slug}/${currentQuestion.topicId}`) : undefined}
@@ -362,6 +370,11 @@ export function PracticePage() {
               <span className="hidden sm:inline text-sm text-muted-foreground">· Фокус-режим</span>
             </div>
             <div className="flex items-center gap-3 shrink-0">
+              {streak > 0 && (
+                <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500" title="Серия правильных ответов">
+                  <Flame className="w-4 h-4 fill-amber-500" />{streak}
+                </span>
+              )}
               {token && dailyLimit && !dailyLimit.isPremium && (
                 <span className="hidden sm:inline text-sm text-muted-foreground tabular-nums">
                   {dailyLimit.count}/{dailyLimit.limit} сегодня
@@ -472,6 +485,12 @@ export function PracticePage() {
                 <div className="text-center">
                   <p className="text-2xl font-bold text-green-600 leading-none tabular-nums">{accuracy}%</p>
                   <p className="text-xs text-muted-foreground mt-1">Точность</p>
+                </div>
+                <div className="text-center">
+                  <p className={`text-2xl font-bold leading-none tabular-nums flex items-center justify-center gap-0.5 ${streak > 0 ? 'text-amber-500' : 'text-muted-foreground'}`}>
+                    <Flame className={`w-5 h-5 ${streak >= 3 ? 'fill-amber-500' : ''}`} />{streak}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Серия</p>
                 </div>
               </div>
 
@@ -701,6 +720,7 @@ export function PracticePage() {
             )}
             {/* Mode Switcher + show-filters affordance */}
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+              <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2 p-1.5 bg-muted rounded-xl w-fit">
                 <button
                   onClick={() => togglePracticeMode('single')}
@@ -720,6 +740,19 @@ export function PracticePage() {
                   <List className="w-4 h-4" />
                   Лента
                 </button>
+              </div>
+                {streak > 0 && (
+                  <motion.div
+                    key={streak}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-sm font-semibold"
+                    title="Правильных ответов подряд"
+                  >
+                    <Flame className="w-4 h-4 fill-amber-500 text-amber-500" />
+                    Серия {streak}{bestStreak > streak ? ` · рекорд ${bestStreak}` : ''}
+                  </motion.div>
+                )}
               </div>
 
               {practiceSidebarCollapsed && (

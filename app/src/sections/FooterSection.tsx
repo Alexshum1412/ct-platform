@@ -22,6 +22,8 @@ const footerLinks = {
     { label: 'Практика', href: '/practice/math' },
     { label: 'Лидерборд', href: '/leaderboard' },
     { label: 'Достижения', href: '/achievements' },
+    // Спрятанная после «Достижения» ссылка на демо-мини-игру «Блэкджэк».
+    { label: 'Блэкджэк', href: '/blackjack' },
   ],
   about: [
     { label: 'Контакты', href: '/contact' },
@@ -94,12 +96,23 @@ export function FooterSection() {
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
+                  {link.href === '/blackjack' ? (
+                    // Намеренно неприметная ссылка на демо-игру
+                    <Link
+                      to="/blackjack"
+                      title="Мини-игра на виртуальные бриллианты"
+                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors text-sm"
+                    >
+                      {link.label}
+                    </Link>
+                  ) : (
+                    <a
+                      href={link.href}
+                      className="text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {link.label}
+                    </a>
+                  )}
                 </li>
               ))}
             </ul>

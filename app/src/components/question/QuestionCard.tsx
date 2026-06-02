@@ -27,6 +27,8 @@ interface QuestionCardProps {
   question: Question;
   /** Callback при выборе ответа */
   onAnswer?: (answer: string) => void;
+  /** Callback с результатом проверки (правильно/неправильно) — для счётчика серии */
+  onResult?: (correct: boolean) => void;
   /** Callback для показа теории по теме */
   onShowTheory?: () => void;
   /** Callback для перехода к следующему вопросу */
@@ -205,6 +207,7 @@ const YouTubePlayer = memo(function YouTubePlayer({ videoUrl, title }: YouTubePl
 export const QuestionCard = memo(function QuestionCard({
   question,
   onAnswer,
+  onResult,
   onShowTheory,
   onNext,
   onReport,
@@ -268,7 +271,8 @@ export const QuestionCard = memo(function QuestionCard({
     // Показываем статистику с анимацией
     setShowStats(true);
     onAnswer?.(selectedAnswer);
-  }, [selectedAnswer, question.correctAnswer, question.id, addSolvedQuestion, onAnswer]);
+    onResult?.(correct);
+  }, [selectedAnswer, question.correctAnswer, question.id, addSolvedQuestion, onAnswer, onResult]);
 
   /** Перейти к следующему вопросу, сбросить состояние */
   const handleNext = useCallback(() => {

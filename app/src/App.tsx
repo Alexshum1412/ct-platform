@@ -97,6 +97,9 @@ const TheoryHubPage = lazy(() => import('@/pages/TheoryHubPage').then(m => ({ de
 /** Секретная демо-страница «Рулетка» (виртуальные монеты, без реальных денег) */
 const RoulettePage = lazy(() => import('@/pages/RoulettePage').then(m => ({ default: m.RoulettePage })));
 
+/** Секретная демо-страница «Блэкджек» (виртуальные бриллианты, без реальных денег) */
+const BlackjackPage = lazy(() => import('@/pages/BlackjackPage').then(m => ({ default: m.BlackjackPage })));
+
 // =====================================================
 // КОНФИГУРАЦИЯ REACT QUERY
 // =====================================================
@@ -198,9 +201,11 @@ function App() {
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/theory/search" element={<TheorySearchPage />} />
 
-              {/* Секретная демо-страница «Рулетка» (ссылка спрятана в подвале) */}
+              {/* Секретные демо-игры (ссылки спрятаны в подвале) */}
               <Route path="/roulette" element={<RoulettePage />} />
               <Route path="/рулетка" element={<RoulettePage />} />
+              <Route path="/blackjack" element={<BlackjackPage />} />
+              <Route path="/блэкджек" element={<BlackjackPage />} />
 
               {/* 
                 404 - СТРАНИЦА НЕ НАЙДЕНА 

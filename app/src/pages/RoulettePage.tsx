@@ -10,15 +10,17 @@
  * дюжина / колонка), вращение колеса, определение выигрыша, расчёт выплат,
  * история спинов, правила, таблица вероятностей и подсказки.
  */
-import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, RotateCcw, Play, Eraser, Undo2, Info, BookOpen, Percent, ArrowLeft, Sparkles,
-  Dices, History, Wallet,
+  Dices, History, Wallet, ChevronDown, Crown, Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAppStore } from '@/store/useAppStore';
+import { gamesApi } from '@/lib/api/client';
 
 // Европейское колесо (один зеро). Порядок карманов по часовой стрелке.
 const WHEEL = [
@@ -121,6 +123,18 @@ export function RoulettePage() {
   const [history, setHistory] = useState<number[]>([]);
   const [flash, setFlash] = useState<{ text: string; positive: boolean } | null>(null);
 
+  const { token } = useAppStore();
+  const [showHelp, setShowHelp] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean } | null>(null);
+
+  const loadResetStatus = useCallback(async () => {
+    if (!token) { setResetInfo(null); return; }
+    const r = await gamesApi.getResetStatus('roulette', token);
+    if (r.data) setResetInfo({ remaining: r.data.remaining, isPremium: r.data.isPremium });
+  }, [token]);
+  useEffect(() => { void loadResetStatus(); }, [loadResetStatus]);
+
   const totalBet = useMemo(() => Object.values(bets).reduce((a, b) => a + b, 0), [bets]);
 
   const wheelGradient = useMemo(() => {
@@ -133,11 +147,21 @@ export function RoulettePage() {
 
   const placeChip = (id: string) => {
     if (spinning) return;
+    const amount = Math.max(1, Math.min(chip, balance)); // защита от некорректных значений
+    if (balance < 1 || chip < 1) { setFlash({ text: 'Недостаточно монет для ставки', positive: false }); return; }
     if (chip > balance) { setFlash({ text: 'Недостаточно монет для ставки', positive: false }); return; }
-    setBalance((b) => b - chip);
-    setBets((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + chip }));
-    setStack((s) => [...s, { id, amount: chip }]);
+    setBalance((b) => b - amount);
+    setBets((prev) => ({ ...prev, [id]: (prev[id] ?? 0) + amount }));
+    setStack((s) => [...s, { id, amount }]);
     setFlash(null);
+  };
+
+  // Ставка процентом от всех накоплений / All-in (pct=1) — задаёт номинал фишки
+  const setChipPercent = (pct: number) => {
+    if (spinning) return;
+    if (balance < 1) { setFlash({ text: 'Недостаточно монет', positive: false }); return; }
+    const amt = pct >= 1 ? balance : Math.max(1, Math.floor(balance * pct));
+    setChip(Math.max(1, Math.min(balance, amt)));
   };
 
   const undo = () => {
@@ -161,12 +185,25 @@ export function RoulettePage() {
     setStack([]);
   };
 
-  const resetBalance = () => {
-    if (spinning) return;
-    setBalance(START_BALANCE);
-    setBets({});
-    setStack([]);
-    setFlash({ text: 'Баланс сброшен до 100 монет', positive: true });
+  // Сброс баланса: только при нулевом балансе; дневной лимит проверяется на backend
+  // (не-Premium — 1 раз в день, Premium — без ограничений).
+  const resetBalance = async () => {
+    if (spinning || resetting) return;
+    if (balance > 0) { setFlash({ text: 'Сброс доступен только при нулевом балансе', positive: false }); return; }
+    if (!token) { setFlash({ text: 'Войдите в аккаунт, чтобы сбросить баланс', positive: false }); return; }
+    setResetting(true);
+    const res = await gamesApi.reset('roulette', token);
+    setResetting(false);
+    if (res.data?.allowed) {
+      setBalance(res.data.balance ?? START_BALANCE);
+      setBets({});
+      setStack([]);
+      setResetInfo({ remaining: res.data.remaining, isPremium: res.data.isPremium });
+      setFlash({ text: 'Баланс пополнен до 100 монет 🎉', positive: true });
+    } else {
+      setFlash({ text: res.error || 'Сброс на сегодня недоступен', positive: false });
+      void loadResetStatus();
+    }
   };
 
   const settle = (number: number) => {
@@ -311,22 +348,38 @@ export function RoulettePage() {
                   </div>
                 </div>
 
-                {/* Фишки */}
-                <div className="mt-4 w-full">
-                  <p className="text-xs text-muted-foreground mb-2">Номинал фишки</p>
+                {/* Фишки + ставка процентом */}
+                <div className="mt-4 w-full space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Номинал фишки</p>
+                    <p className="text-xs font-semibold tabular-nums">текущая: {chip}</p>
+                  </div>
                   <div className="grid grid-cols-4 gap-2">
                     {CHIPS.map((c) => (
                       <button
                         key={c}
                         onClick={() => setChip(c)}
                         disabled={spinning}
-                        className={`h-12 rounded-full font-bold text-sm transition-all disabled:opacity-60 ${chip === c
+                        className={`h-11 rounded-full font-bold text-sm transition-all disabled:opacity-60 ${chip === c
                           ? 'bg-gradient-to-br from-amber-400 to-amber-500 text-amber-950 ring-2 ring-amber-500 ring-offset-2 ring-offset-card scale-105 shadow-md'
                           : 'bg-muted hover:bg-muted/70 text-foreground border border-border'}`}
                       >
                         {c}
                       </button>
                     ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground pt-1">Процент от баланса</p>
+                  <div className="grid grid-cols-4 gap-2">
+                    {[0.1, 0.25, 0.5].map((p) => (
+                      <button key={p} onClick={() => setChipPercent(p)} disabled={spinning || balance < 1}
+                        className="h-10 rounded-lg text-sm font-semibold bg-muted hover:bg-muted/70 border border-border disabled:opacity-60">
+                        {Math.round(p * 100)}%
+                      </button>
+                    ))}
+                    <button onClick={() => setChipPercent(1)} disabled={spinning || balance < 1}
+                      className="h-10 rounded-lg text-sm font-bold bg-gradient-to-br from-rose-500 to-red-600 text-white hover:opacity-90 disabled:opacity-60">
+                      All-in
+                    </button>
                   </div>
                 </div>
 
@@ -339,7 +392,25 @@ export function RoulettePage() {
                     <Button onClick={undo} variant="outline" disabled={spinning || stack.length === 0} className="gap-1.5"><Undo2 className="w-4 h-4" />Отменить</Button>
                     <Button onClick={clearBets} variant="outline" disabled={spinning || totalBet === 0} className="gap-1.5"><Eraser className="w-4 h-4" />Очистить</Button>
                   </div>
-                  <Button onClick={resetBalance} variant="ghost" disabled={spinning} className="w-full gap-1.5 text-muted-foreground"><RotateCcw className="w-4 h-4" />Сбросить баланс до {START_BALANCE}</Button>
+                  {/* Сброс баланса — только при нуле, дневной лимит на backend */}
+                  <Button
+                    onClick={resetBalance}
+                    variant="outline"
+                    disabled={spinning || resetting || balance > 0}
+                    className="w-full gap-1.5"
+                    title={balance > 0 ? 'Доступно только при нулевом балансе' : undefined}
+                  >
+                    {balance > 0 ? <Lock className="w-4 h-4" /> : <RotateCcw className="w-4 h-4" />}
+                    {resetting ? 'Сброс…' : `Сбросить баланс до ${START_BALANCE}`}
+                  </Button>
+                  <p className="text-[11px] text-center text-muted-foreground flex items-center justify-center gap-1">
+                    {resetInfo?.isPremium && <Crown className="w-3 h-3 text-amber-500" />}
+                    {!token
+                      ? 'Войдите, чтобы пополнять баланс. Обновление страницы всегда даёт 100.'
+                      : resetInfo?.isPremium
+                        ? 'Premium: безлимитный сброс (при нулевом балансе).'
+                        : `Сброс при нуле: осталось ${resetInfo ? resetInfo.remaining : '…'} сегодня · Free 1/день.`}
+                  </p>
                 </div>
 
                 {/* Флеш-сообщение */}
@@ -431,7 +502,22 @@ export function RoulettePage() {
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Скрываемые правила/шансы/теория — чтобы не загораживать поле во время игры */}
+            <div>
+              <button
+                onClick={() => setShowHelp((v) => !v)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors"
+              >
+                <span className="flex items-center gap-2 font-semibold text-sm"><BookOpen className="w-4 h-4 text-primary" />Правила, шансы и теория</span>
+                <ChevronDown className={`w-5 h-5 text-muted-foreground transition-transform ${showHelp ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence initial={false}>
+                {showHelp && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }} className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
               {/* Шансы */}
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Percent className="w-4 h-4 text-primary" />Вероятности и выплаты</CardTitle></CardHeader>
@@ -473,6 +559,10 @@ export function RoulettePage() {
                   <p className="text-foreground"><Sparkles className="w-3.5 h-3.5 inline mr-1 text-amber-500" />Совет: ставки 1:1 выигрывают почти в половине случаев — хороши для долгой игры; ставки на число редки, но платят больше всего.</p>
                 </CardContent>
               </Card>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </div>

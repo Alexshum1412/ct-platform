@@ -154,6 +154,24 @@ export const userApi = {
     apiClient(`/users/favorites/${questionId}`, { method: 'DELETE', token }),
 };
 
+// Global team click-counter API (public, no auth)
+export const clicksApi = {
+  get: () => apiClient<{ total: number }>('/clicks'),
+  add: (count = 1) => apiClient<{ total: number }>('/clicks', { method: 'POST', body: { count } }),
+};
+
+// Demo-game balance reset API (auth-protected daily limit; premium = unlimited)
+export const gamesApi = {
+  getResetStatus: (game: 'roulette' | 'blackjack', token: string) =>
+    apiClient<{ isPremium: boolean; used: number; remaining: number | null; allowed: boolean }>(
+      `/games/reset?game=${game}`, { token },
+    ),
+  reset: (game: 'roulette' | 'blackjack', token: string) =>
+    apiClient<{ allowed: boolean; balance: number; isPremium: boolean; remaining: number | null }>(
+      '/games/reset', { method: 'POST', body: { game }, token },
+    ),
+};
+
 // Exam API
 export const examApi = {
   start: (subjectId: string, token: string) =>

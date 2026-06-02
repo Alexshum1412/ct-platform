@@ -42,6 +42,7 @@ model User {
   subscriptions Subscription[]
   achievements  UserAchievement[]
   dailyProgress DailyProgress[]
+  gameResets    GameReset[]
 
   xp            Int       @default(0)
   level         Int       @default(1)
@@ -514,4 +515,31 @@ model ContactMessage {
 
   @@index([status, createdAt])
   @@map("contact_messages")
+}
+
+// ==================== GLOBAL CLICK COUNTER (team mini-game) ====================
+// A tiny shared counter — every visitor's clicks are summed globally.
+// Single fixed-id row; increments are atomic (`{ increment: n }`).
+model GlobalCounter {
+  id        String   @id          // fixed key, e.g. "global-clicks"
+  count     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@map("global_counters")
+}
+
+// ==================== GAME BALANCE RESET LIMIT ====================
+// Tracks how many times a (non-premium) user reset a demo-game balance per day.
+// game = 'roulette' | 'blackjack'. Premium users are not limited.
+model GameReset {
+  id     String @id @default(cuid())
+  userId String
+  game   String
+  date   String // ISO date "2026-06-02"
+  count  Int    @default(0)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, game, date])
+  @@map("game_resets")
 }
