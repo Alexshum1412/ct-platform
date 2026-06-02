@@ -47,7 +47,7 @@ export function MobileTabBar() {
               onClick={handleClick}
               aria-current={t.active ? 'page' : undefined}
               className={`relative flex flex-col items-center justify-center gap-1 py-2 min-h-[3.5rem] text-[11px] font-medium transition-colors ${
-                t.active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                t.active ? 'text-primary bg-primary/[0.07]' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               {t.active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" />}
