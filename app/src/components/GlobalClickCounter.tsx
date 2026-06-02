@@ -14,6 +14,7 @@ import { clicksApi } from '@/lib/api/client';
 
 const FLUSH_MS = 900;   // как часто отправлять накопленные клики
 const POLL_MS = 4000;   // как часто подтягивать общий счётчик
+const MAX_PER_FLUSH = 50; // совпадает с лимитом backend, чтобы не терять клики
 
 export function GlobalClickCounter() {
   const [serverTotal, setServerTotal] = useState<number | null>(null);
@@ -26,14 +27,14 @@ export function GlobalClickCounter() {
 
   const flush = useCallback(async () => {
     if (flushing.current) return;
-    const n = pendingRef.current;
+    const n = Math.min(pendingRef.current, MAX_PER_FLUSH); // не больше лимита backend за раз
     if (n <= 0) return;
     flushing.current = true;
     const res = await clicksApi.add(n);
     flushing.current = false;
     if (res.data) {
       setServerTotal(res.data.total);
-      setPending((p) => Math.max(0, p - n));
+      setPending((p) => Math.max(0, p - n)); // вычитаем ровно отправленное; остаток уйдёт следующим тиком
     }
   }, []);
 

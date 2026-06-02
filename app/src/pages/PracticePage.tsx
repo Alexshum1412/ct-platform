@@ -164,14 +164,16 @@ export function PracticePage() {
 
   const currentQuestion = filteredQuestions[currentQuestionIndex];
 
-  const handleAnswer = async (answer: string) => {
-    if (!currentQuestion) return;
+  // Принимает САМ отвеченный вопрос — в режиме «Лента» отвечают любую карточку,
+  // а не текущую по индексу (иначе прогресс/сабмит писались бы не на тот вопрос).
+  const handleAnswer = async (answer: string, question: Question) => {
+    if (!question) return;
 
     const timeSpent = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
 
     if (token) {
       const result = await questionsApi.submitAnswer(
-        { questionId: currentQuestion.id, answer, timeSpent },
+        { questionId: question.id, answer, timeSpent },
         token
       );
 
@@ -187,9 +189,9 @@ export function PracticePage() {
       }
     }
 
-    setAnsweredQuestions(prev => new Set(prev).add(currentQuestion.id));
-    if (answer === currentQuestion.correctAnswer) {
-      setCorrectAnswers(prev => new Set(prev).add(currentQuestion.id));
+    setAnsweredQuestions(prev => new Set(prev).add(question.id));
+    if (answer === question.correctAnswer) {
+      setCorrectAnswers(prev => new Set(prev).add(question.id));
     }
   };
 
@@ -293,7 +295,7 @@ export function PracticePage() {
         <motion.div key={q.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <QuestionCard
             question={q}
-            onAnswer={handleAnswer}
+            onAnswer={(a) => handleAnswer(a, q)}
             onResult={handleResult}
             onReport={() => setReportQuestionId(q.id)}
             onShowTheory={q.topicId ? () => navigate(`/theory/${slug}/${q.topicId}`) : undefined}
@@ -313,7 +315,7 @@ export function PracticePage() {
         >
           <QuestionCard
             question={currentQuestion}
-            onAnswer={handleAnswer}
+            onAnswer={(a) => handleAnswer(a, currentQuestion)}
             onResult={handleResult}
             onNext={handleNext}
             onReport={() => setReportQuestionId(currentQuestion.id)}
