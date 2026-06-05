@@ -190,6 +190,22 @@ def('coneSurf',4,'B',r=>{const R=r.int(2,9),l=r.int(R+1,R+12);const ans=R*(R+l);
 def('sphereVol',5,'B',r=>{const R=3*r.int(1,3);const ans=4*R*R*R/3;chk(ans*3===4*R*R*R&&Number.isInteger(ans),'sph');return{content:`Объём шара радиуса $${R}$ равен $k\\pi$. Найдите $k$.`,solution:`$V=\\dfrac43\\pi R^3=\\dfrac43\\cdot${R*R*R}\\pi=${ans}\\pi$, $k=${ans}$.`,explanation:`$V=\\frac43\\pi R^3$.`,answer:ans,dis:[4*R*R,R*R*R,ans+R]};});
 def('sphereSurf',4,'B',r=>{const R=r.int(2,12);const ans=4*R*R;return{content:`Площадь поверхности сферы радиуса $${R}$ равна $k\\pi$. Найдите $k$.`,solution:`$S=4\\pi R^2=4\\cdot${R*R}\\pi=${ans}\\pi$, $k=${ans}$.`,explanation:`$S=4\\pi R^2$.`,answer:ans,dis:[2*R*R,R*R,ans+R]};});
 
+// ---- Round 2: harder problems (L4–L5), integer answers, independently verified ----
+def('fsuFactorCalc',4,'B',r=>{const d=r.int(1,4);const a=r.int(22,60),b=a-2*d;const ans=(a-b)*(a+b);chk(ans===a*a-b*b,'fsuF');return{content:`Вычислите: $${a}^2 - ${b}^2$.`,solution:`$${a}^2-${b}^2=(${a}-${b})(${a}+${b})=${a-b}\\cdot${a+b}=${ans}$.`,explanation:`Разность квадратов: $a^2-b^2=(a-b)(a+b)$ — считать так быстрее.`,answer:ans};});
+def('logChain',4,'B',r=>{const b=r.pick([2,3,5]),k=r.int(2,4),m=r.pick([6,7,11,13]);const arg=Math.pow(b,k);chk(Math.abs(Math.log(arg)/Math.log(b)-k)<1e-9,'chain');return{content:`Вычислите: $\\log_{${b}} ${m} \\cdot \\log_{${m}} ${arg}$.`,solution:`$\\log_{${b}} ${m}\\cdot\\log_{${m}} ${arg}=\\log_{${b}} ${arg}=${k}$ (формула перехода к новому основанию).`,explanation:`$\\log_a b\\cdot\\log_b c=\\log_a c$.`,answer:k};});
+def('logSumToOne',4,'B',r=>{const t=r.pick([[6,3,12,2],[6,2,18,2],[6,4,9,2],[12,3,4,1],[10,2,5,1],[10,4,25,2],[15,3,5,1],[20,4,5,1],[8,2,4,1]]);const n=t[0],b=t[1],c=t[2],ans=t[3];chk(b*c===Math.pow(n,ans),'sum1');return{content:`Вычислите: $\\log_{${n}} ${b} + \\log_{${n}} ${c}$.`,solution:`$\\log_{${n}} ${b}+\\log_{${n}} ${c}=\\log_{${n}}(${b}\\cdot${c})=\\log_{${n}} ${b*c}=${ans}$.`,explanation:`$\\log_a x+\\log_a y=\\log_a(xy)$.`,answer:ans};});
+def('expQuadSub',4,'B',r=>{let p=r.int(0,3),q=r.int(0,4);if(p===q)q=p+1;const t1=Math.pow(2,p),t2=Math.pow(2,q),ans=Math.max(p,q);chk(Math.pow(4,ans)-(t1+t2)*Math.pow(2,ans)+t1*t2===0,'expQ');return{content:`Решите уравнение $4^x - ${t1+t2}\\cdot 2^x + ${t1*t2} = 0$ и найдите его наибольший корень.`,solution:`Замена $t=2^x>0$: $t^2-${t1+t2}t+${t1*t2}=0$, $t=${t1}$ или $t=${t2}$. Тогда $2^x=${Math.max(t1,t2)}$, $x=${ans}$.`,explanation:`Замена $t=2^x$ сводит уравнение к квадратному.`,answer:ans};});
+def('logQuadSub',5,'B',r=>{let a=r.int(0,2),b=r.int(0,2);if(a===b)b=(b+1)%3;const M=Math.max(a,b),ans=Math.pow(10,M);chk(M*M-(a+b)*M+a*b===0,'logQ');return{content:`Решите уравнение $\\lg^2 x - ${a+b}\\lg x + ${a*b} = 0$ и найдите его больший корень.`,solution:`Замена $t=\\lg x$: $t^2-${a+b}t+${a*b}=0$, $t=${a}$ или $t=${b}$. Больший корень $x=10^{${M}}=${ans}$.`,explanation:`Замена $t=\\lg x$ сводит уравнение к квадратному.`,answer:ans};});
+def('vietaCube',5,'B',r=>{let r1=r.int(-5,5),r2=r.int(-5,5);if(r1===r2)r2=r1+1;const p=-(r1+r2),q=r1*r2,ans=r1**3+r2**3;chk(ans===Math.pow(-p,3)-3*q*(-p),'vCube');return{content:`Корни уравнения $${poly2(1,p,q)}=0$ равны $x_1$ и $x_2$. Найдите $x_1^3+x_2^3$.`,solution:`$x_1+x_2=${-p},\\ x_1x_2=${q}$. $x_1^3+x_2^3=(x_1+x_2)^3-3x_1x_2(x_1+x_2)=${(-p)**3}-3\\cdot${q}\\cdot(${-p})=${ans}$.`,explanation:`$x_1^3+x_2^3=(x_1+x_2)^3-3x_1x_2(x_1+x_2)$.`,answer:ans};});
+def('biquadRoots',4,'B',r=>{let a=r.int(1,5),b=r.int(1,5);if(a===b)b=a+1;const ans=Math.max(a,b);chk(Math.pow(ans,4)-(a*a+b*b)*Math.pow(ans,2)+a*a*b*b===0,'biq');return{content:`Решите уравнение $x^4 - ${a*a+b*b}x^2 + ${a*a*b*b} = 0$ и найдите его наибольший корень.`,solution:`Замена $t=x^2\\ge0$: $t^2-${a*a+b*b}t+${a*a*b*b}=0$, $t=${a*a}$ или $t=${b*b}$. Корни $x=\\pm${a},\\pm${b}$; наибольший — $${ans}$.`,explanation:`Биквадратное уравнение: замена $t=x^2$.`,answer:ans};});
+def('systemSymmetric',4,'B',r=>{const x=r.int(-6,6),y=r.int(-6,6),S=x+y,P=x*y;const v=r.pick(['sq','cube']);const ans=v==='sq'?S*S-2*P:S**3-3*P*S;chk(v==='sq'?ans===x*x+y*y:ans===x**3+y**3,'symSys');return{content:`Известно, что $x+y=${S}$ и $xy=${P}$. Найдите $${v==='sq'?'x^2+y^2':'x^3+y^3'}$.`,solution:v==='sq'?`$x^2+y^2=(x+y)^2-2xy=${S}^2-2\\cdot${P}=${ans}$.`:`$x^3+y^3=(x+y)^3-3xy(x+y)=${S}^3-3\\cdot${P}\\cdot${S}=${ans}$.`,explanation:`Симметрические выражения через $x+y$ и $xy$.`,answer:ans};});
+def('heronArea',4,'B',r=>{const t=r.pick([[13,14,15,84],[5,5,6,12],[5,5,8,12],[10,13,13,60],[9,10,17,36],[11,13,20,66],[6,25,29,60],[3,4,5,6],[6,8,10,24],[7,15,20,42]]);const a=t[0],b=t[1],c=t[2],ans=t[3];chk(16*ans*ans===(a+b+c)*(-a+b+c)*(a-b+c)*(a+b-c),'heron');return{content:`Стороны треугольника равны $${a}$, $${b}$ и $${c}$. Найдите его площадь.`,solution:`По формуле Герона: $p=\\dfrac{${a}+${b}+${c}}{2}=${(a+b+c)/2}$, $S=\\sqrt{p(p-a)(p-b)(p-c)}=${ans}$.`,explanation:`Формула Герона: $S=\\sqrt{p(p-a)(p-b)(p-c)}$.`,answer:ans};});
+def('lawCosines',4,'B',r=>{const ang=r.pick([60,120]);const t=ang===60?r.pick([[3,8,7],[5,8,7],[7,15,13],[8,15,13]]):r.pick([[3,5,7],[7,8,13],[5,16,19]]);const a=t[0],b=t[1],c=t[2];chk(c*c===(ang===60?a*a+b*b-a*b:a*a+b*b+a*b),'cos');return{content:`Две стороны треугольника равны $${a}$ и $${b}$, угол между ними равен $${ang}°$. Найдите третью сторону.`,solution:`По теореме косинусов $c^2=${a}^2+${b}^2-2\\cdot${a}\\cdot${b}\\cos ${ang}°=${a*a}+${b*b}${ang===60?'-':'+'}${a*b}=${c*c}$, $c=${c}$.`,explanation:`$c^2=a^2+b^2-2ab\\cos C$; $\\cos 60°=\\tfrac12,\\ \\cos 120°=-\\tfrac12$.`,answer:c};});
+def('medianIsoceles',4,'B',r=>{const t=r.pick([[5,6,4],[5,8,3],[13,10,12],[10,12,8],[25,14,24],[10,16,6],[17,16,15]]);const a=t[0],c=t[1],m=t[2];chk(4*m*m+c*c===4*a*a,'median');return{content:`В равнобедренном треугольнике боковые стороны равны $${a}$, основание равно $${c}$. Найдите медиану, проведённую к основанию.`,solution:`Медиана к основанию совпадает с высотой: $m=\\sqrt{${a}^2-(${c}/2)^2}=\\sqrt{${a*a-(c/2)*(c/2)}}=${m}$.`,explanation:`В равнобедренном треугольнике медиана к основанию — это высота: $m^2=a^2-(c/2)^2$.`,answer:m};});
+def('sectorArea',4,'B',r=>{const al=r.pick([45,60,72,90,120,180]);let R=0,k=0;for(let i=0;i<60;i++){R=r.int(2,12);if((R*R*al)%360===0){k=R*R*al/360;break;}}if(!k)throw 0;chk(k*360===R*R*al,'sector');return{content:`Площадь сектора круга радиуса $${R}$ с центральным углом $${al}°$ равна $k\\pi$. Найдите $k$.`,solution:`$S=\\dfrac{\\pi R^2\\alpha}{360}=\\dfrac{${R*R}\\cdot${al}}{360}\\pi=${k}\\pi$, $k=${k}$.`,explanation:`Площадь сектора: $S=\\frac{\\pi R^2\\alpha}{360}$.`,answer:k};});
+def('derivProduct',4,'B',r=>{const a=r.int(1,5),b=r.int(-6,6),c=r.int(1,5),d=r.int(-6,6),x0=r.int(-3,3);const ans=2*a*c*x0+a*d+b*c;chk(ans===a*(c*x0+d)+c*(a*x0+b),'derP');return{content:`Найдите $f'(${x0})$, если $f(x)=(${lin(a,b)})(${lin(c,d)})$.`,solution:`По правилу произведения $f'(x)=${a}(${lin(c,d)})+${c}(${lin(a,b)})=${2*a*c}x${term(a*d+b*c,'')}$, поэтому $f'(${x0})=${ans}$.`,explanation:`$(uv)'=u'v+uv'$.`,answer:ans};});
+def('derivCubicCrit',4,'B',r=>{const a=r.int(1,5),ans=2*a;chk(3*ans*ans-6*a*ans===0,'cubCrit');return{content:`Найдите наибольшую точку экстремума функции $f(x)=x^3 - ${3*a}x^2$.`,solution:`$f'(x)=3x^2-${6*a}x=3x(x-${2*a})$. Критические точки $x=0$ и $x=${2*a}$; наибольшая — $${ans}$.`,explanation:`В точках экстремума производная равна нулю.`,answer:ans};});
+
 // ---------- subtopic name → generator keys ----------
 const REG = [
   [/делимост|нод|наибольш.*делител/i, ['nod','divisible']],
@@ -203,22 +219,22 @@ const REG = [
   [/квадратн.*корен|арифметическ.*корен|^корен|корн/i, ['sqrt','irrSimplify']],
   [/степен.*показател|рациональн.*показател|дробн.*показател/i, ['powerFrac','expSimplify']],
   [/степен/i, ['power','expSimplify']],
-  [/формул.*сокращ|сокращённ.*умнож/i, ['fsuSquare','fsuDiff','fsuCube']],
+  [/формул.*сокращ|сокращённ.*умнож/i, ['fsuSquare','fsuDiff','fsuCube','fsuFactorCalc']],
   [/разложен.*множит|вынесен|группиров/i, ['fsuDiff','ratSimplify']],
   [/алгебраическ.*дроб|рациональн.*выраж|преобразован.*рациональн/i, ['ratSimplify','fracEq']],
   [/иррациональн.*выраж|освобожден.*иррациональн/i, ['irrSimplify','sqrt']],
   [/показательн.*выраж/i, ['expSimplify','power']],
-  [/логарифм.*выраж|логарифм.*вычисл|вычислен.*логарифм/i, ['logProduct','logQuotient','logValue']],
-  [/логарифм/i, ['logValue','logProduct']],
+  [/логарифм.*выраж|логарифм.*вычисл|вычислен.*логарифм/i, ['logProduct','logQuotient','logValue','logChain','logSumToOne']],
+  [/логарифм/i, ['logValue','logProduct','logSumToOne']],
   [/тригонометрическ.*выраж|преобразован.*тригоном|значен.*тригоном/i, ['trigInt','trigId']],
   [/тригонометр|синус|косинус|тангенс/i, ['trigValue','trigInt']],
   [/линейн.*уравнен(?!.*систем)/i, ['linear']],
-  [/квадратн.*уравнен|виет|дискриминант/i, ['vieta','quadRoot']],
+  [/квадратн.*уравнен|виет|дискриминант/i, ['vieta','quadRoot','vietaCube','biquadRoots']],
   [/дробно-?рациональн.*уравнен|рациональн.*уравнен/i, ['fracEq','ratSimplify']],
   [/иррациональн.*уравнен/i, ['irrEq']],
-  [/показательн.*уравнен/i, ['expEq']],
-  [/логарифмическ.*уравнен/i, ['logEq','logEqLin']],
-  [/систем.*уравнен|систем.*линейн/i, ['system']],
+  [/показательн.*уравнен/i, ['expEq','expQuadSub']],
+  [/логарифмическ.*уравнен/i, ['logEq','logEqLin','logQuadSub']],
+  [/систем.*уравнен|систем.*линейн/i, ['system','systemSymmetric']],
   [/линейн.*неравенств/i, ['linIneq']],
   [/квадратн.*неравенств|метод интервал|рациональн.*неравенств/i, ['quadIneq']],
   [/показательн.*неравенств/i, ['expEq']],
@@ -230,23 +246,23 @@ const REG = [
   [/гипербол|обратн.*пропорц|k\/x/i, ['hyperbola']],
   [/показательн.*функц/i, ['expFuncValue']],
   [/логарифмическ.*функц/i, ['logFuncValue']],
-  [/производн|дифференциров/i, ['deriv']],
+  [/производн|дифференциров/i, ['deriv','derivProduct','derivCubicCrit']],
   [/наибольш.*наименьш|экстремум|max|min|наибольшее значение/i, ['minParab','deriv']],
   [/арифметическ.*прогресс/i, ['progArith']],
   [/геометрическ.*прогресс/i, ['progGeo','progGeoInf']],
   [/прогресс|последовательност/i, ['progArith','progGeo']],
   [/функц/i, ['linFuncValue','parabValue']],
   [/смежн|вертикальн|виды углов|накрест|^угл|углы/i, ['angSupp','triThird']],
-  [/сумма углов|треугольник/i, ['triThird','pyth']],
-  [/пифагор|прямоугольн.*треугольник/i, ['pyth']],
-  [/площад.*треугольник/i, ['areaTri']],
+  [/сумма углов|треугольник/i, ['triThird','pyth','heronArea','lawCosines','medianIsoceles']],
+  [/пифагор|прямоугольн.*треугольник/i, ['pyth','lawCosines']],
+  [/площад.*треугольник/i, ['areaTri','heronArea']],
   [/трапец/i, ['areaTrap','trapMid']],
   [/ромб/i, ['areaRhomb']],
   [/параллелограмм/i, ['areaPar']],
   [/прямоугольник|квадрат(?!.*уравн)/i, ['areaRect','areaSquare']],
   [/площад/i, ['areaRect','areaTri']],
   [/четырёхугольник|четырехугольник/i, ['areaRect','areaPar']],
-  [/окружност|круг|дуг|вписанн|центральн.*угол|хорд/i, ['circleArea','circleCirc','inscribed','arcLen']],
+  [/окружност|круг|дуг|вписанн|центральн.*угол|хорд/i, ['circleArea','circleCirc','inscribed','arcLen','sectorArea']],
   [/куб(?!.*уравн)/i, ['cubeVol','cubeSurf']],
   [/параллелепипед/i, ['boxVol','boxSurf','boxDiag']],
   [/призм/i, ['prismVol']],
