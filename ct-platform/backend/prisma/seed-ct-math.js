@@ -206,11 +206,29 @@ def('sectorArea',4,'B',r=>{const al=r.pick([45,60,72,90,120,180]);let R=0,k=0;fo
 def('derivProduct',4,'B',r=>{const a=r.int(1,5),b=r.int(-6,6),c=r.int(1,5),d=r.int(-6,6),x0=r.int(-3,3);const ans=2*a*c*x0+a*d+b*c;chk(ans===a*(c*x0+d)+c*(a*x0+b),'derP');return{content:`Найдите $f'(${x0})$, если $f(x)=(${lin(a,b)})(${lin(c,d)})$.`,solution:`По правилу произведения $f'(x)=${a}(${lin(c,d)})+${c}(${lin(a,b)})=${2*a*c}x${term(a*d+b*c,'')}$, поэтому $f'(${x0})=${ans}$.`,explanation:`$(uv)'=u'v+uv'$.`,answer:ans};});
 def('derivCubicCrit',4,'B',r=>{const a=r.int(1,5),ans=2*a;chk(3*ans*ans-6*a*ans===0,'cubCrit');return{content:`Найдите наибольшую точку экстремума функции $f(x)=x^3 - ${3*a}x^2$.`,solution:`$f'(x)=3x^2-${6*a}x=3x(x-${2*a})$. Критические точки $x=0$ и $x=${2*a}$; наибольшая — $${ans}$.`,explanation:`В точках экстремума производная равна нулю.`,answer:ans};});
 
+// ---- Round 3: deeper L4–L5 + combined (2-topic) problems, integer & verified ----
+function modpow(b,e,m){let r=1;b=((b%m)+m)%m;while(e>0){if(e&1)r=(r*b)%m;b=(b*b)%m;e=Math.floor(e/2);}return r;}
+const comb=(n,k)=>Math.round(fact(n)/(fact(k)*fact(n-k)));
+def('vietaDiscr',4,'B',r=>{let r1=r.int(-7,7),r2=r.int(-7,7);if(r1===r2)r2=r1+1;const p=-(r1+r2),q=r1*r2,ans=(r1-r2)*(r1-r2);chk(ans===p*p-4*q,'vd');return{content:`Корни уравнения $${poly2(1,p,q)}=0$ равны $x_1$ и $x_2$. Найдите $(x_1-x_2)^2$.`,solution:`$(x_1-x_2)^2=(x_1+x_2)^2-4x_1x_2=${p*p}-4\\cdot${q}=${ans}$ (это дискриминант $D$).`,explanation:`$(x_1-x_2)^2=(x_1+x_2)^2-4x_1x_2=D$.`,answer:ans};});
+def('sumSquares',4,'B',r=>{const n=r.int(5,13);const ans=n*(n+1)*(2*n+1)/6;chk(6*ans===n*(n+1)*(2*n+1),'ss');return{content:`Вычислите сумму $1^2+2^2+3^2+\\ldots+${n}^2$.`,solution:`$\\dfrac{n(n+1)(2n+1)}{6}=\\dfrac{${n}\\cdot${n+1}\\cdot${2*n+1}}{6}=${ans}$.`,explanation:`$1^2+\\ldots+n^2=\\frac{n(n+1)(2n+1)}{6}$.`,answer:ans};});
+def('lastDigit',5,'B',r=>{const a=r.int(2,9),n=r.int(15,60);const ans=modpow(a,n,10);chk(ans>=0&&ans<10,'ld');return{content:`Найдите последнюю цифру числа $${a}^{${n}}$.`,solution:`Последние цифры степеней числа $${a}$ повторяются циклически; $${a}^{${n}}$ оканчивается на $${ans}$.`,explanation:`Последняя цифра $a^n$ определяется $n$ по модулю длины цикла.`,answer:ans};});
+def('modPower',5,'B',r=>{const m=r.pick([3,7,9,11,13]);const a=r.int(2,9),n=r.int(8,40);const ans=modpow(a,n,m);chk(ans>=0&&ans<m,'mp');return{content:`Найдите остаток от деления $${a}^{${n}}$ на $${m}$.`,solution:`По свойствам сравнений по модулю: $${a}^{${n}}\\equiv ${ans}\\pmod{${m}}$.`,explanation:`Используем периодичность степеней по модулю $m$.`,answer:ans};});
+def('combChoose',3,'AB',r=>{const n=r.int(4,9),k=r.int(2,n-2);const ans=comb(n,k);chk(ans===comb(n,n-k),'cc');return{content:`Сколькими способами можно выбрать $${k}$ предмета из $${n}$ различных?`,solution:`$C_{${n}}^{${k}}=\\dfrac{${n}!}{${k}!\\cdot${n-k}!}=${ans}$.`,explanation:`Число сочетаний $C_n^k=\\frac{n!}{k!(n-k)!}$.`,answer:ans,dis:[Math.round(fact(n)/fact(n-k)),ans+n,n*k]};});
+def('permFact',3,'AB',r=>{const n=r.int(3,6);const ans=fact(n);chk(ans===fact(n),'pf');return{content:`Сколькими способами можно расставить в ряд $${n}$ различных книг?`,solution:`$P_{${n}}=${n}!=${ans}$.`,explanation:`Число перестановок $P_n=n!$.`,answer:ans,dis:[n*n,fact(n-1),ans+n]};});
+def('logIneqInt',4,'B',r=>{const b=r.pick([2,3]);const p=r.int(2,6);const lo=Math.pow(b,p),hi=Math.pow(b,p+1);const N=r.int(lo+1,hi-1);const ans=p+1;chk(Math.pow(b,ans)>N&&Math.pow(b,ans-1)<=N,'li');return{content:`Найдите наименьшее целое $x$, при котором $${b}^{x} > ${N}$.`,solution:`$${b}^{${p}}=${lo}\\le ${N} < ${hi}=${b}^{${p+1}}$, поэтому наименьшее целое $x=${ans}$.`,explanation:`Сравниваем $N$ с соседними степенями основания.`,answer:ans};});
+def('absSumMin',4,'B',r=>{let a=r.int(-8,8),b=r.int(-8,8);if(a===b)b=a+r.int(1,6);const ans=Math.abs(a-b);chk(ans===Math.abs(a-b),'asm');return{content:`Найдите наименьшее значение выражения $|x ${term(-a,'')}| + |x ${term(-b,'')}|$.`,solution:`Сумма расстояний от $x$ до точек $${a}$ и $${b}$ минимальна между ними и равна $|${a}-(${b})|=${ans}$.`,explanation:`$|x-a|+|x-b|\\ge|a-b|$ (минимум при $x$ между $a$ и $b$).`,answer:ans};});
+def('geomQuadratic',4,'B',r=>{let a=r.int(2,12),b=r.int(2,12);if(a===b)b=a+1;const S=a*b,P=2*(a+b),ans=Math.max(a,b);chk(a*b===S&&2*(a+b)===P,'gq');return{content:`Площадь прямоугольника равна $${S}$, а его периметр равен $${P}$. Найдите большую сторону.`,solution:`Стороны — корни уравнения $t^2-${P/2}t+${S}=0$: $${Math.min(a,b)}$ и $${Math.max(a,b)}$. Большая сторона — $${ans}$.`,explanation:`Сумма сторон $=P/2$, произведение $=S$ (теорема Виета).`,answer:ans};});
+def('wordConsecutive',4,'B',r=>{const n=r.int(4,15);const prod=n*(n+1);chk((n+1)*n===prod,'wc');return{content:`Произведение двух последовательных натуральных чисел равно $${prod}$. Найдите большее из них.`,solution:`$n(n+1)=${prod}$, откуда $n=${n}$; большее число — $${n+1}$.`,explanation:`Сводится к квадратному уравнению $n^2+n-${prod}=0$.`,answer:n+1};});
+def('pythArea',4,'B',r=>{const t=r.pick([[3,4,5],[6,8,10],[5,12,13],[8,15,17],[9,12,15],[7,24,25],[20,21,29]]);const a=t[0],b=t[1],c=t[2];chk(a*a+b*b===c*c&&(a*b)%2===0,'pa');return{content:`Гипотенуза прямоугольного треугольника равна $${c}$, один из катетов равен $${a}$. Найдите площадь треугольника.`,solution:`Второй катет $b=\\sqrt{${c}^2-${a}^2}=${b}$; площадь $S=\\dfrac{${a}\\cdot${b}}{2}=${a*b/2}$.`,explanation:`Находим второй катет по теореме Пифагора, затем $S=\\frac12ab$.`,answer:a*b/2};});
+def('trigRightTri',4,'B',r=>{const a=r.int(3,15);const f=r.pick(['opp30','adj60','opp45']);if(f==='opp30')return{content:`В прямоугольном треугольнике катет, лежащий против угла $30°$, равен $${a}$. Найдите гипотенузу.`,solution:`Катет против угла $30°$ равен половине гипотенузы: $c=2\\cdot${a}=${2*a}$.`,explanation:`Против угла $30°$ лежит катет, равный $c/2$.`,answer:2*a};if(f==='adj60')return{content:`В прямоугольном треугольнике катет, прилежащий к углу $60°$, равен $${a}$. Найдите гипотенузу.`,solution:`$\\cos 60°=\\dfrac{${a}}{c}=\\dfrac12$, поэтому $c=2\\cdot${a}=${2*a}$.`,explanation:`$\\cos 60°=\\frac{прилежащий}{гипотенуза}=\\frac12$.`,answer:2*a};return{content:`В прямоугольном треугольнике катет, лежащий против угла $45°$, равен $${a}$. Найдите второй катет.`,solution:`При угле $45°$ треугольник равнобедренный, поэтому второй катет равен $${a}$.`,explanation:`Острые углы $45°$ ⇒ катеты равны.`,answer:a};});
+
 // ---------- subtopic name → generator keys ----------
 const REG = [
-  [/делимост|нод|наибольш.*делител/i, ['nod','divisible']],
+  [/комбинатор|перестанов|размещен|сочетан|факториал/i, ['combChoose','permFact']],
+  [/модул|абсолютн/i, ['absSumMin']],
+  [/делимост|нод|наибольш.*делител|признак/i, ['nod','divisible','lastDigit','modPower']],
   [/нок|наименьш.*кратн|кратн/i, ['lcm','nod']],
-  [/натуральн|целые|действия с числ|вычислен|порядок действ/i, ['arith','rounding']],
+  [/натуральн|целые|действия с числ|вычислен|порядок действ/i, ['arith','rounding','sumSquares']],
   [/округлен|приближ/i, ['rounding','arith']],
   [/стандартн.*вид/i, ['stdForm']],
   [/процент/i, ['percentOf','numByPct','wordPercent']],
@@ -218,7 +236,7 @@ const REG = [
   [/корн.*степен|корень n|кубическ/i, ['cubeRoot','powerFrac']],
   [/квадратн.*корен|арифметическ.*корен|^корен|корн/i, ['sqrt','irrSimplify']],
   [/степен.*показател|рациональн.*показател|дробн.*показател/i, ['powerFrac','expSimplify']],
-  [/степен/i, ['power','expSimplify']],
+  [/степен/i, ['power','expSimplify','lastDigit']],
   [/формул.*сокращ|сокращённ.*умнож/i, ['fsuSquare','fsuDiff','fsuCube','fsuFactorCalc']],
   [/разложен.*множит|вынесен|группиров/i, ['fsuDiff','ratSimplify']],
   [/алгебраическ.*дроб|рациональн.*выраж|преобразован.*рациональн/i, ['ratSimplify','fracEq']],
@@ -229,7 +247,7 @@ const REG = [
   [/тригонометрическ.*выраж|преобразован.*тригоном|значен.*тригоном/i, ['trigInt','trigId']],
   [/тригонометр|синус|косинус|тангенс/i, ['trigValue','trigInt']],
   [/линейн.*уравнен(?!.*систем)/i, ['linear']],
-  [/квадратн.*уравнен|виет|дискриминант/i, ['vieta','quadRoot','vietaCube','biquadRoots']],
+  [/квадратн.*уравнен|виет|дискриминант/i, ['vieta','quadRoot','vietaCube','biquadRoots','vietaDiscr','wordConsecutive']],
   [/дробно-?рациональн.*уравнен|рациональн.*уравнен/i, ['fracEq','ratSimplify']],
   [/иррациональн.*уравнен/i, ['irrEq']],
   [/показательн.*уравнен/i, ['expEq','expQuadSub']],
@@ -237,9 +255,9 @@ const REG = [
   [/систем.*уравнен|систем.*линейн/i, ['system','systemSymmetric']],
   [/линейн.*неравенств/i, ['linIneq']],
   [/квадратн.*неравенств|метод интервал|рациональн.*неравенств/i, ['quadIneq']],
-  [/показательн.*неравенств/i, ['expEq']],
+  [/показательн.*неравенств/i, ['expEq','logIneqInt']],
   [/логарифмическ.*неравенств/i, ['logEq']],
-  [/текстов|задач.*движен|задач.*работ|задач.*процент|на движение|на работу/i, ['wordMotion','wordPercent']],
+  [/текстов|задач.*движен|задач.*работ|задач.*процент|на движение|на работу/i, ['wordMotion','wordPercent','wordConsecutive']],
   [/координатн.*прям|координатн.*плоскост|расстоян.*точк/i, ['distance','midpoint']],
   [/угловой коэффициент|прямая.*y|линейн.*функц|график.*линейн/i, ['linFuncValue','slope']],
   [/парабол|квадратичн.*функц|квадратн.*функц/i, ['parabValue','parabVertex','minParab']],
@@ -254,13 +272,13 @@ const REG = [
   [/функц/i, ['linFuncValue','parabValue']],
   [/смежн|вертикальн|виды углов|накрест|^угл|углы/i, ['angSupp','triThird']],
   [/сумма углов|треугольник/i, ['triThird','pyth','heronArea','lawCosines','medianIsoceles']],
-  [/пифагор|прямоугольн.*треугольник/i, ['pyth','lawCosines']],
-  [/площад.*треугольник/i, ['areaTri','heronArea']],
+  [/пифагор|прямоугольн.*треугольник/i, ['pyth','lawCosines','pythArea','trigRightTri']],
+  [/площад.*треугольник/i, ['areaTri','heronArea','pythArea']],
   [/трапец/i, ['areaTrap','trapMid']],
   [/ромб/i, ['areaRhomb']],
   [/параллелограмм/i, ['areaPar']],
-  [/прямоугольник|квадрат(?!.*уравн)/i, ['areaRect','areaSquare']],
-  [/площад/i, ['areaRect','areaTri']],
+  [/прямоугольник|квадрат(?!.*уравн)/i, ['areaRect','areaSquare','geomQuadratic']],
+  [/площад/i, ['areaRect','areaTri','geomQuadratic']],
   [/четырёхугольник|четырехугольник/i, ['areaRect','areaPar']],
   [/окружност|круг|дуг|вписанн|центральн.*угол|хорд/i, ['circleArea','circleCirc','inscribed','arcLen','sectorArea']],
   [/куб(?!.*уравн)/i, ['cubeVol','cubeSurf']],
@@ -302,7 +320,7 @@ function buildQuestion(extId, st, topic, subjectId, slot, genMeta){
     type, part, difficulty, content:q.content,
     options: options?JSON.stringify(options):null,
     correctAnswer, explanation:q.explanation, solution:q.solution||null,
-    hints:JSON.stringify({small:[(q.explanation||'').replace(/\$/g,'')],detailed:q.solution?[q.solution.replace(/\$/g,'')]:[],stepByStep:[]}),
+    hints:JSON.stringify({small:[(q.explanation||'')],detailed:q.solution?[q.solution]:[],stepby:[]}),
     tags:JSON.stringify(tags), year:2027, source:'Генератор ЦТ-формата', status:'ACTIVE',
     timesSolved:0, timesCorrect:0,
   };

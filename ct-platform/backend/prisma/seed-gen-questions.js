@@ -251,7 +251,7 @@ async function main(){
         options:fmt.options?JSON.stringify(fmt.options):null,
         correctAnswer:fmt.correctAnswer,
         explanation:q.explanation,
-        hints:JSON.stringify({small:[q.explanation.replace(/\$/g,'')],detailed:[],stepby:[]}),
+        hints:JSON.stringify({small:[q.explanation],detailed:[],stepby:[]}),
         tags:JSON.stringify(tags),
         year:2027, source:'Генератор ЦТ-формата', status:'ACTIVE',
         timesSolved:0, timesCorrect:0,
