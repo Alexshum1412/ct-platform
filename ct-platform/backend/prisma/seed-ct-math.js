@@ -443,41 +443,52 @@ async function makeVariants(N){
   const secOf=new Map(topics.map(t=>[t.id,t.name]));
   const sections=topics.map(t=>t.name);
   const rows=await prisma.question.findMany({where:{externalId:{startsWith:'CTM-'},status:'ACTIVE'}});
-  const bySecA={},bySecB={};
-  for(const q of rows){ const sec=secOf.get(q.topicId)||'—'; const m=(q.part==='A')?bySecA:bySecB; (m[sec]=m[sec]||[]).push(q); }
-  const rng=makeRng('VARIANTS-v1');
+  // Idempotent: replace previously generated variants on each run.
+  if(!DRY) await prisma.exam.deleteMany({where:{createdBy:'ct-generator'}});
+  const rng=makeRng('VARIANTS-v2');
   const sh=a=>{for(let i=a.length-1;i>0;i--){const j=rng.int(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;};
-  sections.forEach(s=>{ if(bySecA[s])sh(bySecA[s]); if(bySecB[s])sh(bySecB[s]); });
-  const ptrA={},ptrB={}; sections.forEach(s=>{ptrA[s]=0;ptrB[s]=0;});
-  const used=new Set();
+  // CT structure: Part A = 10 (levels 1–2, choice), Part B = 20 (levels 2–5, number).
+  // Target per variant: 5×L1, 10×L2, 9×L3, 4×L4, 2×L5  (= 30, the real-CT 5/10/9/4/2 mix).
+  const pools={
+    A1: sh(rows.filter(q=>q.part==='A'&&q.difficulty===1)),
+    A2: sh(rows.filter(q=>q.part==='A'&&q.difficulty===2)),
+    B2: sh(rows.filter(q=>q.part==='B'&&q.difficulty===2)),
+    B3: sh(rows.filter(q=>q.part==='B'&&q.difficulty===3)),
+    B4: sh(rows.filter(q=>q.part==='B'&&q.difficulty===4)),
+    B5: sh(rows.filter(q=>q.part==='B'&&q.difficulty===5)),
+  };
+  const ptr={A1:0,A2:0,B2:0,B3:0,B4:0,B5:0};
+  const take=(primary,n,fallbacks)=>{ const out=[]; const order=[primary,...(fallbacks||[])];
+    while(out.length<n){ let got=false; for(const key of order){ if(ptr[key]<pools[key].length){ out.push(pools[key][ptr[key]++]); got=true; break; } } if(!got) break; } return out; };
   const variantsDir=path.join(__dirname,'..','..','..','data','variants');
   try{fs.mkdirSync(variantsDir,{recursive:true});}catch{}
+  // wipe stale variant JSONs so the folder matches what we (re)create
+  try{ for(const f of fs.readdirSync(variantsDir)){ if(/^variant-\d+\.json$/.test(f)) fs.unlinkSync(path.join(variantsDir,f)); } }catch{}
   let made=0;
   for(let v=1;v<=N;v++){
-    const picks=[];
-    for(const s of sections){ const arr=bySecA[s]||[]; for(let k=0;k<2&&ptrA[s]<arr.length;k++){ picks.push(arr[ptrA[s]++]); } }
-    for(const s of sections){ const arr=bySecB[s]||[]; for(let k=0;k<4&&ptrB[s]<arr.length;k++){ picks.push(arr[ptrB[s]++]); } }
-    // top-up to 10 A / 20 B from any unused if a section was short
-    const A=picks.filter(q=>q.part==='A'), B=picks.filter(q=>q.part==='B');
-    for(const q of rows){ if(A.length>=10) break; if(q.part==='A'&&!picks.includes(q)&&!used.has(q.id)){ picks.push(q); A.push(q); } }
-    for(const q of rows){ if(B.length>=20) break; if(q.part==='B'&&!picks.includes(q)&&!used.has(q.id)){ picks.push(q); B.push(q); } }
-    if(A.length<10||B.length<20){ console.log(`(stopped at variant ${v}: not enough questions)`); break; }
-    const chosenA=A.slice(0,10), chosenB=B.slice(0,20);
-    [...chosenA,...chosenB].forEach(q=>used.add(q.id));
-    const ordered=[...chosenA,...chosenB];           // Part A (1–10) then Part B (11–30)
+    const a1=take('A1',5,['A2']);          // 5 × level 1 (Part A)
+    const a2=take('A2',5,['A1']);          // 5 × level 2 (Part A)
+    const b2=take('B2',5,['B3','B4']);     // 5 × level 2 (Part B)
+    const b3=take('B3',9,['B4','B2','B5']);// 9 × level 3 (Part B)
+    const b4=take('B4',4,['B3','B5']);     // 4 × level 4 (Part B)
+    const b5=take('B5',2,['B4','B3']);     // 2 × level 5 (Part B)
+    const A=[...a1,...a2], B=[...b2,...b3,...b4,...b5];
+    if(A.length<10||B.length<20){ console.log(`(stopped at variant ${v}: pool exhausted)`); break; }
+    const ordered=[...A.slice(0,10),...B.slice(0,20)];   // Part A (1–10) then Part B (11–30)
     const ids=ordered.map(q=>q.id);
+    const hist=ordered.reduce((m,q)=>{m[q.difficulty]=(m[q.difficulty]||0)+1;return m;},{});
     const exam={ subjectId:math.id, title:`Пробный вариант ЦТ по математике — ${v}`,
-      description:`Сгенерированный вариант ЦТ: 10 заданий части A и 20 части B по всем 5 разделам. Формат и баллы — как на реальном ЦТ.`,
+      description:`Сгенерированный вариант ЦТ: 10 заданий части A и 20 части B по всем разделам. Распределение сложности — как на реальном ЦТ (5/10/9/4/2).`,
       durationMinutes:180, passingScore:0, questionIds:JSON.stringify(ids), isActive:true, order:200+v, createdBy:'ct-generator' };
     if(!DRY) await prisma.exam.create({data:exam});
     fs.writeFileSync(path.join(variantsDir,`variant-${v}.json`), JSON.stringify({
-      variant:v, total:ids.length, partA:chosenA.length, partB:chosenB.length,
-      difficulty:ordered.reduce((m,q)=>{m[q.difficulty]=(m[q.difficulty]||0)+1;return m;},{}),
+      variant:v, total:ids.length, partA:10, partB:20, difficulty:hist,
+      sections:ordered.reduce((m,q)=>{const s=secOf.get(q.topicId)||'—';m[s]=(m[s]||0)+1;return m;},{}),
       questions:ordered.map((q,i)=>({number:i+1,part:q.part,difficulty:q.difficulty,content:q.content,correctAnswer:q.correctAnswer}))
     },null,2));
     made++;
   }
-  console.log(`✅ Variants: ${made} created${DRY?' [DRY]':' (Exam entities on /exam/math)'} + data/variants/variant-*.json`);
+  console.log(`✅ Variants: ${made} created${DRY?' [DRY]':' (replaced prior; Exam entities on /exam/math)'} + data/variants/variant-*.json`);
 }
 
 if(SELFTEST){ runSelfTest(); }

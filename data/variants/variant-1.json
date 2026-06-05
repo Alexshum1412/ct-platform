@@ -5,220 +5,228 @@
   "partB": 20,
   "difficulty": {
     "1": 5,
-    "2": 16,
-    "3": 7,
-    "4": 2
+    "2": 10,
+    "3": 9,
+    "4": 4,
+    "5": 2
+  },
+  "sections": {
+    "Геометрические фигуры и их свойства": 14,
+    "Числа и вычисления": 3,
+    "Координаты и функции": 5,
+    "Выражения и их преобразования": 4,
+    "Уравнения и неравенства": 4
   },
   "questions": [
     {
       "number": 1,
       "part": "A",
       "difficulty": 1,
-      "content": "Вычислите: $8\\cdot 12 + 13$.",
-      "correctAnswer": "D"
+      "content": "Два угла треугольника равны $73°$ и $63°$. Найдите третий угол (в градусах).",
+      "correctAnswer": "E"
     },
     {
       "number": 2,
       "part": "A",
       "difficulty": 1,
-      "content": "Вычислите: $7\\cdot 4 - 24$.",
-      "correctAnswer": "D"
+      "content": "Два угла треугольника равны $98°$ и $23°$. Найдите третий угол (в градусах).",
+      "correctAnswer": "C"
     },
     {
       "number": 3,
       "part": "A",
-      "difficulty": 2,
-      "content": "Решите уравнение: $\\dfrac{12}{x} = 4$.",
-      "correctAnswer": "E"
+      "difficulty": 1,
+      "content": "Вычислите: $4\\cdot 15 + 10$.",
+      "correctAnswer": "B"
     },
     {
       "number": 4,
       "part": "A",
       "difficulty": 1,
-      "content": "Вычислите: $\\sqrt{64}$.",
-      "correctAnswer": "A"
+      "content": "Найдите наибольший общий делитель чисел $40$ и $32$.",
+      "correctAnswer": "C"
     },
     {
       "number": 5,
       "part": "A",
       "difficulty": 1,
-      "content": "Решите уравнение: $7x = 7$.",
-      "correctAnswer": "E"
+      "content": "Два угла треугольника равны $46°$ и $53°$. Найдите третий угол (в градусах).",
+      "correctAnswer": "B"
     },
     {
       "number": 6,
       "part": "A",
-      "difficulty": 1,
-      "content": "Решите уравнение: $9x + 4 = 22$.",
+      "difficulty": 2,
+      "content": "Катеты прямоугольного треугольника равны $3$ и $4$. Найдите гипотенузу.",
       "correctAnswer": "C"
     },
     {
       "number": 7,
       "part": "A",
       "difficulty": 2,
-      "content": "Вычислите: $3^{1}\\cdot 3^{2}$.",
+      "content": "Вычислите: $3^{4}\\cdot 3^{1}$.",
       "correctAnswer": "C"
     },
     {
       "number": 8,
       "part": "A",
       "difficulty": 2,
-      "content": "Найдите значение функции $y = 2^{x}$ при $x = 1$.",
-      "correctAnswer": "A"
+      "content": "В арифметической прогрессии $a_1=-1$, $d=2$. Найдите $a_{12}$.",
+      "correctAnswer": "D"
     },
     {
       "number": 9,
       "part": "A",
       "difficulty": 2,
-      "content": "Гипотенуза прямоугольного треугольника равна $25$, один катет $7$. Найдите второй катет.",
-      "correctAnswer": "C"
+      "content": "Катеты прямоугольного треугольника равны $10$ и $24$. Найдите гипотенузу.",
+      "correctAnswer": "E"
     },
     {
       "number": 10,
       "part": "A",
       "difficulty": 2,
-      "content": "Катеты прямоугольного треугольника равны $20$ и $21$. Найдите гипотенузу.",
-      "correctAnswer": "A"
+      "content": "В арифметической прогрессии $a_1=9$, $d=1$. Найдите сумму первых $11$ членов.",
+      "correctAnswer": "D"
     },
     {
       "number": 11,
       "part": "B",
       "difficulty": 2,
-      "content": "Округлите число $1748$ до сотен.",
-      "correctAnswer": "1700"
+      "content": "Основания трапеции равны $8$ и $18$. Найдите её среднюю линию.",
+      "correctAnswer": "13"
     },
     {
       "number": 12,
       "part": "B",
       "difficulty": 2,
-      "content": "Округлите число $384$ до десятков.",
-      "correctAnswer": "380"
+      "content": "Два угла треугольника равны $91°$ и $20°$. Найдите третий угол (в градусах).",
+      "correctAnswer": "69"
     },
     {
       "number": 13,
       "part": "B",
       "difficulty": 2,
-      "content": "Вычислите: $6\\cdot 7 + 15$.",
-      "correctAnswer": "57"
+      "content": "Вычислите: $4\\cdot 3 + 29$.",
+      "correctAnswer": "41"
     },
     {
       "number": 14,
-      "part": "B",
-      "difficulty": 2,
-      "content": "Вычислите: $14\\cdot 12 - 14$.",
-      "correctAnswer": "154"
-    },
-    {
-      "number": 15,
-      "part": "B",
-      "difficulty": 3,
-      "content": "Найдите значение производной функции $f(x)=5x^2 + 2x + 5$ в точке $x_0=-1$.",
-      "correctAnswer": "-8"
-    },
-    {
-      "number": 16,
-      "part": "B",
-      "difficulty": 3,
-      "content": "Найдите значение производной функции $f(x)=2x^2 + 5x + 4$ в точке $x_0=1$.",
-      "correctAnswer": "9"
-    },
-    {
-      "number": 17,
-      "part": "B",
-      "difficulty": 3,
-      "content": "Упростите $\\sqrt{108}$ до вида $a\\sqrt{3}$ и найдите $a$.",
-      "correctAnswer": "6"
-    },
-    {
-      "number": 18,
       "part": "B",
       "difficulty": 2,
       "content": "Вычислите: $\\sin^2 24° + \\cos^2 24°$.",
       "correctAnswer": "1"
     },
     {
-      "number": 19,
+      "number": 15,
       "part": "B",
       "difficulty": 2,
-      "content": "Решите уравнение: $4x + 15 = 47$.",
-      "correctAnswer": "8"
+      "content": "Основания трапеции равны $8$ и $10$. Найдите её среднюю линию.",
+      "correctAnswer": "9"
+    },
+    {
+      "number": 16,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите значение производной функции $f(x)=2x^2 - 6x - 2$ в точке $x_0=3$.",
+      "correctAnswer": "6"
+    },
+    {
+      "number": 17,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Решите систему и найдите $x+y$: $\\begin{cases} 3x+4y = 3 \\\\ 3x+1y = 12 \\end{cases}$",
+      "correctAnswer": "2"
+    },
+    {
+      "number": 18,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите наименьший корень уравнения $x^2 + 14x + 48 = 0$.",
+      "correctAnswer": "-8"
+    },
+    {
+      "number": 19,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Площадь основания прямой призмы равна $22$, высота $2$. Найдите объём.",
+      "correctAnswer": "44"
     },
     {
       "number": 20,
       "part": "B",
       "difficulty": 3,
-      "content": "Упростите $\\sqrt{12}$ до вида $a\\sqrt{3}$ и найдите $a$.",
-      "correctAnswer": "2"
+      "content": "Найдите расстояние между точками $A(-4;-2)$ и $B(-12;-17)$.",
+      "correctAnswer": "17"
     },
     {
       "number": 21,
       "part": "B",
-      "difficulty": 2,
-      "content": "Решите уравнение: $6x - 12 = -42$.",
-      "correctAnswer": "-5"
+      "difficulty": 3,
+      "content": "Площадь основания прямой призмы равна $30$, высота $3$. Найдите объём.",
+      "correctAnswer": "90"
     },
     {
       "number": 22,
       "part": "B",
       "difficulty": 3,
-      "content": "Вычислите: $\\log_{3}(3\\cdot 27)$.",
-      "correctAnswer": "4"
+      "content": "Площадь основания прямой призмы равна $26$, высота $3$. Найдите объём.",
+      "correctAnswer": "78"
     },
     {
       "number": 23,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите абсциссу вершины параболы $y = 3x^2 + 24x - 4$.",
-      "correctAnswer": "-4"
+      "content": "Объём цилиндра с радиусом основания $3$ и высотой $4$ равен $k\\pi$. Найдите $k$.",
+      "correctAnswer": "36"
     },
     {
       "number": 24,
       "part": "B",
-      "difficulty": 4,
-      "content": "Найдите наименьшее значение функции $y = x^2 - 8x + 13$.",
-      "correctAnswer": "-3"
+      "difficulty": 3,
+      "content": "Упростите $\\sqrt{343}$ до вида $a\\sqrt{7}$ и найдите $a$.",
+      "correctAnswer": "7"
     },
     {
       "number": 25,
       "part": "B",
-      "difficulty": 2,
-      "content": "Найдите значение функции $y = 2x^2 + 5x + 1$ при $x = 1$.",
-      "correctAnswer": "8"
+      "difficulty": 4,
+      "content": "Две стороны треугольника равны $8$ и $15$, угол между ними равен $60°$. Найдите третью сторону.",
+      "correctAnswer": "13"
     },
     {
       "number": 26,
       "part": "B",
-      "difficulty": 2,
-      "content": "Найдите значение функции $y = 4x + 4$ при $x = 0$.",
-      "correctAnswer": "4"
+      "difficulty": 4,
+      "content": "Найдите $f'(-3)$, если $f(x)=(x + 1)(2x + 4)$.",
+      "correctAnswer": "-6"
     },
     {
       "number": 27,
       "part": "B",
       "difficulty": 4,
-      "content": "Площадь основания пирамиды равна $27$, высота $8$. Найдите объём.",
-      "correctAnswer": "72"
+      "content": "Площадь основания пирамиды равна $24$, высота $5$. Найдите объём.",
+      "correctAnswer": "40"
     },
     {
       "number": 28,
       "part": "B",
-      "difficulty": 2,
-      "content": "Найдите площадь полной поверхности куба с ребром $8$.",
-      "correctAnswer": "384"
+      "difficulty": 4,
+      "content": "Вычислите: $\\log_{6} 2 + \\log_{6} 18$.",
+      "correctAnswer": "2"
     },
     {
       "number": 29,
       "part": "B",
-      "difficulty": 2,
-      "content": "Один из смежных углов равен $149°$. Найдите второй угол (в градусах).",
-      "correctAnswer": "31"
+      "difficulty": 5,
+      "content": "Корни уравнения $x^2 - 3x + 2=0$ равны $x_1$ и $x_2$. Найдите $x_1^3+x_2^3$.",
+      "correctAnswer": "9"
     },
     {
       "number": 30,
       "part": "B",
-      "difficulty": 3,
-      "content": "Площадь основания прямой призмы равна $10$, высота $3$. Найдите объём.",
-      "correctAnswer": "30"
+      "difficulty": 5,
+      "content": "Найдите сумму бесконечной геометрической прогрессии с $b_1=9$ и $q=\\dfrac{1}{4}$.",
+      "correctAnswer": "12"
     }
   ]
 }

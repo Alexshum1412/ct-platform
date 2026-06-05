@@ -5,220 +5,228 @@
   "partB": 20,
   "difficulty": {
     "1": 5,
-    "2": 13,
-    "3": 11,
-    "4": 1
+    "2": 10,
+    "3": 9,
+    "4": 4,
+    "5": 2
+  },
+  "sections": {
+    "Геометрические фигуры и их свойства": 8,
+    "Числа и вычисления": 5,
+    "Координаты и функции": 7,
+    "Уравнения и неравенства": 5,
+    "Выражения и их преобразования": 5
   },
   "questions": [
     {
       "number": 1,
       "part": "A",
       "difficulty": 1,
-      "content": "Округлите число $2426$ до сотен.",
-      "correctAnswer": "C"
+      "content": "Основания трапеции равны $12$ и $14$. Найдите её среднюю линию.",
+      "correctAnswer": "B"
     },
     {
       "number": 2,
       "part": "A",
       "difficulty": 1,
-      "content": "Округлите число $3136$ до сотен.",
+      "content": "Вычислите: $13\\cdot 13 - 10$.",
       "correctAnswer": "E"
     },
     {
       "number": 3,
       "part": "A",
-      "difficulty": 2,
-      "content": "Найдите $\\frac{1}{6}$ от числа $72$.",
-      "correctAnswer": "A"
+      "difficulty": 1,
+      "content": "Вычислите: $6\\cdot 9 - 13$.",
+      "correctAnswer": "D"
     },
     {
       "number": 4,
       "part": "A",
-      "difficulty": 2,
-      "content": "Найдите $\\frac{1}{6}$ от числа $24$.",
+      "difficulty": 1,
+      "content": "Вычислите: $11\\cdot 8 + 22$.",
       "correctAnswer": "D"
     },
     {
       "number": 5,
       "part": "A",
-      "difficulty": 2,
-      "content": "Решите уравнение: $5^{x} = 125$.",
-      "correctAnswer": "E"
+      "difficulty": 1,
+      "content": "Найдите наибольший общий делитель чисел $8$ и $72$.",
+      "correctAnswer": "C"
     },
     {
       "number": 6,
       "part": "A",
-      "difficulty": 1,
-      "content": "Решите уравнение: $3x - 6 = -3$.",
-      "correctAnswer": "A"
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 2x^2 + 5x + 4$ при $x = 0$.",
+      "correctAnswer": "D"
     },
     {
       "number": 7,
       "part": "A",
       "difficulty": 2,
-      "content": "В арифметической прогрессии $a_1=4$, $d=4$. Найдите $a_{12}$.",
-      "correctAnswer": "E"
+      "content": "Найдите $\\frac{5}{8}$ от числа $24$.",
+      "correctAnswer": "D"
     },
     {
       "number": 8,
       "part": "A",
       "difficulty": 2,
-      "content": "Найдите значение функции $y = 5^{x}$ при $x = 0$.",
-      "correctAnswer": "D"
+      "content": "Вычислите: $\\sin 30°$.",
+      "correctAnswer": "A"
     },
     {
       "number": 9,
       "part": "A",
-      "difficulty": 1,
-      "content": "Два угла треугольника равны $38°$ и $85°$. Найдите третий угол (в градусах).",
-      "correctAnswer": "C"
+      "difficulty": 2,
+      "content": "Катеты прямоугольного треугольника равны $20$ и $21$. Найдите гипотенузу.",
+      "correctAnswer": "A"
     },
     {
       "number": 10,
       "part": "A",
-      "difficulty": 1,
-      "content": "Два угла треугольника равны $55°$ и $57°$. Найдите третий угол (в градусах).",
-      "correctAnswer": "E"
+      "difficulty": 2,
+      "content": "Вычислите: $(9 + 8)^2$.",
+      "correctAnswer": "C"
     },
     {
       "number": 11,
       "part": "B",
       "difficulty": 2,
-      "content": "Округлите число $67$ до десятков.",
-      "correctAnswer": "70"
+      "content": "Вычислите: $6\\sin 30°$.",
+      "correctAnswer": "3"
     },
     {
       "number": 12,
       "part": "B",
       "difficulty": 2,
-      "content": "Округлите число $1646$ до сотен.",
-      "correctAnswer": "1600"
+      "content": "Найдите площадь полной поверхности куба с ребром $10$.",
+      "correctAnswer": "600"
     },
     {
       "number": 13,
       "part": "B",
       "difficulty": 2,
-      "content": "Вычислите: $3\\cdot 8 - 31$.",
-      "correctAnswer": "-7"
+      "content": "Основания трапеции равны $7$ и $11$. Найдите её среднюю линию.",
+      "correctAnswer": "9"
     },
     {
       "number": 14,
       "part": "B",
       "difficulty": 2,
-      "content": "Округлите число $357$ до десятков.",
-      "correctAnswer": "360"
+      "content": "Найдите абсциссу середины отрезка с концами в точках с абсциссами $-8$ и $-16$.",
+      "correctAnswer": "-12"
     },
     {
       "number": 15,
       "part": "B",
-      "difficulty": 3,
-      "content": "Найдите значение производной функции $f(x)=x^2 + 3x - 3$ в точке $x_0=3$.",
-      "correctAnswer": "9"
+      "difficulty": 2,
+      "content": "Вычислите: $6\\cdot 13 + 14$.",
+      "correctAnswer": "92"
     },
     {
       "number": 16,
       "part": "B",
-      "difficulty": 4,
-      "content": "Вычислите: $(3 + 2)^3$.",
-      "correctAnswer": "125"
+      "difficulty": 3,
+      "content": "Найдите значение выражения $\\dfrac{x^2-1}{x-1}$ при $x=12$.",
+      "correctAnswer": "13"
     },
     {
       "number": 17,
       "part": "B",
-      "difficulty": 2,
-      "content": "Вычислите: $\\sin^2 72° + \\cos^2 72°$.",
-      "correctAnswer": "1"
+      "difficulty": 3,
+      "content": "Найдите сумму квадратов корней уравнения $x^2 - 9 = 0$.",
+      "correctAnswer": "18"
     },
     {
       "number": 18,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите значение выражения $\\dfrac{x^2-1}{x-1}$ при $x=4$.",
-      "correctAnswer": "5"
+      "content": "Найдите значение производной функции $f(x)=2x^2 + 2x + 3$ в точке $x_0=2$.",
+      "correctAnswer": "10"
     },
     {
       "number": 19,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите наименьший корень уравнения $x^2 + 2x - 35 = 0$.",
-      "correctAnswer": "-7"
+      "content": "Объём цилиндра с радиусом основания $4$ и высотой $3$ равен $k\\pi$. Найдите $k$.",
+      "correctAnswer": "48"
     },
     {
       "number": 20,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите наибольший корень уравнения $x^2 - 5x = 0$.",
+      "content": "Упростите $\\sqrt{250}$ до вида $a\\sqrt{10}$ и найдите $a$.",
       "correctAnswer": "5"
     },
     {
       "number": 21,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите наибольший корень уравнения $x^2 - 9x + 20 = 0$.",
-      "correctAnswer": "5"
+      "content": "Найдите значение производной функции $f(x)=5x^2 + 3x + 1$ в точке $x_0=2$.",
+      "correctAnswer": "23"
     },
     {
       "number": 22,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите произведение корней уравнения $x^2 + 7x + 12 = 0$.",
-      "correctAnswer": "12"
+      "content": "Найдите угловой коэффициент прямой, проходящей через точки $(2;-3)$ и $(7;17)$.",
+      "correctAnswer": "4"
     },
     {
       "number": 23,
       "part": "B",
       "difficulty": 3,
-      "content": "Найдите значение производной функции $f(x)=x^2 + 4x - 5$ в точке $x_0=3$.",
-      "correctAnswer": "10"
+      "content": "Объём цилиндра с радиусом основания $2$ и высотой $7$ равен $k\\pi$. Найдите $k$.",
+      "correctAnswer": "28"
     },
     {
       "number": 24,
       "part": "B",
       "difficulty": 3,
-      "content": "Вычислите: $\\log_{5}(25\\cdot 125)$.",
-      "correctAnswer": "5"
+      "content": "Найдите значение производной функции $f(x)=4x^2 + 5x - 6$ в точке $x_0=-2$.",
+      "correctAnswer": "-11"
     },
     {
       "number": 25,
       "part": "B",
-      "difficulty": 3,
-      "content": "Найдите угловой коэффициент прямой, проходящей через точки $(-2;-3)$ и $(-1;-1)$.",
-      "correctAnswer": "2"
+      "difficulty": 4,
+      "content": "Вычислите: $\\log_{8} 2 + \\log_{8} 4$.",
+      "correctAnswer": "1"
     },
     {
       "number": 26,
       "part": "B",
-      "difficulty": 3,
-      "content": "Найдите расстояние между точками $A(-2;2)$ и $B(-10;17)$.",
-      "correctAnswer": "17"
+      "difficulty": 4,
+      "content": "Решите уравнение $x^4 - 10x^2 + 9 = 0$ и найдите его наибольший корень.",
+      "correctAnswer": "3"
     },
     {
       "number": 27,
       "part": "B",
-      "difficulty": 3,
-      "content": "Диагонали ромба равны $7$ и $10$. Найдите площадь.",
-      "correctAnswer": "35"
+      "difficulty": 4,
+      "content": "Площадь основания пирамиды равна $12$, высота $4$. Найдите объём.",
+      "correctAnswer": "16"
     },
     {
       "number": 28,
       "part": "B",
-      "difficulty": 2,
-      "content": "Два угла треугольника равны $45°$ и $89°$. Найдите третий угол (в градусах).",
-      "correctAnswer": "46"
+      "difficulty": 4,
+      "content": "Вычислите: $\\log_{2} 6 \\cdot \\log_{6} 4$.",
+      "correctAnswer": "2"
     },
     {
       "number": 29,
       "part": "B",
-      "difficulty": 2,
-      "content": "Два угла треугольника равны $100°$ и $25°$. Найдите третий угол (в градусах).",
-      "correctAnswer": "55"
+      "difficulty": 5,
+      "content": "Найдите сумму бесконечной геометрической прогрессии с $b_1=9$ и $q=\\dfrac{1}{2}$.",
+      "correctAnswer": "18"
     },
     {
       "number": 30,
       "part": "B",
-      "difficulty": 2,
-      "content": "Основания трапеции равны $8$ и $18$. Найдите её среднюю линию.",
-      "correctAnswer": "13"
+      "difficulty": 5,
+      "content": "Корни уравнения $x^2 - 3x - 4=0$ равны $x_1$ и $x_2$. Найдите $x_1^3+x_2^3$.",
+      "correctAnswer": "63"
     }
   ]
 }
