@@ -5,6 +5,9 @@ import { NotificationStack } from '@/components/NotificationStack';
 import { MobileTabBar } from './MobileTabBar';
 import { GlobalClickCounter } from '@/components/GlobalClickCounter';
 import { NightTicker } from '@/components/NightTicker';
+import { AuthGateModal } from '@/components/AuthGateModal';
+import { ScrollToTopButton } from '@/components/ScrollToTopButton';
+import { PremiumReminder } from '@/components/PremiumReminder';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -38,6 +41,12 @@ export function Layout({ children }: LayoutProps) {
       {!focusMode && <CookieConsentBanner />}
       {/* Global toast notifications (level-ups, achievements, feedback) */}
       <NotificationStack />
+      {/* Floating «scroll to top» button (appears after scrolling down) */}
+      <ScrollToTopButton />
+      {/* Recurring Premium nudge for free users */}
+      <PremiumReminder />
+      {/* Registration wall — shown when a guest tries a members-only action */}
+      <AuthGateModal />
       {/* Mobile bottom navigation (self-hides on desktop & in Focus mode) */}
       <MobileTabBar />
     </div>

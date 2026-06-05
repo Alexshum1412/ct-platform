@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper } from 'lucide-react';
 import { QuestionSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +41,8 @@ export function PracticePage() {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const favorites = useAppStore(state => state.favorites);
+  // Подписка на решённые задания — чтобы реактивно показать экран «всё решено».
+  const solvedQuestions = useAppStore(state => state.solvedQuestions);
 
   const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
   useEffect(() => {
@@ -81,6 +83,8 @@ export function PracticePage() {
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [subtopics, setSubtopics] = useState<Array<{ id: string; name: string }>>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  // Лента подгружается порциями — иначе при сотнях заданий страница тормозит.
+  const [feedCount, setFeedCount] = useState(10);
   const [answeredQuestions, setAnsweredQuestions] = useState<Set<string>>(new Set());
   const [correctAnswers, setCorrectAnswers] = useState<Set<string>>(new Set());
   // Серия правильных ответов подряд (в рамках сессии практики)
@@ -147,6 +151,7 @@ export function PracticePage() {
     // clobbered by a separate effect, and so the index matches filteredQuestions.
     const focusIdx = questionId ? filtered.findIndex(q => q.id === questionId) : -1;
     setCurrentQuestionIndex(focusIdx >= 0 ? focusIdx : 0);
+    setFeedCount(10); // новая выборка — начинаем ленту заново
   }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam, questionId]);
 
   // A deep-linked single question (?question=id) must show in single mode so the
@@ -163,6 +168,13 @@ export function PracticePage() {
   }, [selectedTopic]);
 
   const currentQuestion = filteredQuestions[currentQuestionIndex];
+
+  // Сколько заданий из текущей выборки уже решено (по сохранённому прогрессу).
+  const solvedIdSet = new Set(solvedQuestions.map((s) => s.questionId));
+  const solvedInFilter = filteredQuestions.reduce((n, q) => n + (solvedIdSet.has(q.id) ? 1 : 0), 0);
+  // Все задания выборки решены — показываем поздравительный экран вместо
+  // бесконечного перерешивания последнего задания.
+  const allSolved = filteredQuestions.length > 0 && solvedInFilter === filteredQuestions.length;
 
   // Принимает САМ отвеченный вопрос — в режиме «Лента» отвечают любую карточку,
   // а не текущую по индексу (иначе прогресс/сабмит писались бы не на тот вопрос).
@@ -214,6 +226,12 @@ export function PracticePage() {
     setCorrectAnswers(new Set());
     setStreak(0);
     setCurrentQuestionIndex(0);
+    resetFilters();
+    setShowResetConfirm(false);
+  };
+
+  // Сброс только фильтров/сортировки — прогресс сессии не трогаем.
+  const resetFilters = () => {
     setSelectedPart('all');
     setSelectedSection('all');
     setSelectedTopic('all');
@@ -221,8 +239,12 @@ export function PracticePage() {
     setSelectedDifficulty('all');
     setSortBy('default');
     setOnlyFavorites(false);
-    setShowResetConfirm(false);
   };
+
+  // Активен ли хоть один фильтр (для подсветки кнопки «Сбросить фильтры»).
+  const filtersActive =
+    selectedPart !== 'all' || selectedSection !== 'all' || selectedTopic !== 'all' ||
+    selectedSubtopic !== 'all' || selectedDifficulty !== 'all' || sortBy !== 'default' || onlyFavorites;
 
   const togglePracticeMode = (mode: 'single' | 'feed') => {
     setPracticeMode(mode);
@@ -268,6 +290,36 @@ export function PracticePage() {
     ? Math.round((correctAnswers.size / answeredQuestions.size) * 100)
     : 0;
 
+  // Поздравительный экран «всё решено» — показывается, когда все задания текущей
+  // выборки пройдены (вместо возможности бесконечно перерешивать последнее).
+  const completionBanner = !isLoading && allSolved ? (
+    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+      <Card className="border-green-400/60 bg-green-50 dark:bg-green-950/20">
+        <CardContent className="p-6 text-center">
+          <div className="w-14 h-14 rounded-2xl bg-green-500/15 flex items-center justify-center mx-auto mb-3">
+            <PartyPopper className="w-7 h-7 text-green-600 dark:text-green-400" />
+          </div>
+          <h3 className="text-xl font-bold mb-1">Вы решили все задания! 🎉</h3>
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            Все {filteredQuestions.length} {filteredQuestions.length === 1 ? 'задание' : 'заданий'} из выбранной
+            подборки пройдены. Решённые задания повторно решать нельзя — {filtersActive
+              ? 'сбросьте фильтры или выберите другую тему.'
+              : 'выберите другой предмет или загляните в теорию.'}
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            {filtersActive && (
+              <Button variant="default" className="gap-2" onClick={resetFilters}>
+                <FilterX className="w-4 h-4" />Сбросить фильтры
+              </Button>
+            )}
+            <Button variant="outline" onClick={() => navigate(`/subject/${slug}`)}>К предмету</Button>
+            <Button variant="outline" onClick={() => navigate(`/theory/${slug}`)}>К теории</Button>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  ) : null;
+
   // Shared question renderer — identical content in normal and Focus layouts.
   const questionArea = isLoading ? (
     <div className="space-y-6">
@@ -286,12 +338,12 @@ export function PracticePage() {
       {onlyFavorites ? (
         <Button variant="outline" onClick={() => setOnlyFavorites(false)}>Показать все задания</Button>
       ) : (
-        <Button variant="outline" onClick={handleReset}>Сбросить фильтры</Button>
+        <Button variant="outline" onClick={resetFilters}>Сбросить фильтры</Button>
       )}
     </Card>
   ) : practiceMode === 'feed' ? (
     <div className="space-y-6">
-      {filteredQuestions.map((q) => (
+      {filteredQuestions.slice(0, feedCount).map((q) => (
         <motion.div key={q.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
           <QuestionCard
             question={q}
@@ -302,6 +354,16 @@ export function PracticePage() {
           />
         </motion.div>
       ))}
+      {feedCount < filteredQuestions.length && (
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-full"
+          onClick={() => setFeedCount((c) => c + 10)}
+        >
+          Показать ещё ({filteredQuestions.length - feedCount})
+        </Button>
+      )}
     </div>
   ) : currentQuestion ? (
     <>
@@ -391,6 +453,7 @@ export function PracticePage() {
           </div>
         </div>
         <main className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-8 sm:py-10">
+          {completionBanner}
           {questionArea}
         </main>
       </div>
@@ -647,6 +710,17 @@ export function PracticePage() {
 
                   <Button
                     variant="outline"
+                    className="w-full gap-2"
+                    onClick={resetFilters}
+                    disabled={!filtersActive}
+                    title={filtersActive ? 'Сбросить все выбранные фильтры' : 'Фильтры не выбраны'}
+                  >
+                    <FilterX className="w-4 h-4" />
+                    Сбросить все фильтры
+                  </Button>
+
+                  <Button
+                    variant="outline"
                     className="w-full gap-2 text-destructive border-destructive/30 hover:bg-destructive/5"
                     onClick={() => setShowResetConfirm(true)}
                   >
@@ -770,6 +844,7 @@ export function PracticePage() {
               )}
             </div>
 
+            {completionBanner}
             {questionArea}
           </div>
         </div>

@@ -15,12 +15,14 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Coins, RotateCcw, Play, Eraser, Undo2, Info, BookOpen, Percent, ArrowLeft, Sparkles,
-  Dices, History, Wallet, ChevronDown, Crown, Lock, Maximize2, Minimize2, X,
+  Dices, History, Wallet, ChevronDown, Crown, Lock, Maximize2, Minimize2, X, Volume2, VolumeX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
+import { GameGate } from '@/components/GameGate';
+import { isMuted, toggleMuted, primeAudio, playSpin, playWin, playLose } from '@/lib/sound';
 
 // Европейское колесо (один зеро). Порядок карманов по часовой стрелке.
 const WHEEL = [
@@ -111,9 +113,10 @@ function BetCell({
   );
 }
 
-export function RoulettePage() {
+function RouletteGame() {
   const [balance, setBalance] = useState(START_BALANCE);
   const [chip, setChip] = useState(CHIPS[1]);
+  const [muted, setMuted] = useState(isMuted());
   const [bets, setBets] = useState<Record<string, number>>({});
   // история постановок (id ставки + точный номинал фишки) для кнопки «Отменить»
   const [stack, setStack] = useState<Array<{ id: string; amount: number }>>([]);
@@ -210,6 +213,12 @@ export function RoulettePage() {
     }
   };
 
+  const handleToggleMute = () => {
+    const m = toggleMuted();
+    setMuted(m);
+    if (!m) primeAudio(); // включили звук — сразу «будим» аудиоконтекст
+  };
+
   const settle = (number: number) => {
     let payout = 0;
     for (const [id, amt] of Object.entries(bets)) {
@@ -218,6 +227,7 @@ export function RoulettePage() {
     }
     setBalance((b) => b + payout);
     const net = payout - totalBet;
+    if (payout > 0) playWin(); else playLose();
     setHistory((h) => [number, ...h].slice(0, 18));
     setResult(number);
     setBets({});
@@ -238,6 +248,9 @@ export function RoulettePage() {
     setSpinning(true);
     setResult(null);
     setFlash(null);
+    // Звук вращения (замедляющиеся тики). primeAudio() «будит» аудио по жесту.
+    primeAudio();
+    playSpin(spinSec);
 
     const number = WHEEL[Math.floor(Math.random() * WHEEL.length)];
     const idx = WHEEL.indexOf(number);
@@ -373,9 +386,20 @@ export function RoulettePage() {
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight leading-tight">Европейская рулетка</h1>
             <p className="text-sm text-muted-foreground">Секретная мини-игра CT-Platform</p>
           </div>
-          <span className="ml-auto hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
-            <Sparkles className="w-4 h-4" />Демо · виртуальные монеты
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleToggleMute}
+              title={muted ? 'Включить звук' : 'Выключить звук'}
+              aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+            >
+              {muted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+            </Button>
+            <span className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium">
+              <Sparkles className="w-4 h-4" />Демо · виртуальные монеты
+            </span>
+          </div>
         </motion.div>
 
         {/* Дисклеймер */}
@@ -645,6 +669,15 @@ export function RoulettePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Доступ к игре ограничен: гость → регистрация; Free → после 5 заданий; Premium → всегда.
+export function RoulettePage() {
+  return (
+    <GameGate game="Европейская рулетка">
+      <RouletteGame />
+    </GameGate>
   );
 }
 

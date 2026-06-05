@@ -197,6 +197,18 @@ export const gamesApi = {
     ),
 };
 
+// Subscription / Premium API
+export const subscriptionApi = {
+  get: (token: string) =>
+    apiClient<{ plan: string; isPremium: boolean; subscription: { startDate: string; endDate: string; plan: string; paymentId?: string } | null }>(
+      '/subscription', { token },
+    ),
+  purchase: (plan: 'monthly' | 'yearly', token: string) =>
+    apiClient<{ success: boolean; plan: string; purchasedAt: string; subscription: { startDate: string; endDate: string } }>(
+      '/subscription', { method: 'POST', body: { plan }, token },
+    ),
+};
+
 // Exam API
 export const examApi = {
   start: (subjectId: string, token: string) =>

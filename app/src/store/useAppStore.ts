@@ -97,6 +97,15 @@ interface AppState {
   // Premium
   isPremium: boolean;
   setIsPremium: (value: boolean) => void;
+
+  // Auth gate — registration wall for guests. Any action that requires an account
+  // calls requireAuth(); when not signed in it opens a modal prompting registration.
+  authGateOpen: boolean;
+  authGateMessage: string | null;
+  openAuthGate: (message?: string) => void;
+  closeAuthGate: () => void;
+  /** Returns true when signed in. Otherwise opens the registration gate and returns false. */
+  requireAuth: (message?: string) => boolean;
 }
 
 interface Notification {
@@ -448,6 +457,21 @@ export const useAppStore = create<AppState>()(
       // Premium
       isPremium: false,
       setIsPremium: (value) => set({ isPremium: value }),
+
+      // Auth gate
+      authGateOpen: false,
+      authGateMessage: null,
+      openAuthGate: (message) => set({ authGateOpen: true, authGateMessage: message ?? null }),
+      closeAuthGate: () => set({ authGateOpen: false, authGateMessage: null }),
+      requireAuth: (message) => {
+        const { user, token } = get();
+        const signedIn = !!user || !!token;
+        if (!signedIn) {
+          set({ authGateOpen: true, authGateMessage: message ?? null });
+          return false;
+        }
+        return true;
+      },
     }),
     {
       name: 'ct-platform-storage',
@@ -467,6 +491,11 @@ export const useAppStore = create<AppState>()(
         examSidebarCollapsed: state.examSidebarCollapsed,
         favoriteTheory: state.favoriteTheory,
       }),
+      // isAuthenticated isn't persisted (derived state); restore it from the saved
+      // token so a page reload doesn't log the user out of the UI.
+      onRehydrateStorage: () => (state) => {
+        if (state) state.isAuthenticated = !!state.token;
+      },
     }
   )
 );

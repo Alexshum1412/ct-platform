@@ -15,6 +15,7 @@ const protectedRoutes = [
   '/api/exam/history',
   '/api/leaderboard/me',
   '/api/games/reset',
+  '/api/subscription',
 ];
 
 const adminRoutes = [

@@ -8,7 +8,7 @@
 import { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History } from 'lucide-react';
+import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -233,12 +233,18 @@ export const QuestionCard = memo(function QuestionCard({
   const [showStats, setShowStats] = useState(false);
 
   // Получаем функции из глобального store
-  const { toggleFavorite, favorites, isQuestionSolved, getQuestionResult, addSolvedQuestion } = useAppStore();
+  const { toggleFavorite, favorites, isQuestionSolved, getQuestionResult, addSolvedQuestion, requireAuth } = useAppStore();
   const navigate = useNavigate();
-  
+
   // Проверяем, решено ли это задание ранее
   const wasSolvedBefore = isQuestionSolved(question.id);
   const previousResult = getQuestionResult(question.id);
+  // Режим просмотра: задание уже решено в прошлый раз → повторно решать нельзя,
+  // показываем правильный ответ и объяснение «только для чтения».
+  const reviewMode = wasSolvedBefore && !isAnswered;
+  // Любое взаимодействие с ответом заблокировано, когда задание уже отвечено
+  // (только что или ранее).
+  const locked = isAnswered || reviewMode;
 
   // ---------------------------------------------------
   // ВЫЧИСЛЯЕМЫЕ ЗНАЧЕНИЯ (мемоизированы)
@@ -248,6 +254,8 @@ export const QuestionCard = memo(function QuestionCard({
   const isFavorite = favorites.includes(question.id);
   /** Правильно ли ответил пользователь */
   const isCorrect = selectedAnswer === question.correctAnswer;
+  /** Итог для блока результата: в режиме просмотра берём прошлый результат. */
+  const resultCorrect = reviewMode ? !!previousResult : isCorrect;
 
   /** Процент правильных ответов (вычисляется из реальных данных) */
   const correctPercentage = question.timesSolved > 0
@@ -264,6 +272,8 @@ export const QuestionCard = memo(function QuestionCard({
   /** Проверить выбранный ответ */
   const handleCheck = useCallback(() => {
     if (!selectedAnswer) return;
+    // Гость не может решать — показываем окно регистрации.
+    if (!requireAuth('Войдите или зарегистрируйтесь, чтобы решать задания и сохранять прогресс.')) return;
     const correct = selectedAnswer === question.correctAnswer;
     setIsAnswered(true);
     // Сохраняем результат в store
@@ -272,7 +282,7 @@ export const QuestionCard = memo(function QuestionCard({
     setShowStats(true);
     onAnswer?.(selectedAnswer);
     onResult?.(correct);
-  }, [selectedAnswer, question.correctAnswer, question.id, addSolvedQuestion, onAnswer, onResult]);
+  }, [selectedAnswer, question.correctAnswer, question.id, addSolvedQuestion, onAnswer, onResult, requireAuth]);
 
   /** Перейти к следующему вопросу, сбросить состояние */
   const handleNext = useCallback(() => {
@@ -292,8 +302,15 @@ export const QuestionCard = memo(function QuestionCard({
 
   /** Переключить избранное */
   const handleToggleFavorite = useCallback(() => {
+    if (!requireAuth('Войдите или зарегистрируйтесь, чтобы добавлять задания в избранное.')) return;
     toggleFavorite(question.id);
-  }, [toggleFavorite, question.id]);
+  }, [toggleFavorite, question.id, requireAuth]);
+
+  /** Пометить на разбор — тоже только для зарегистрированных */
+  const handleReport = useCallback(() => {
+    if (!requireAuth('Войдите или зарегистрируйтесь, чтобы отправлять задания на разбор.')) return;
+    onReport?.();
+  }, [onReport, requireAuth]);
   
   // ---------------------------------------------------
   // КОНФИГУРАЦИЯ СЛОЖНОСТИ
@@ -377,7 +394,7 @@ export const QuestionCard = memo(function QuestionCard({
               </button>
             )}
             <button
-              onClick={onReport}
+              onClick={handleReport}
               className="p-2 rounded-lg hover:bg-muted transition-colors"
               title="Пометить на разбор"
             >
@@ -429,8 +446,9 @@ export const QuestionCard = memo(function QuestionCard({
           </div>
         )}
         
-        {/* Tags */}
-        {question.tags.length > 0 && (
+        {/* Tags — скрыты до решения: они нередко подсказывают тему/ответ.
+            Показываем только после ответа или для уже решённых заданий. */}
+        {locked && question.tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
             {question.tags.map((tag) => (
               <Badge
@@ -448,8 +466,22 @@ export const QuestionCard = memo(function QuestionCard({
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {/* Уже решено ранее — повторное решение недоступно (только просмотр) */}
+        {reviewMode && (
+          <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/50 p-4">
+            <Lock className="w-5 h-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div className="text-sm">
+              <p className="font-semibold">Это задание уже решено</p>
+              <p className="text-muted-foreground">
+                Повторное решение недоступно. Ниже — правильный ответ и разбор.
+                {previousResult === false && ' В прошлый раз ответ был с ошибкой — обратите внимание на объяснение.'}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Hints Section */}
-        {!isAnswered && (
+        {!locked && (
           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4">
             <button
               onClick={() => setShowHints(!showHints)}
@@ -531,13 +563,13 @@ export const QuestionCard = memo(function QuestionCard({
           <RadioGroup
             value={selectedAnswer}
             onValueChange={setSelectedAnswer}
-            disabled={isAnswered}
+            disabled={locked}
             className="space-y-3"
           >
             {question.options.map((option) => {
               const isSelected = selectedAnswer === option.id;
               const isCorrectOption = option.id === question.correctAnswer;
-              const showCorrect = isAnswered && isCorrectOption;
+              const showCorrect = locked && isCorrectOption;
               const showWrong = isAnswered && isSelected && !isCorrect;
               
               return (
@@ -632,7 +664,7 @@ export const QuestionCard = memo(function QuestionCard({
         </AnimatePresence>
         
         {/* Text Input for TEXT_INPUT type */}
-        {question.type === 'TEXT_INPUT' && !isAnswered && (
+        {question.type === 'TEXT_INPUT' && !locked && (
           <div className="space-y-3">
             <input
               type="text"
@@ -643,9 +675,19 @@ export const QuestionCard = memo(function QuestionCard({
             />
           </div>
         )}
+
+        {/* В режиме просмотра для открытого ответа показываем правильный ответ */}
+        {question.type === 'TEXT_INPUT' && reviewMode && (
+          <div className="p-4 rounded-xl border-2 border-green-500 bg-green-50 dark:bg-green-900/20">
+            <p className="text-sm text-muted-foreground mb-1">Правильный ответ</p>
+            <p className="font-semibold text-green-700 dark:text-green-400">
+              <MathFormula formula={String(question.correctAnswer)} inline />
+            </p>
+          </div>
+        )}
         
         {/* Actions */}
-        {!isAnswered ? (
+        {!locked ? (
           <Button
             onClick={handleCheck}
             disabled={!selectedAnswer}
@@ -655,22 +697,21 @@ export const QuestionCard = memo(function QuestionCard({
             Проверить ответ
           </Button>
         ) : (
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-4"
-            >
-              {/* Result */}
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            className="space-y-4"
+          >
+            {/* Result — цветной баннер только для только что данного ответа */}
+            {isAnswered && (
               <div
                 className={`p-4 rounded-xl flex items-center gap-3 ${
-                  isCorrect
+                  resultCorrect
                     ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
                 }`}
               >
-                {isCorrect ? (
+                {resultCorrect ? (
                   <>
                     <CheckCircle className="w-6 h-6" />
                     <div>
@@ -692,48 +733,51 @@ export const QuestionCard = memo(function QuestionCard({
                   </>
                 )}
               </div>
-              
-              {/* ================================================= */}
-              {/* ОБЪЯСНЕНИЕ С ПОДДЕРЖКОЙ ФОРМУЛ KATEX               */}
-              {/* ================================================= */}
-              <div className="p-4 rounded-xl bg-muted/50 space-y-3">
-                <h4 className="font-semibold flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5" />
-                  Объяснение
-                </h4>
-                {/* Объяснение с формулами */}
-                <div className="text-muted-foreground">
-                  <MathFormula formula={question.explanation || 'Объяснение пока не добавлено'} />
-                </div>
-                
-                {/* Подробное решение (если есть) */}
-                {question.solution && (
-                  <div className="mt-4 pt-4 border-t border-border">
-                    <h4 className="font-semibold mb-2">Решение:</h4>
-                    {/* Решение с формулами - используем моноширинный шрифт для структуры */}
-                    <div className="text-muted-foreground font-mono text-sm bg-muted p-3 rounded-lg overflow-x-auto">
-                      <MathFormula formula={question.solution} />
-                    </div>
-                  </div>
-                )}
+            )}
+
+            {/* ================================================= */}
+            {/* ОБЪЯСНЕНИЕ С ПОДДЕРЖКОЙ ФОРМУЛ KATEX               */}
+            {/* ================================================= */}
+            <div className="p-4 rounded-xl bg-muted/50 space-y-3">
+              <h4 className="font-semibold flex items-center gap-2">
+                <HelpCircle className="w-5 h-5" />
+                Объяснение
+              </h4>
+              {/* Объяснение с формулами */}
+              <div className="text-muted-foreground">
+                <MathFormula formula={question.explanation || 'Объяснение пока не добавлено'} />
               </div>
 
-              {/* ================================================= */}
-              {/* ВИДЕО-РАЗБОР (встроенный YouTube плеер)            */}
-              {/* ================================================= */}
-              {question.videoExplanationUrl && (
-                <YouTubePlayer
-                  videoUrl={question.videoExplanationUrl}
-                  title="Видео-разбор задания"
-                />
+              {/* Подробное решение (если есть) */}
+              {question.solution && (
+                <div className="mt-4 pt-4 border-t border-border">
+                  <h4 className="font-semibold mb-2">Решение:</h4>
+                  {/* Решение с формулами */}
+                  <div className="text-muted-foreground text-sm bg-muted p-3 rounded-lg overflow-x-auto">
+                    <MathFormula formula={question.solution} />
+                  </div>
+                </div>
               )}
-              
-              {/* Next Button */}
+            </div>
+
+            {/* ================================================= */}
+            {/* ВИДЕО-РАЗБОР (встроенный YouTube плеер)            */}
+            {/* ================================================= */}
+            {question.videoExplanationUrl && (
+              <YouTubePlayer
+                videoUrl={question.videoExplanationUrl}
+                title="Видео-разбор задания"
+              />
+            )}
+
+            {/* Кнопка «Следующее задание» — только в режиме «по одному»
+                (в ленте навигации нет, поэтому onNext не передаётся). */}
+            {onNext && (
               <Button onClick={handleNext} className="w-full" size="lg">
                 Следующее задание
               </Button>
-            </motion.div>
-          </AnimatePresence>
+            )}
+          </motion.div>
         )}
         
         {/* ================================================= */}

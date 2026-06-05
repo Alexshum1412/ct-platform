@@ -234,7 +234,7 @@ export function Header() {
                   </DropdownMenuItem>
                   {user.plan === 'FREE' && (
                     <DropdownMenuItem asChild className="cursor-pointer text-amber-600 dark:text-amber-400">
-                      <Link to="/contact">
+                      <Link to="/payment">
                         <Crown className="w-4 h-4 mr-2" />
                         Получить Premium
                       </Link>

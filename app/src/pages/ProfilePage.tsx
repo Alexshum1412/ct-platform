@@ -451,7 +451,7 @@ export function ProfilePage() {
                         <p className="text-sm text-muted-foreground">Неограниченные задания, полная аналитика</p>
                       </div>
                     </div>
-                    <Button onClick={() => navigate('/contact')} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
+                    <Button onClick={() => navigate('/payment')} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
                       <Crown className="w-4 h-4 mr-2" />От 15 BYN/месяц
                     </Button>
                   </CardContent>

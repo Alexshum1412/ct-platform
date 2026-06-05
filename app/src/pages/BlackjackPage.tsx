@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
+import { GameGate } from '@/components/GameGate';
 
 const START_BALANCE = 100;
 const CHIPS = [1, 5, 10, 25];
@@ -107,7 +108,7 @@ function CardView({ card, hidden, delay = 0 }: { card?: PlayingCard; hidden?: bo
   );
 }
 
-export function BlackjackPage() {
+function BlackjackGame() {
   const { token } = useAppStore();
   const [balance, setBalance] = useState(START_BALANCE);
   const [bet, setBet] = useState(CHIPS[1]);
@@ -559,6 +560,15 @@ export function BlackjackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Доступ к игре ограничен: гость → регистрация; Free → после 5 заданий; Premium → всегда.
+export function BlackjackPage() {
+  return (
+    <GameGate game="Блэкджек">
+      <BlackjackGame />
+    </GameGate>
   );
 }
 

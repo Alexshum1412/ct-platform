@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { Crown, Zap, CheckCircle, X, Clock, BookOpen, TrendingUp, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +23,9 @@ const premiumFeatures = [
 ];
 
 export function PremiumModal({ isOpen, onClose, reason = 'daily_limit', dailyCount = 10, dailyLimit = 10, resetAt }: PremiumModalProps) {
+  const navigate = useNavigate();
   const resetTime = resetAt ? new Date(resetAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '00:00';
+  const goToPayment = () => { onClose(); navigate('/payment'); };
 
   return (
     <AnimatePresence>
@@ -97,7 +100,7 @@ export function PremiumModal({ isOpen, onClose, reason = 'daily_limit', dailyCou
                 </div>
               </div>
 
-              <Button className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-semibold" size="lg">
+              <Button onClick={goToPayment} className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-semibold" size="lg">
                 <Crown className="w-4 h-4 mr-2" />
                 Получить Premium
               </Button>

@@ -94,6 +94,9 @@ const TheorySearchPage = lazy(() => import('@/pages/TheorySearchPage').then(m =>
 /** Единый каталог теории по всем предметам */
 const TheoryHubPage = lazy(() => import('@/pages/TheoryHubPage').then(m => ({ default: m.TheoryHubPage })));
 
+/** Страница оплаты Premium-подписки */
+const PaymentPage = lazy(() => import('@/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
+
 /** Секретная демо-страница «Рулетка» (виртуальные монеты, без реальных денег) */
 const RoulettePage = lazy(() => import('@/pages/RoulettePage').then(m => ({ default: m.RoulettePage })));
 
@@ -200,6 +203,9 @@ function App() {
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
               <Route path="/theory/search" element={<TheorySearchPage />} />
+
+              {/* Оплата Premium-подписки */}
+              <Route path="/payment" element={<PaymentPage />} />
 
               {/* Секретные демо-игры (ссылки спрятаны в подвале) */}
               <Route path="/roulette" element={<RoulettePage />} />

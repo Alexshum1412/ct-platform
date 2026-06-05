@@ -6,11 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSubjectBySlug, fetchExamsBySubjectId, type ExamSummary } from '@/data/subjects';
 import { CardRowsSkeleton } from '@/components/Skeletons';
+import { useAppStore } from '@/store/useAppStore';
 
 /** Список пробных экзаменов по предмету. Пользователь выбирает конкретный экзамен. */
 export function ExamListPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const requireAuth = useAppStore((s) => s.requireAuth);
+  // Запуск экзамена — только для зарегистрированных. Гостю показываем окно регистрации.
+  const startExam = (examId: string) => {
+    if (!requireAuth('Войдите или зарегистрируйтесь, чтобы проходить пробные экзамены.')) return;
+    navigate(`/exam/${slug}/${examId}`);
+  };
   const subject = slug ? getSubjectBySlug(slug) : undefined;
   const [exams, setExams] = useState<ExamSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,7 +98,7 @@ export function ExamListPage() {
                     <Button
                       className="w-full gap-2 text-white"
                       style={{ background: subject.color }}
-                      onClick={() => navigate(`/exam/${slug}/${e.id}`)}
+                      onClick={() => startExam(e.id)}
                     >
                       <Play className="w-4 h-4" />Начать экзамен
                     </Button>
