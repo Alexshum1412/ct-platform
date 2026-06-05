@@ -1,0 +1,224 @@
+{
+  "variant": 1,
+  "total": 30,
+  "partA": 10,
+  "partB": 20,
+  "difficulty": {
+    "1": 5,
+    "2": 16,
+    "3": 7,
+    "4": 2
+  },
+  "questions": [
+    {
+      "number": 1,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Вычислите: $8\\cdot 12 + 13$.",
+      "correctAnswer": "D"
+    },
+    {
+      "number": 2,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Вычислите: $7\\cdot 4 - 24$.",
+      "correctAnswer": "D"
+    },
+    {
+      "number": 3,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Решите уравнение: $\\dfrac{12}{x} = 4$.",
+      "correctAnswer": "E"
+    },
+    {
+      "number": 4,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Вычислите: $\\sqrt{64}$.",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 5,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Решите уравнение: $7x = 7$.",
+      "correctAnswer": "E"
+    },
+    {
+      "number": 6,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Решите уравнение: $9x + 4 = 22$.",
+      "correctAnswer": "C"
+    },
+    {
+      "number": 7,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Вычислите: $3^{1}\\cdot 3^{2}$.",
+      "correctAnswer": "C"
+    },
+    {
+      "number": 8,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 2^{x}$ при $x = 1$.",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 9,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Гипотенуза прямоугольного треугольника равна $25$, один катет $7$. Найдите второй катет.",
+      "correctAnswer": "C"
+    },
+    {
+      "number": 10,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Катеты прямоугольного треугольника равны $20$ и $21$. Найдите гипотенузу.",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 11,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Округлите число $1748$ до сотен.",
+      "correctAnswer": "1700"
+    },
+    {
+      "number": 12,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Округлите число $384$ до десятков.",
+      "correctAnswer": "380"
+    },
+    {
+      "number": 13,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $6\\cdot 7 + 15$.",
+      "correctAnswer": "57"
+    },
+    {
+      "number": 14,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $14\\cdot 12 - 14$.",
+      "correctAnswer": "154"
+    },
+    {
+      "number": 15,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите значение производной функции $f(x)=5x^2 + 2x + 5$ в точке $x_0=-1$.",
+      "correctAnswer": "-8"
+    },
+    {
+      "number": 16,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите значение производной функции $f(x)=2x^2 + 5x + 4$ в точке $x_0=1$.",
+      "correctAnswer": "9"
+    },
+    {
+      "number": 17,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Упростите $\\sqrt{108}$ до вида $a\\sqrt{3}$ и найдите $a$.",
+      "correctAnswer": "6"
+    },
+    {
+      "number": 18,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $\\sin^2 24° + \\cos^2 24°$.",
+      "correctAnswer": "1"
+    },
+    {
+      "number": 19,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Решите уравнение: $4x + 15 = 47$.",
+      "correctAnswer": "8"
+    },
+    {
+      "number": 20,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Упростите $\\sqrt{12}$ до вида $a\\sqrt{3}$ и найдите $a$.",
+      "correctAnswer": "2"
+    },
+    {
+      "number": 21,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Решите уравнение: $6x - 12 = -42$.",
+      "correctAnswer": "-5"
+    },
+    {
+      "number": 22,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Вычислите: $\\log_{3}(3\\cdot 27)$.",
+      "correctAnswer": "4"
+    },
+    {
+      "number": 23,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите абсциссу вершины параболы $y = 3x^2 + 24x - 4$.",
+      "correctAnswer": "-4"
+    },
+    {
+      "number": 24,
+      "part": "B",
+      "difficulty": 4,
+      "content": "Найдите наименьшее значение функции $y = x^2 - 8x + 13$.",
+      "correctAnswer": "-3"
+    },
+    {
+      "number": 25,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 2x^2 + 5x + 1$ при $x = 1$.",
+      "correctAnswer": "8"
+    },
+    {
+      "number": 26,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 4x + 4$ при $x = 0$.",
+      "correctAnswer": "4"
+    },
+    {
+      "number": 27,
+      "part": "B",
+      "difficulty": 4,
+      "content": "Площадь основания пирамиды равна $27$, высота $8$. Найдите объём.",
+      "correctAnswer": "72"
+    },
+    {
+      "number": 28,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите площадь полной поверхности куба с ребром $8$.",
+      "correctAnswer": "384"
+    },
+    {
+      "number": 29,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Один из смежных углов равен $149°$. Найдите второй угол (в градусах).",
+      "correctAnswer": "31"
+    },
+    {
+      "number": 30,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Площадь основания прямой призмы равна $10$, высота $3$. Найдите объём.",
+      "correctAnswer": "30"
+    }
+  ]
+}

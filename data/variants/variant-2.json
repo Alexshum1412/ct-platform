@@ -1,0 +1,224 @@
+{
+  "variant": 2,
+  "total": 30,
+  "partA": 10,
+  "partB": 20,
+  "difficulty": {
+    "1": 4,
+    "2": 20,
+    "3": 5,
+    "4": 1
+  },
+  "questions": [
+    {
+      "number": 1,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Вычислите: $11\\cdot 6 - 39$.",
+      "correctAnswer": "B"
+    },
+    {
+      "number": 2,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Какое из чисел делится на $3$?",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 3,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Решите уравнение: $\\dfrac{8}{x} = 4$.",
+      "correctAnswer": "C"
+    },
+    {
+      "number": 4,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Вычислите: $\\log_{5} 5$.",
+      "correctAnswer": "D"
+    },
+    {
+      "number": 5,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Решите уравнение: $3x + 5 = 20$.",
+      "correctAnswer": "E"
+    },
+    {
+      "number": 6,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Вычислите: $\\sin 60°$.",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 7,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Найдите значение функции $y = 5x - 1$ при $x = 5$.",
+      "correctAnswer": "D"
+    },
+    {
+      "number": 8,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 3^{x}$ при $x = 1$.",
+      "correctAnswer": "A"
+    },
+    {
+      "number": 9,
+      "part": "A",
+      "difficulty": 1,
+      "content": "Найдите площадь прямоугольника со сторонами $10$ и $11$.",
+      "correctAnswer": "B"
+    },
+    {
+      "number": 10,
+      "part": "A",
+      "difficulty": 2,
+      "content": "Основание треугольника равно $8$, высота $4$. Найдите площадь.",
+      "correctAnswer": "E"
+    },
+    {
+      "number": 11,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $10\\cdot 5 - 27$.",
+      "correctAnswer": "23"
+    },
+    {
+      "number": 12,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Округлите число $40458$ до тысяч.",
+      "correctAnswer": "40000"
+    },
+    {
+      "number": 13,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите наибольший общий делитель чисел $36$ и $56$.",
+      "correctAnswer": "4"
+    },
+    {
+      "number": 14,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Округлите число $58$ до десятков.",
+      "correctAnswer": "60"
+    },
+    {
+      "number": 15,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $(19-10)(19+10)$.",
+      "correctAnswer": "261"
+    },
+    {
+      "number": 16,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите значение производной функции $f(x)=2x^2 - 6x - 2$ в точке $x_0=3$.",
+      "correctAnswer": "6"
+    },
+    {
+      "number": 17,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Вычислите: $\\sin^2 33° + \\cos^2 33°$.",
+      "correctAnswer": "1"
+    },
+    {
+      "number": 18,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите значение производной функции $f(x)=3x^2 + x + 2$ в точке $x_0=-1$.",
+      "correctAnswer": "-5"
+    },
+    {
+      "number": 19,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Решите уравнение: $2^{x} = 32$.",
+      "correctAnswer": "5"
+    },
+    {
+      "number": 20,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Решите уравнение: $2^{x} = 8$.",
+      "correctAnswer": "3"
+    },
+    {
+      "number": 21,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите $\\frac{1}{3}$ от числа $27$.",
+      "correctAnswer": "9"
+    },
+    {
+      "number": 22,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите наименьший корень уравнения $x^2 + 3x = 0$.",
+      "correctAnswer": "-3"
+    },
+    {
+      "number": 23,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Найдите угловой коэффициент прямой, проходящей через точки $(2;-1)$ и $(5;-4)$.",
+      "correctAnswer": "-1"
+    },
+    {
+      "number": 24,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 3^{x}$ при $x = 2$.",
+      "correctAnswer": "9"
+    },
+    {
+      "number": 25,
+      "part": "B",
+      "difficulty": 2,
+      "content": "В арифметической прогрессии $a_1=0$, $d=5$. Найдите сумму первых $8$ членов.",
+      "correctAnswer": "140"
+    },
+    {
+      "number": 26,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите значение функции $y = 2x + 7$ при $x = -3$.",
+      "correctAnswer": "1"
+    },
+    {
+      "number": 27,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Найдите площадь полной поверхности куба с ребром $10$.",
+      "correctAnswer": "600"
+    },
+    {
+      "number": 28,
+      "part": "B",
+      "difficulty": 3,
+      "content": "Основания трапеции равны $17$ и $8$, высота $12$. Найдите площадь.",
+      "correctAnswer": "150"
+    },
+    {
+      "number": 29,
+      "part": "B",
+      "difficulty": 2,
+      "content": "Два угла треугольника равны $91°$ и $20°$. Найдите третий угол (в градусах).",
+      "correctAnswer": "69"
+    },
+    {
+      "number": 30,
+      "part": "B",
+      "difficulty": 4,
+      "content": "Площадь полной поверхности цилиндра с радиусом $6$ и высотой $7$ равна $k\\pi$. Найдите $k$.",
+      "correctAnswer": "156"
+    }
+  ]
+}

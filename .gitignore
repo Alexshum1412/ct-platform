@@ -13,3 +13,5 @@ ruvector.db
 *.db-journal
 # transient migration/export artifacts (may contain data dumps)
 ct-platform/backend/prisma/_*
+# bulky per-run generated question dumps (source of truth is the DB); variants kept
+data/ct-questions-*.json
