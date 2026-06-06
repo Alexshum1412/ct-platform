@@ -88,6 +88,16 @@ export const authApi = {
     return Promise.resolve({ data: { success: true } });
   },
 
+  // Password reset (code-based, no SMTP needed in dev — devCode returned)
+  forgotPassword: (email: string) =>
+    apiClient<{ message: string; devCode?: string }>(
+      '/auth/forgot-password', { method: 'POST', body: { email } },
+    ),
+  resetPassword: (email: string, code: string, password: string) =>
+    apiClient<{ success: boolean; message: string }>(
+      '/auth/reset-password', { method: 'POST', body: { email, code, password } },
+    ),
+
   // Email verification
   verifyEmail: (code: string, token: string) =>
     apiClient<{ success: boolean; token: string; user: unknown; alreadyVerified?: boolean }>(

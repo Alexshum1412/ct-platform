@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { FREE_DAILY_EXAMS } from '@/lib/limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,11 +34,11 @@ export async function POST(req: NextRequest) {
       const todayExamsCount = await prisma.examAttempt.count({
         where: { userId, startedAt: { gte: dayStart } },
       });
-      if (todayExamsCount >= 1) {
+      if (todayExamsCount >= FREE_DAILY_EXAMS) {
         return NextResponse.json({
           error: 'Бесплатный план позволяет 1 пробный экзамен в день. Подключите Premium для неограниченных экзаменов.',
           code: 'EXAM_LIMIT_REACHED',
-          limit: 1,
+          limit: FREE_DAILY_EXAMS,
           resetAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString(),
         }, { status: 402 });
       }

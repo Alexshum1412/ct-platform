@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { FREE_DAILY_GAME_RESETS as FREE_DAILY_RESETS, GAME_START_BALANCE as START_BALANCE } from '@/lib/limits';
 
 export const dynamic = 'force-dynamic';
 
 const GAMES = ['roulette', 'blackjack'] as const;
-const FREE_DAILY_RESETS = 1;
-const START_BALANCE = 100;
 const MAX_BALANCE = 1_000_000; // защита от мусорных значений
 
 function today() {

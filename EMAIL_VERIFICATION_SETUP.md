@@ -110,3 +110,12 @@ Render задеплоит при пуше; локально — перезапу
 ## Backfill уже выполнен
 Существующие аккаунты (admin, demo и т.д.) помечены подтверждёнными
 (`prisma/backfill-email-verified.js`), чтобы введение проверки их не заблокировало.
+
+## Сброс пароля использует ту же инфраструктуру
+«Забыли пароль» работает на таком же одноразовом коде (`VerificationCode` с
+`purpose='PASSWORD_RESET'`, `issueVerificationCode(..., 'PASSWORD_RESET')`,
+шаблон `getPasswordResetEmail`). Поэтому настройка SMTP включает доставку писем
+и для подтверждения email, и для сброса пароля. Без SMTP оба флоу работают в
+dev-режиме (код виден на странице и в логах). Роуты: `POST /api/auth/forgot-password`,
+`POST /api/auth/reset-password`; страница `app/src/pages/ForgotPasswordPage.tsx`
+(двухшаговый ввод кода + нового пароля, единый маршрут `/forgot-password`).

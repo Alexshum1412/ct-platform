@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { FREE_DAILY_QUESTIONS as FREE_DAILY_LIMIT } from '@/lib/limits';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,8 +10,6 @@ const schema = z.object({
   answer: z.string().min(1),
   timeSpent: z.number().int().min(0),
 });
-
-const FREE_DAILY_LIMIT = 10;
 
 export async function POST(req: NextRequest) {
   try {
