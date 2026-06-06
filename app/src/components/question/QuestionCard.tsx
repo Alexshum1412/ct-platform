@@ -8,7 +8,7 @@
 import { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History, Lock } from 'lucide-react';
+import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History, Lock, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -25,10 +25,18 @@ import type { Question } from '@/types';
 interface QuestionCardProps {
   /** Объект вопроса с данными */
   question: Question;
-  /** Callback при выборе ответа */
-  onAnswer?: (answer: string) => void;
+  /**
+   * Callback при проверке ответа. Может вернуть boolean (или промис): false означает,
+   * что ответ НЕ принят (например, исчерпан дневной лимит) — карточка тогда НЕ
+   * раскрывает правильный ответ. void/true — принято.
+   */
+  onAnswer?: (answer: string) => void | boolean | Promise<void | boolean>;
   /** Callback с результатом проверки (правильно/неправильно) — для счётчика серии */
   onResult?: (correct: boolean) => void;
+  /** Дневной лимит исчерпан (free) — показываем CTA вместо «Проверить ответ» */
+  dailyExhausted?: boolean;
+  /** Открыть окно Premium (при исчерпанном лимите) */
+  onUpgrade?: () => void;
   /** Callback для показа теории по теме */
   onShowTheory?: () => void;
   /** Callback для перехода к следующему вопросу */
@@ -214,6 +222,8 @@ export const QuestionCard = memo(function QuestionCard({
   answerStats,
   blockId,
   onViewBlock,
+  dailyExhausted,
+  onUpgrade,
 }: QuestionCardProps) {
   // ---------------------------------------------------
   // СОСТОЯНИЕ КОМПОНЕНТА
@@ -231,6 +241,8 @@ export const QuestionCard = memo(function QuestionCard({
   const [usedHints, setUsedHints] = useState<Set<string>>(new Set());
   /** Показывать ли статистику ответов */
   const [showStats, setShowStats] = useState(false);
+  /** Идёт проверка (ожидаем ответ сервера) — блокируем повторные нажатия */
+  const [checking, setChecking] = useState(false);
 
   // Получаем функции из глобального store
   const { toggleFavorite, favorites, isQuestionSolved, getQuestionResult, addSolvedQuestion, requireAuth } = useAppStore();
@@ -270,19 +282,27 @@ export const QuestionCard = memo(function QuestionCard({
   // ---------------------------------------------------
 
   /** Проверить выбранный ответ */
-  const handleCheck = useCallback(() => {
-    if (!selectedAnswer) return;
+  const handleCheck = useCallback(async () => {
+    if (!selectedAnswer || checking || isAnswered) return;
     // Гость не может решать — показываем окно регистрации.
     if (!requireAuth('Войдите или зарегистрируйтесь, чтобы решать задания и сохранять прогресс.')) return;
     const correct = selectedAnswer === question.correctAnswer;
+    setChecking(true);
+    // Сервер — источник истины: раскрываем ответ ТОЛЬКО если он принят (onAnswer
+    // вернул не false). При исчерпании дневного лимита сервер/родитель вернёт false,
+    // и правильный ответ НЕ показывается, прогресс НЕ засчитывается.
+    let accepted: void | boolean;
+    try {
+      accepted = await onAnswer?.(selectedAnswer);
+    } finally {
+      setChecking(false);
+    }
+    if (accepted === false) return;
     setIsAnswered(true);
-    // Сохраняем результат в store
     addSolvedQuestion(question.id, correct);
-    // Показываем статистику с анимацией
     setShowStats(true);
-    onAnswer?.(selectedAnswer);
     onResult?.(correct);
-  }, [selectedAnswer, question.correctAnswer, question.id, addSolvedQuestion, onAnswer, onResult, requireAuth]);
+  }, [selectedAnswer, checking, isAnswered, question.correctAnswer, question.id, addSolvedQuestion, onAnswer, onResult, requireAuth]);
 
   /** Перейти к следующему вопросу, сбросить состояние */
   const handleNext = useCallback(() => {
@@ -699,14 +719,30 @@ export const QuestionCard = memo(function QuestionCard({
         
         {/* Actions */}
         {!locked ? (
-          <Button
-            onClick={handleCheck}
-            disabled={!selectedAnswer}
-            className="w-full"
-            size="lg"
-          >
-            Проверить ответ
-          </Button>
+          dailyExhausted ? (
+            <div className="space-y-2">
+              <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 text-sm text-center">
+                Дневной лимит бесплатных заданий исчерпан. Ответы откроются завтра — или сразу с Premium.
+              </div>
+              <Button
+                onClick={onUpgrade}
+                className="w-full bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white font-semibold"
+                size="lg"
+              >
+                <Crown className="w-4 h-4 mr-2" />
+                Оформить Premium
+              </Button>
+            </div>
+          ) : (
+            <Button
+              onClick={handleCheck}
+              disabled={!selectedAnswer || checking}
+              className="w-full"
+              size="lg"
+            >
+              {checking ? 'Проверяем…' : 'Проверить ответ'}
+            </Button>
+          )
         ) : (
           <motion.div
             initial={{ opacity: 0, height: 0 }}

@@ -13,6 +13,10 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  /** Машиночитаемый код ошибки от backend (например, DAILY_LIMIT_REACHED) */
+  code?: string;
+  /** HTTP-статус ответа (для надёжной обработки 402/403/429 и т.п.) */
+  status?: number;
 }
 
 export async function apiClient<T>(
@@ -56,10 +60,12 @@ export async function apiClient<T>(
       return {
         error: data?.error || 'Произошла ошибка',
         message: data?.message,
+        code: data?.code,
+        status: response.status,
       };
     }
 
-    return { data: (data?.data ?? data) as T };
+    return { data: (data?.data ?? data) as T, status: response.status };
   } catch (err) {
     clearTimeout(timeoutId);
     if (err instanceof Error && err.name === 'AbortError') {

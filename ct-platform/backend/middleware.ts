@@ -138,7 +138,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const response = NextResponse.next();
+  // Нет валидного токена: вычищаем возможные подставные заголовки идентичности,
+  // чтобы клиент не мог выдать себя за другого пользователя на публичных роутах
+  // (например, /api/contact). x-user-id выставляется ТОЛЬКО из проверенного токена.
+  const cleanHeaders = new Headers(request.headers);
+  cleanHeaders.delete('x-user-id');
+  cleanHeaders.delete('x-user-role');
+  const response = NextResponse.next({ request: { headers: cleanHeaders } });
   response.headers.set('Access-Control-Allow-Origin', origin);
   return response;
 }

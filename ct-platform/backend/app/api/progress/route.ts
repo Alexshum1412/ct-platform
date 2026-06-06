@@ -29,12 +29,30 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
     if (!user) return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
 
-    // Freemium gating: free users limited to 10 questions/day
-    if (user.plan === 'FREE') {
-      const today = new Date().toISOString().split('T')[0];
-      const daily = await prisma.dailyProgress.findUnique({ where: { userId_date: { userId, date: today } } });
+    const question = await prisma.question.findUnique({ where: { id: parsed.data.questionId } });
+    if (!question) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
 
-      if (daily && daily.count >= FREE_DAILY_LIMIT) {
+    const isFree = user.plan === 'FREE';
+    const today = new Date().toISOString().split('T')[0];
+    let dailyCount: number | null = null;
+
+    // Freemium gating: free users limited to FREE_DAILY_LIMIT questions/day.
+    // АТОМАРНО «бронируем» слот: increment выполняется одной UPDATE-операцией с
+    // условием count < limit (Postgres блокирует строку), поэтому параллельные
+    // запросы не могут превысить лимит (защита от гонок и обхода).
+    if (isFree) {
+      // гарантируем существование строки на сегодня (без гонки благодаря upsert)
+      await prisma.dailyProgress.upsert({
+        where: { userId_date: { userId, date: today } },
+        create: { userId, date: today, count: 0 },
+        update: {},
+      });
+      const reserved = await prisma.dailyProgress.updateMany({
+        where: { userId, date: today, count: { lt: FREE_DAILY_LIMIT } },
+        data: { count: { increment: 1 } },
+      });
+      if (reserved.count === 0) {
+        // лимит исчерпан — НЕ записываем прогресс
         return NextResponse.json({
           error: 'Дневной лимит исчерпан',
           code: 'DAILY_LIMIT_REACHED',
@@ -43,9 +61,6 @@ export async function POST(req: NextRequest) {
         }, { status: 402 });
       }
     }
-
-    const question = await prisma.question.findUnique({ where: { id: parsed.data.questionId } });
-    if (!question) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
 
     const prevAttempts = await prisma.userProgress.count({ where: { userId, questionId: parsed.data.questionId } });
     const isCorrect = parsed.data.answer === question.correctAnswer;
@@ -65,27 +80,20 @@ export async function POST(req: NextRequest) {
       ...(xpGain > 0 ? [prisma.user.update({ where: { id: userId }, data: { xp: { increment: xpGain } } })] : []),
     ]);
 
-    // Update daily progress counter
-    if (user.plan === 'FREE') {
-      const today = new Date().toISOString().split('T')[0];
-      await prisma.dailyProgress.upsert({
-        where: { userId_date: { userId, date: today } },
-        update: { count: { increment: 1 } },
-        create: { userId, date: today, count: 1 },
-      });
+    // Свежий дневной счётчик — необязательно (не валим запрос при сбое чтения).
+    if (isFree) {
+      try {
+        const fresh = await prisma.dailyProgress.findUnique({ where: { userId_date: { userId, date: today } } });
+        dailyCount = fresh?.count ?? null;
+      } catch { dailyCount = null; }
     }
-
-    // Get updated daily count
-    const today = new Date().toISOString().split('T')[0];
-    const daily = await prisma.dailyProgress.findUnique({ where: { userId_date: { userId, date: today } } });
-    const dailyCount = daily?.count ?? (user.plan === 'FREE' ? 1 : null);
 
     return NextResponse.json({
       progress,
       isCorrect,
       xpGain,
-      dailyCount: user.plan === 'FREE' ? dailyCount : null,
-      dailyLimit: user.plan === 'FREE' ? FREE_DAILY_LIMIT : null,
+      dailyCount: isFree ? dailyCount : null,
+      dailyLimit: isFree ? FREE_DAILY_LIMIT : null,
     }, { status: 201 });
   } catch (error) {
     console.error('Create progress error:', error);

@@ -201,10 +201,21 @@ export function PracticePage() {
   const matchedSolvedCount = matched.reduce((n, q) => n + (solvedIdSet.has(q.id) ? 1 : 0), 0);
   const allSolved = matched.length > 0 && matchedSolvedCount === matched.length;
 
-  // Принимает САМ отвеченный вопрос — в режиме «Лента» отвечают любую карточку,
-  // а не текущую по индексу (иначе прогресс/сабмит писались бы не на тот вопрос).
-  const handleAnswer = async (answer: string, question: Question) => {
-    if (!question) return;
+  // Лимит исчерпан (free, по серверным данным dailyLimit) — для блокировки решения.
+  const dailyExhausted = !!dailyLimit && !dailyLimit.isPremium && (dailyLimit.remaining ?? 1) <= 0;
+
+  // Принимает САМ отвеченный вопрос (в «Ленте» отвечают любую карточку).
+  // ВОЗВРАЩАЕТ true, только если ответ ПРИНЯТ сервером. При исчерпании дневного
+  // лимита (или ошибке) возвращает false — тогда карточка НЕ раскрывает ответ.
+  // Это закрывает обход: бесплатный пользователь не может смотреть ответы сверх лимита.
+  const handleAnswer = async (answer: string, question: Question): Promise<boolean> => {
+    if (!question) return false;
+
+    // Предпроверка по серверной правде (без лишнего запроса): лимит уже исчерпан.
+    if (dailyLimit && !dailyLimit.isPremium && (dailyLimit.remaining ?? 0) <= 0) {
+      setShowPremiumModal(true);
+      return false;
+    }
 
     const timeSpent = Math.round((Date.now() - questionStartTimeRef.current) / 1000);
 
@@ -214,14 +225,21 @@ export function PracticePage() {
         token
       );
 
-      if (result.error?.includes('Дневной лимит') || (result as { error?: string; code?: string }).code === 'DAILY_LIMIT_REACHED') {
+      // Сервер отказал по лимиту — не раскрываем ответ, помечаем лимит исчерпанным.
+      if (result.status === 402 || result.code === 'DAILY_LIMIT_REACHED' || result.error?.includes('Дневной лимит')) {
+        setDailyLimit(prev => prev ? { ...prev, count: prev.limit, remaining: 0 } : prev);
         setShowPremiumModal(true);
-        return;
+        return false;
+      }
+      // Иная ошибка (сеть/сервер/верификация) — тоже не раскрываем ответ.
+      if (result.error) {
+        addNotification({ type: 'error', title: 'Не удалось сохранить ответ', message: result.error });
+        return false;
       }
 
-      // Update daily limit in state
-      const data = result.data as { dailyCount?: number; dailyLimit?: number; isCorrect?: boolean } | undefined;
-      if (dailyLimit && data?.dailyCount !== undefined && data.dailyCount !== null) {
+      // Обновляем дневной лимит из ответа сервера (источник истины).
+      const data = result.data as { dailyCount?: number } | undefined;
+      if (dailyLimit && data?.dailyCount != null) {
         setDailyLimit(prev => prev ? { ...prev, count: data.dailyCount!, remaining: Math.max(0, prev.limit - data.dailyCount!) } : prev);
       }
     }
@@ -230,6 +248,7 @@ export function PracticePage() {
     if (answer === question.correctAnswer) {
       setCorrectAnswers(prev => new Set(prev).add(question.id));
     }
+    return true;
   };
 
   const handleNext = () => {
@@ -392,6 +411,8 @@ export function PracticePage() {
             onResult={handleResult}
             onReport={() => setReportQuestionId(q.id)}
             onShowTheory={q.topicId ? () => navigate(`/theory/${slug}/${q.topicId}`) : undefined}
+            dailyExhausted={dailyExhausted}
+            onUpgrade={() => setShowPremiumModal(true)}
           />
         </motion.div>
       ))}
@@ -423,6 +444,8 @@ export function PracticePage() {
             onNext={handleNext}
             onReport={() => setReportQuestionId(currentQuestion.id)}
             onShowTheory={currentQuestion.topicId ? () => navigate(`/theory/${slug}/${currentQuestion.topicId}`) : undefined}
+            dailyExhausted={dailyExhausted}
+            onUpgrade={() => setShowPremiumModal(true)}
           />
         </motion.div>
       </AnimatePresence>

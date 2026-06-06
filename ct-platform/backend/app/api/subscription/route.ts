@@ -54,6 +54,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 400 });
     }
 
+    // БЕЗОПАСНОСТЬ: платёжный провайдер ещё не подключён, поэтому этот эндпоинт
+    // активирует Premium «в демо-режиме» без реальной оплаты. В ПРОДАКШЕНЕ это
+    // открыло бы бесплатный Premium всем. Поэтому демо-активация разрешена только
+    // вне production или при явном флаге ALLOW_DEMO_PREMIUM=true. Когда появится
+    // реальная оплата — проверяйте здесь подтверждение платежа и снимите гейт.
+    const demoAllowed = process.env.ALLOW_DEMO_PREMIUM === 'true' || process.env.NODE_ENV !== 'production';
+    if (!demoAllowed) {
+      return NextResponse.json(
+        { error: 'Онлайн-оплата ещё не подключена. Напишите в поддержку, чтобы оформить Premium.', code: 'PAYMENT_NOT_CONFIGURED' },
+        { status: 503 },
+      );
+    }
+
     const planDef = PLANS[parsed.data.plan];
     const tier = parsed.data.plan === 'yearly' ? 'PREMIUM_YEARLY' : 'PREMIUM_MONTHLY';
     const now = new Date(); // ← время покупки

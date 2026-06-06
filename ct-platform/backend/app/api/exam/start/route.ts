@@ -28,8 +28,10 @@ export async function POST(req: NextRequest) {
 
     if (user.plan === 'FREE') {
       const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+      // Считаем ВСЕ начатые сегодня попытки (а не только завершённые) — иначе free
+      // мог запустить несколько экзаменов до завершения и обойти лимит «1 в день».
       const todayExamsCount = await prisma.examAttempt.count({
-        where: { userId, startedAt: { gte: dayStart }, isCompleted: true },
+        where: { userId, startedAt: { gte: dayStart } },
       });
       if (todayExamsCount >= 1) {
         return NextResponse.json({
