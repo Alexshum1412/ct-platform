@@ -10,6 +10,11 @@ const START_BALANCE = 100;
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
+function nextUtcMidnightISO() {
+  const d = new Date();
+  d.setUTCHours(24, 0, 0, 0);
+  return d.toISOString();
+}
 
 function parseGame(value: string | null): string | null {
   return value && (GAMES as readonly string[]).includes(value) ? value : null;
@@ -32,8 +37,9 @@ export async function GET(req: NextRequest) {
     });
     const used = row?.count ?? 0;
     const remaining = isPremium ? null : Math.max(0, FREE_DAILY_RESETS - used);
+    const nextResetAt = !isPremium && remaining === 0 ? nextUtcMidnightISO() : null;
 
-    return NextResponse.json({ isPremium, used, remaining, allowed: isPremium || remaining! > 0 });
+    return NextResponse.json({ isPremium, used, remaining, nextResetAt, allowed: isPremium || remaining! > 0 });
   } catch (error) {
     console.error('Get game reset status error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
@@ -53,6 +59,13 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
     const isPremium = !!user && user.plan !== 'FREE';
 
+    // Сбрасываем постоянный баланс к стартовому.
+    const resetBalanceRow = () => prisma.gameBalance.upsert({
+      where: { userId_game: { userId, game } },
+      update: { balance: START_BALANCE },
+      create: { userId, game, balance: START_BALANCE },
+    });
+
     // Premium — без ограничений; считаем для статистики, но не блокируем.
     if (isPremium) {
       await prisma.gameReset.upsert({
@@ -60,7 +73,8 @@ export async function POST(req: NextRequest) {
         create: { userId, game, date: today(), count: 1 },
         update: { count: { increment: 1 } },
       });
-      return NextResponse.json({ allowed: true, balance: START_BALANCE, isPremium: true, remaining: null });
+      await resetBalanceRow();
+      return NextResponse.json({ allowed: true, balance: START_BALANCE, isPremium: true, remaining: null, nextResetAt: null });
     }
 
     // Не-Premium: атомарно проверяем дневной лимит.
@@ -81,12 +95,15 @@ export async function POST(req: NextRequest) {
       create: { userId, game, date, count: 1 },
       update: { count: { increment: 1 } },
     });
+    await resetBalanceRow();
 
+    const remaining = Math.max(0, FREE_DAILY_RESETS - (used + 1));
     return NextResponse.json({
       allowed: true,
       balance: START_BALANCE,
       isPremium: false,
-      remaining: Math.max(0, FREE_DAILY_RESETS - (used + 1)),
+      remaining,
+      nextResetAt: remaining === 0 ? nextUtcMidnightISO() : null,
     });
   } catch (error) {
     console.error('Game reset error:', error);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { registerSchema } from '@/lib/validation';
-import { sendEmail, getWelcomeEmail } from '@/lib/email';
+import { issueVerificationCode } from '@/lib/verification';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
-    // Create user
+    // Create user — email НЕ подтверждён (emailVerified = null)
     const user = await prisma.user.create({
       data: {
         name,
@@ -51,16 +51,17 @@ export async function POST(req: NextRequest) {
         email: true,
         role: true,
         plan: true,
+        emailVerified: true,
         createdAt: true,
       },
     });
 
-    // Send welcome email
-    const { subject, html } = getWelcomeEmail(name || 'Ученик');
-    await sendEmail({ to: email, subject, html });
+    // Выдаём 6-значный код подтверждения и отправляем письмо.
+    // devCode возвращается ТОЛЬКО если SMTP не настроен (для разработки).
+    const { devCode } = await issueVerificationCode(user.id, user.email, user.name);
 
     return NextResponse.json(
-      { message: 'Регистрация успешна', user },
+      { message: 'Регистрация успешна. Подтвердите email кодом из письма.', user, needsVerification: true, devCode },
       { status: 201 }
     );
   } catch (error) {

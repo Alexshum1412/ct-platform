@@ -54,11 +54,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate token
+    // Generate token (с признаком подтверждения email для middleware)
     const token = generateToken({
       userId: user.id,
       email: user.email,
       role: user.role as 'USER' | 'ADMIN' | 'MODERATOR',
+      verified: !!user.emailVerified,
     });
 
     // Update last login
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
         email: user.email,
         role: user.role,
         plan: user.plan,
+        emailVerified: user.emailVerified,
         xp: user.xp,
         level: user.level,
         streakDays: user.streakDays,

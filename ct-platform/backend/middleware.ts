@@ -7,6 +7,7 @@ const protectedRoutes = [
   '/api/users/stats',
   '/api/users/daily',
   '/api/users/achievements',
+  '/api/users/progress',
   '/api/progress',
   '/api/reports',
   '/api/users/favorites',
@@ -15,11 +16,22 @@ const protectedRoutes = [
   '/api/exam/history',
   '/api/leaderboard/me',
   '/api/games/reset',
+  '/api/games/balance',
   '/api/subscription',
+  '/api/auth/verify-email',
+  '/api/auth/resend-code',
 ];
 
 const adminRoutes = [
   '/api/admin',
+];
+
+// Защищённые маршруты, доступные ДО подтверждения email (нужны для самого процесса
+// подтверждения и для показа профиля). Остальные защищённые требуют verified=true.
+const unverifiedAllowed = [
+  '/api/auth/verify-email',
+  '/api/auth/resend-code',
+  '/api/users/me',
 ];
 
 function getSecret() {
@@ -31,6 +43,7 @@ interface TokenPayload {
   userId: string;
   email: string;
   role: string;
+  verified?: boolean;
 }
 
 async function verifyJwt(token: string): Promise<TokenPayload | null> {
@@ -83,6 +96,17 @@ export async function middleware(request: NextRequest) {
     if (isAdmin && payload.role !== 'ADMIN') {
       return NextResponse.json(
         { error: 'Доступ запрещён' },
+        { status: 403, headers: { 'Access-Control-Allow-Origin': origin } }
+      );
+    }
+
+    // Блокируем функции для пользователей с неподтверждённым email.
+    // payload.verified === false только у новых (post-feature) неподтверждённых
+    // токенов; у старых токенов поле отсутствует (undefined) — их не трогаем.
+    const isUnverifiedAllowed = unverifiedAllowed.some(route => pathname.startsWith(route));
+    if (!isAdmin && !isUnverifiedAllowed && payload.verified === false) {
+      return NextResponse.json(
+        { error: 'Подтвердите email, чтобы пользоваться этой функцией', code: 'EMAIL_NOT_VERIFIED' },
         { status: 403, headers: { 'Access-Control-Allow-Origin': origin } }
       );
     }

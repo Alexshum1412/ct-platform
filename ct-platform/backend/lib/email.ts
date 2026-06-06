@@ -54,6 +54,23 @@ export function getWelcomeEmail(name: string): { subject: string; html: string }
   };
 }
 
+export function getVerificationEmail(name: string, code: string): { subject: string; html: string } {
+  return {
+    subject: `Код подтверждения CT-Platform: ${code}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #3b82f6;">Подтверждение email</h1>
+        <p>Здравствуйте, ${name}!</p>
+        <p>Ваш код подтверждения для CT-Platform:</p>
+        <div style="font-size: 34px; font-weight: 800; letter-spacing: 10px; text-align: center; background: #f3f4f6; padding: 18px; border-radius: 12px; margin: 18px 0; color: #111827;">
+          ${code}
+        </div>
+        <p style="color:#6b7280;">Код действует 15 минут и используется один раз. Если вы не регистрировались на CT-Platform — просто проигнорируйте это письмо.</p>
+      </div>
+    `,
+  };
+}
+
 export function getStreakReminderEmail(name: string, streakDays: number): { subject: string; html: string } {
   return {
     subject: 'Не прерывайте серию! 🔥',

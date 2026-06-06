@@ -43,6 +43,8 @@ model User {
   achievements  UserAchievement[]
   dailyProgress DailyProgress[]
   gameResets    GameReset[]
+  gameBalances  GameBalance[]
+  verificationCodes VerificationCode[]
 
   xp            Int       @default(0)
   level         Int       @default(1)
@@ -542,4 +544,38 @@ model GameReset {
 
   @@unique([userId, game, date])
   @@map("game_resets")
+}
+
+// Постоянный баланс демо-игр (рулетка/блэкджек) — сохраняется между сессиями.
+// game = 'roulette' | 'blackjack'.
+model GameBalance {
+  id        String   @id @default(cuid())
+  userId    String
+  game      String
+  balance   Int      @default(100)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, game])
+  @@map("game_balances")
+}
+
+// Одноразовый код подтверждения email (6 цифр). Храним только bcrypt-хэш кода,
+// с TTL, счётчиком попыток и отметкой об использовании (защита от повтора).
+model VerificationCode {
+  id         String    @id @default(cuid())
+  userId     String
+  codeHash   String
+  purpose    String    @default("EMAIL_VERIFY")
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("verification_codes")
 }

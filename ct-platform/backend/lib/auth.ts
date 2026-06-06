@@ -13,6 +13,8 @@ export interface TokenPayload {
   userId: string;
   email: string;
   role: 'USER' | 'ADMIN' | 'MODERATOR';
+  /** Подтверждён ли email. Используется middleware для блокировки функций. */
+  verified?: boolean;
 }
 
 export async function hashPassword(password: string): Promise<string> {
