@@ -60,6 +60,19 @@ export function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [achievementFilter, setAchievementFilter] = useState<'all' | 'unlocked' | 'locked'>('all');
+  // Настройки уведомлений — реальное (локально сохраняемое) предпочтение пользователя.
+  const [notifPrefs, setNotifPrefs] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('notif-prefs') || 'null');
+      if (saved && typeof saved === 'object') return saved;
+    } catch { /* ignore */ }
+    return { email: true, reminder: true, achievements: true };
+  });
+  const toggleNotif = (key: string) => setNotifPrefs((p) => {
+    const next = { ...p, [key]: !(p[key] ?? true) };
+    try { localStorage.setItem('notif-prefs', JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
+  });
 
   const loadData = useCallback(async () => {
     if (!token) return;
@@ -433,11 +446,19 @@ export function ProfilePage() {
                     { label: 'Напоминания о ежедневной практике', key: 'reminder' },
                     { label: 'Достижения и награды', key: 'achievements' },
                   ].map(({ label, key }) => (
-                    <div key={key} className="flex items-center justify-between">
+                    <label key={key} className="flex items-center justify-between cursor-pointer">
                       <span className="text-sm">{label}</span>
-                      <input type="checkbox" defaultChecked className="w-4 h-4" />
-                    </div>
+                      <input
+                        type="checkbox"
+                        checked={notifPrefs[key] ?? true}
+                        onChange={() => toggleNotif(key)}
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                    </label>
                   ))}
+                  <p className="text-xs text-muted-foreground pt-1">
+                    Настройки сохраняются на этом устройстве. Email-рассылка включится после подключения почтового сервиса.
+                  </p>
                 </CardContent>
               </Card>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper } from 'lucide-react';
@@ -48,7 +48,13 @@ export function PracticePage() {
   // Подписка на решённые задания — чтобы реактивно показать экран «всё решено».
   const solvedQuestions = useAppStore(state => state.solvedQuestions);
 
-  const [filteredQuestions, setFilteredQuestions] = useState<Question[]>([]);
+  // Скрывать уже решённые задания (по умолчанию ДА): при повторном входе пользователь
+  // продолжает с нерешённых и не «вспоминает», где остановился. Учёт — по предмету
+  // (на странице практики всегда задания одного предмета).
+  const [hideSolved, setHideSolved] = useState<boolean>(() => localStorage.getItem('practice-hide-solved') !== '0');
+  // Снимок решённых ID для скрытия. Обновляется при загрузке/смене фильтров, НЕ во
+  // время сессии — иначе только что отвеченная карточка исчезала бы до показа разбора.
+  const [skipSet, setSkipSet] = useState<Set<string>>(new Set());
   useEffect(() => {
     questionStartTimeRef.current = Date.now();
   }, []);
@@ -73,7 +79,6 @@ export function PracticePage() {
     ])
       .then(([questionsData, topicsData]) => {
         setAllQuestions(questionsData);
-        setFilteredQuestions(questionsData);
         setTopics(topicsData);
       })
       .finally(() => setIsLoading(false));
@@ -127,40 +132,58 @@ export function PracticePage() {
   const topicsWithQuestions = topics.filter(t => (topicQCount[t.id] || 0) > 0);
   const subtopicsWithQuestions = subtopics.filter(s => (subtopicQCount[s.id] || 0) > 0);
 
-  // Filter questions
-  useEffect(() => {
-    let filtered = [...allQuestions];
+  // matched — все задания, прошедшие активные фильтры и сортировку (без учёта hideSolved).
+  const matched = useMemo(() => {
+    let f = [...allQuestions];
     // Error-retrain mode (from exam results) — restrict to the given question IDs.
     if (idsParam) {
       const idSet = new Set(idsParam.split(',').filter(Boolean));
-      filtered = filtered.filter(q => idSet.has(q.id));
+      f = f.filter(q => idSet.has(q.id));
     }
-    if (selectedTopic !== 'all') filtered = filtered.filter(q => q.topicId === selectedTopic);
-    if (selectedSubtopic !== 'all') filtered = filtered.filter(q => q.subtopicId === selectedSubtopic);
-    if (selectedDifficulty !== 'all') filtered = filtered.filter(q => q.difficulty === parseInt(selectedDifficulty));
-    if (selectedPart !== 'all') filtered = filtered.filter(q => q.part === selectedPart);
-    if (selectedSection !== 'all') filtered = filtered.filter(q => q.section === selectedSection);
-    if (onlyFavorites) filtered = filtered.filter(q => favorites.includes(q.id));
-    // Sorting
-    if (sortBy === 'difficulty-asc') filtered.sort((a, b) => a.difficulty - b.difficulty);
-    else if (sortBy === 'difficulty-desc') filtered.sort((a, b) => b.difficulty - a.difficulty);
-    else if (sortBy === 'newest') filtered.sort((a, b) => {
+    if (selectedTopic !== 'all') f = f.filter(q => q.topicId === selectedTopic);
+    if (selectedSubtopic !== 'all') f = f.filter(q => q.subtopicId === selectedSubtopic);
+    if (selectedDifficulty !== 'all') f = f.filter(q => q.difficulty === parseInt(selectedDifficulty));
+    if (selectedPart !== 'all') f = f.filter(q => q.part === selectedPart);
+    if (selectedSection !== 'all') f = f.filter(q => q.section === selectedSection);
+    if (onlyFavorites) f = f.filter(q => favorites.includes(q.id));
+    if (sortBy === 'difficulty-asc') f.sort((a, b) => a.difficulty - b.difficulty);
+    else if (sortBy === 'difficulty-desc') f.sort((a, b) => b.difficulty - a.difficulty);
+    else if (sortBy === 'newest') f.sort((a, b) => {
       const da = new Date((a as { createdAt?: string }).createdAt || 0).getTime();
       const db = new Date((b as { createdAt?: string }).createdAt || 0).getTime();
       return db - da;
     });
-    setFilteredQuestions(filtered);
-    // If a question is deep-linked (?question=id), focus it within the filtered
-    // list; otherwise start at the top. Done here (after filtering) so it isn't
-    // clobbered by a separate effect, and so the index matches filteredQuestions.
-    const focusIdx = questionId ? filtered.findIndex(q => q.id === questionId) : -1;
-    setCurrentQuestionIndex(focusIdx >= 0 ? focusIdx : 0);
-    setFeedCount(10); // новая выборка — начинаем ленту заново
-  }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, favorites, allQuestions, idsParam, questionId]);
+    return f;
+  }, [allQuestions, idsParam, selectedTopic, selectedSubtopic, selectedDifficulty, selectedPart, selectedSection, onlyFavorites, favorites, sortBy]);
 
-  // A deep-linked single question (?question=id) must show in single mode so the
-  // focused index is actually visible. Don't persist — leave the saved preference.
-  useEffect(() => { if (questionId) setPracticeMode('single'); }, [questionId]);
+  const solvedIdSet = useMemo(() => new Set(solvedQuestions.map(s => s.questionId)), [solvedQuestions]);
+
+  // Видимые задания: при hideSolved скрываем решённые ПО СНИМКУ (skipSet), чтобы текущая
+  // карточка не исчезала сразу после ответа (снимок не меняется во время сессии).
+  const filteredQuestions = useMemo(
+    () => (hideSolved ? matched.filter(q => !skipSet.has(q.id)) : matched),
+    [matched, hideSolved, skipSet],
+  );
+  const hiddenSolvedCount = hideSolved ? matched.reduce((n, q) => n + (skipSet.has(q.id) ? 1 : 0), 0) : 0;
+
+  // На смену ВЫБОРА фильтров/настройки скрытия — пересоздаём снимок скрытия и
+  // сбрасываем позицию. Зависим от явных значений фильтров (НЕ от matched/favorites),
+  // чтобы добавление задания в избранное ⭐ не сбрасывало позицию практики.
+  useEffect(() => {
+    if (isLoading) return;
+    setSkipSet(new Set(useAppStore.getState().solvedQuestions.map(s => s.questionId)));
+    const focusIdx = questionId ? matched.findIndex(q => q.id === questionId) : -1;
+    setCurrentQuestionIndex(focusIdx >= 0 ? focusIdx : 0);
+    setFeedCount(10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTopic, selectedSubtopic, selectedDifficulty, sortBy, selectedPart, selectedSection, onlyFavorites, idsParam, questionId, hideSolved, isLoading]);
+
+  // A deep-linked single question (?question=id) must show in single mode AND not be
+  // hidden by the "skip solved" filter, so the focused question is actually visible.
+  useEffect(() => { if (questionId) { setPracticeMode('single'); setHideSolved(false); } }, [questionId]);
+
+  // Запоминаем предпочтение «скрывать решённые».
+  useEffect(() => { localStorage.setItem('practice-hide-solved', hideSolved ? '1' : '0'); }, [hideSolved]);
 
   // Load subtopics when topic changes
   useEffect(() => {
@@ -173,12 +196,10 @@ export function PracticePage() {
 
   const currentQuestion = filteredQuestions[currentQuestionIndex];
 
-  // Сколько заданий из текущей выборки уже решено (по сохранённому прогрессу).
-  const solvedIdSet = new Set(solvedQuestions.map((s) => s.questionId));
-  const solvedInFilter = filteredQuestions.reduce((n, q) => n + (solvedIdSet.has(q.id) ? 1 : 0), 0);
-  // Все задания выборки решены — показываем поздравительный экран вместо
-  // бесконечного перерешивания последнего задания.
-  const allSolved = filteredQuestions.length > 0 && solvedInFilter === filteredQuestions.length;
+  // Все задания выборки (matched, до скрытия решённых) решены — показываем
+  // поздравительный экран вместо бесконечного перерешивания последнего задания.
+  const matchedSolvedCount = matched.reduce((n, q) => n + (solvedIdSet.has(q.id) ? 1 : 0), 0);
+  const allSolved = matched.length > 0 && matchedSolvedCount === matched.length;
 
   // Принимает САМ отвеченный вопрос — в режиме «Лента» отвечают любую карточку,
   // а не текущую по индексу (иначе прогресс/сабмит писались бы не на тот вопрос).
@@ -235,6 +256,7 @@ export function PracticePage() {
       void fetchUserStats();
     }
     clearLocalProgress();
+    setSkipSet(new Set()); // решённые снова видны — можно перерешать
     setAnsweredQuestions(new Set());
     setCorrectAnswers(new Set());
     setStreak(0);
@@ -317,10 +339,10 @@ export function PracticePage() {
           </div>
           <h3 className="text-xl font-bold mb-1">Вы решили все задания! 🎉</h3>
           <p className="text-muted-foreground mb-4 max-w-md mx-auto">
-            Все {filteredQuestions.length} {filteredQuestions.length === 1 ? 'задание' : 'заданий'} из выбранной
-            подборки пройдены. Решённые задания повторно решать нельзя — {filtersActive
-              ? 'сбросьте фильтры или выберите другую тему.'
-              : 'выберите другой предмет или загляните в теорию.'}
+            Все {matched.length} {matched.length === 1 ? 'задание' : 'заданий'} из выбранной
+            подборки пройдены. {filtersActive
+              ? 'Сбросьте фильтры или выберите другую тему.'
+              : 'Выберите другой предмет, загляните в теорию или сбросьте прогресс, чтобы пройти заново.'}
           </p>
           <div className="flex flex-wrap gap-3 justify-center">
             {filtersActive && (
@@ -343,6 +365,8 @@ export function PracticePage() {
       {practiceMode === 'feed' && <QuestionSkeleton />}
     </div>
   ) : filteredQuestions.length === 0 ? (
+    // Всё решено → показываем только поздравительный баннер (он рендерится выше).
+    allSolved ? null : (
     <Card className="p-12 text-center">
       <Inbox className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-30" />
       <h3 className="text-lg font-semibold mb-2">Заданий не нашлось</h3>
@@ -357,6 +381,7 @@ export function PracticePage() {
         <Button variant="outline" onClick={resetFilters}>Сбросить фильтры</Button>
       )}
     </Card>
+    )
   ) : practiceMode === 'feed' ? (
     <div className="space-y-6">
       {filteredQuestions.slice(0, feedCount).map((q) => (
@@ -638,6 +663,22 @@ export function PracticePage() {
                       <span className="text-xs">{favorites.length}</span>
                     </button>
                   )}
+
+                  {/* Hide-solved toggle — по умолчанию решённые скрыты */}
+                  <button
+                    onClick={() => setHideSolved(v => !v)}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border-2 transition-all ${
+                      hideSolved
+                        ? 'border-primary/50 bg-primary/5 text-primary'
+                        : 'border-border hover:border-primary/30'
+                    }`}
+                    title="Скрывать уже решённые задания, чтобы продолжать с новых"
+                  >
+                    <span className="text-sm font-medium flex items-center gap-1.5">
+                      {hideSolved ? '🙈 Скрывать решённые' : '👁 Показывать решённые'}
+                    </span>
+                    {hideSolved && hiddenSolvedCount > 0 && <span className="text-xs">скрыто {hiddenSolvedCount}</span>}
+                  </button>
 
                   {/* Part A/B Filter */}
                   <div>

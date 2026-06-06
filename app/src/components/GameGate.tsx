@@ -38,11 +38,12 @@ function GateShell({ children }: { children: ReactNode }) {
 export function GameGate({ game, children }: { game: string; children: ReactNode }) {
   const user = useAppStore((s) => s.user);
   const token = useAppStore((s) => s.token);
-  const solvedQuestions = useAppStore((s) => s.solvedQuestions);
+  // Накопительный счётчик решённых заданий (переживает сброс прогресса), чтобы
+  // разблокированные игры не блокировались снова после сброса.
+  const solved = useAppStore((s) => s.gamesProgressCount);
 
   const signedIn = !!user || !!token;
   const isPremium = !!user && user.plan !== 'FREE';
-  const solved = solvedQuestions.length;
 
   // Гость — стена регистрации.
   if (!signedIn) {

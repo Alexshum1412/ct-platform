@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, FileText, Award, Play, ClipboardList } from 'lucide-react';
+import { ArrowLeft, Clock, FileText, Award, Play, ClipboardList, CheckCircle2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSubjectBySlug, fetchExamsBySubjectId, type ExamSummary } from '@/data/subjects';
 import { CardRowsSkeleton } from '@/components/Skeletons';
 import { useAppStore } from '@/store/useAppStore';
+import { examApi } from '@/lib/api/client';
 
 /** Список пробных экзаменов по предмету. Пользователь выбирает конкретный экзамен. */
 export function ExamListPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const requireAuth = useAppStore((s) => s.requireAuth);
+  const token = useAppStore((s) => s.token);
   // Запуск экзамена — только для зарегистрированных. Гостю показываем окно регистрации.
   const startExam = (examId: string) => {
     if (!requireAuth('Войдите или зарегистрируйтесь, чтобы проходить пробные экзамены.')) return;
@@ -21,12 +23,21 @@ export function ExamListPage() {
   const subject = slug ? getSubjectBySlug(slug) : undefined;
   const [exams, setExams] = useState<ExamSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // ID экзаменов, уже решённых пользователем (для пометки «решён ранее»).
+  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!subject) return;
     setIsLoading(true);
     void fetchExamsBySubjectId(subject.id).then(setExams).finally(() => setIsLoading(false));
   }, [subject]);
+
+  useEffect(() => {
+    if (!subject || !token) return;
+    void examApi.getCompleted(token, subject.id).then(r => {
+      if (r.data?.examIds) setCompletedIds(new Set(r.data.examIds));
+    });
+  }, [subject, token]);
 
   if (!subject) {
     return (
@@ -88,7 +99,14 @@ export function ExamListPage() {
                 <Card className="h-full overflow-hidden transition-shadow hover:shadow-lg">
                   <div className="h-1.5 w-full" style={{ background: subject.color }} />
                   <CardContent className="p-5 flex flex-col h-full">
-                    <h3 className="text-lg font-bold mb-1">{e.title}</h3>
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <h3 className="text-lg font-bold">{e.title}</h3>
+                      {completedIds.has(e.id) && (
+                        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 text-xs font-medium">
+                          <CheckCircle2 className="w-3.5 h-3.5" />Решён
+                        </span>
+                      )}
+                    </div>
                     {e.description && <p className="text-sm text-muted-foreground mb-4">{e.description}</p>}
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-5 mt-auto">
                       <span className="flex items-center gap-1.5"><FileText className="w-4 h-4" />{e.questionCount} заданий</span>
@@ -100,7 +118,9 @@ export function ExamListPage() {
                       style={{ background: subject.color }}
                       onClick={() => startExam(e.id)}
                     >
-                      <Play className="w-4 h-4" />Начать экзамен
+                      {completedIds.has(e.id)
+                        ? <><RotateCcw className="w-4 h-4" />Пройти заново</>
+                        : <><Play className="w-4 h-4" />Начать экзамен</>}
                     </Button>
                   </CardContent>
                 </Card>

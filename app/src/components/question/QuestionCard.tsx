@@ -335,7 +335,18 @@ export const QuestionCard = memo(function QuestionCard({
   };
   
   return (
-    <Card className="overflow-hidden">
+    <Card
+      className="overflow-hidden"
+      onKeyDown={(e) => {
+        // Enter подтверждает ответ (и для введённого текста, и для выбранного варианта).
+        // Событие приходит от сфокусированного элемента внутри этой карточки, поэтому
+        // в режиме «Лента» срабатывает только активная карточка.
+        if (e.key === 'Enter' && !e.shiftKey && !locked && selectedAnswer) {
+          e.preventDefault();
+          handleCheck();
+        }
+      }}
+    >
       <CardHeader className="pb-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">

@@ -237,11 +237,17 @@ export const subscriptionApi = {
 
 // Exam API
 export const examApi = {
-  start: (subjectId: string, token: string) =>
-    apiClient('/exam/start', { method: 'POST', body: { subjectId }, token }),
+  start: (subjectId: string, token: string, examId?: string) =>
+    apiClient('/exam/start', { method: 'POST', body: { subjectId, examId }, token }),
 
   submit: (attemptId: string, answers: Record<string, string>, token: string) =>
     apiClient('/exam/submit', { method: 'POST', body: { attemptId, answers }, token }),
 
   getHistory: (token: string) => apiClient('/exam/history', { token }),
+
+  // ID уже завершённых пробных экзаменов (для пометки «решён ранее»)
+  getCompleted: (token: string, subjectId?: string) =>
+    apiClient<{ examIds: string[] }>(
+      `/exam/completed${subjectId ? `?subjectId=${subjectId}` : ''}`, { token },
+    ),
 };

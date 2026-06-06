@@ -88,7 +88,7 @@ export function ExamPage() {
     if (!requireAuth('Войдите или зарегистрируйтесь, чтобы проходить пробные экзамены.')) return;
     setExamLimitError(null);
     if (token && subject) {
-      const result = await examApi.start(subject.id, token);
+      const result = await examApi.start(subject.id, token, examId);
       if (result.error) {
         if ((result as { code?: string }).code === 'EXAM_LIMIT_REACHED' || result.error.includes('лимит') || result.error.includes('Бесплатный')) {
           setExamLimitError(result.error);

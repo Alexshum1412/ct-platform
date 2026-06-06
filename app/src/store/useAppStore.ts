@@ -75,6 +75,9 @@ interface AppState {
   
   // Solved questions - хранит ID решенных заданий и результат
   solvedQuestions: Array<{ questionId: string; isCorrect: boolean; solvedAt: string }>;
+  // Накопительный счётчик когда-либо решённых заданий — для разблокировки игр.
+  // НЕ обнуляется сбросом прогресса (иначе рулетка/блэкджек снова бы блокировались).
+  gamesProgressCount: number;
   addSolvedQuestion: (questionId: string, isCorrect: boolean) => void;
   isQuestionSolved: (questionId: string) => boolean;
   getQuestionResult: (questionId: string) => boolean | null;
@@ -280,20 +283,22 @@ export const useAppStore = create<AppState>()(
       
       // Solved questions - отслеживание решенных заданий
       solvedQuestions: [],
+      gamesProgressCount: 0,
       addSolvedQuestion: (questionId, isCorrect) => {
-        const { solvedQuestions, addXp, unlockAchievement, checkStreak } = get();
-        
+        const { solvedQuestions, gamesProgressCount, addXp, unlockAchievement, checkStreak } = get();
+
         // Проверяем, не решено ли уже это задание
         const alreadySolved = solvedQuestions.find(q => q.questionId === questionId);
-        
+
         if (!alreadySolved) {
           const newSolved = {
             questionId,
             isCorrect,
             solvedAt: new Date().toISOString(),
           };
-          
-          set({ solvedQuestions: [...solvedQuestions, newSolved] });
+
+          // Накопительный счётчик для разблокировки игр растёт всегда (и переживает сброс).
+          set({ solvedQuestions: [...solvedQuestions, newSolved], gamesProgressCount: gamesProgressCount + 1 });
           
           // Начисляем XP за решение
           addXp(isCorrect ? 10 : 2);
@@ -501,6 +506,7 @@ export const useAppStore = create<AppState>()(
         favorites: state.favorites,
         recentQuestions: state.recentQuestions,
         solvedQuestions: state.solvedQuestions,
+        gamesProgressCount: state.gamesProgressCount,
         gamification: state.gamification,
         reportedQuestions: state.reportedQuestions,
         isPremium: state.isPremium,
@@ -513,7 +519,11 @@ export const useAppStore = create<AppState>()(
       // isAuthenticated isn't persisted (derived state); restore it from the saved
       // token so a page reload doesn't log the user out of the UI.
       onRehydrateStorage: () => (state) => {
-        if (state) state.isAuthenticated = !!state.token;
+        if (state) {
+          state.isAuthenticated = !!state.token;
+          // Grandfather: у существующих пользователей счётчик игр = число решённых.
+          if (!state.gamesProgressCount) state.gamesProgressCount = state.solvedQuestions?.length || 0;
+        }
       },
     }
   )
