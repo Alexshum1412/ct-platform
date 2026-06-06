@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const schema = z.object({
   subjectId: z.string().min(1),
+  examId: z.string().optional(), // конкретный пробный экзамен из списка
 });
 
 export async function POST(req: NextRequest) {
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       data: {
         userId,
         subjectId: parsed.data.subjectId,
+        examId: parsed.data.examId ?? null,
         score: 0,
         maxScore: 0,
         percentage: 0,

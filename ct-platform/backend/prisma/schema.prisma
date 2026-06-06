@@ -276,6 +276,7 @@ model ExamAttempt {
   id              String   @id @default(cuid())
   userId          String
   subjectId       String
+  examId          String?  // конкретный пробный экзамен (Exam.id), если запущен из списка
 
   score           Int
   maxScore        Int
