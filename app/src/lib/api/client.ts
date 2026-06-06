@@ -82,6 +82,16 @@ export const authApi = {
     return Promise.resolve({ data: { success: true } });
   },
 
+  // Email verification
+  verifyEmail: (code: string, token: string) =>
+    apiClient<{ success: boolean; token: string; user: unknown; alreadyVerified?: boolean }>(
+      '/auth/verify-email', { method: 'POST', body: { code }, token },
+    ),
+  resendCode: (token: string) =>
+    apiClient<{ success: boolean; message: string; devCode?: string }>(
+      '/auth/resend-code', { method: 'POST', token },
+    ),
+
   getToken: () => localStorage.getItem('token'),
   setToken: (token: string) => localStorage.setItem('token', token),
 };
@@ -149,9 +159,15 @@ export const userApi = {
   
   addFavorite: (questionId: string, token: string) =>
     apiClient('/users/favorites', { method: 'POST', body: { questionId }, token }),
-  
+
   removeFavorite: (questionId: string, token: string) =>
     apiClient(`/users/favorites/${questionId}`, { method: 'DELETE', token }),
+
+  // Полный сброс учебного прогресса (ответы, достижения, xp/уровень/серия)
+  resetProgress: (token: string) =>
+    apiClient<{ success: boolean; deletedAnswers: number; deletedAchievements: number }>(
+      '/users/progress', { method: 'DELETE', token },
+    ),
 };
 
 // Global team click-counter API (public, no auth).
@@ -185,16 +201,26 @@ export const clicksApi = {
   },
 };
 
-// Demo-game balance reset API (auth-protected daily limit; premium = unlimited)
+// Demo-game balance API (persisted balance + auth-protected daily reset limit; premium = unlimited)
+export interface GameResetStatus {
+  isPremium: boolean;
+  used: number;
+  remaining: number | null;
+  nextResetAt: string | null;
+  allowed: boolean;
+}
 export const gamesApi = {
   getResetStatus: (game: 'roulette' | 'blackjack', token: string) =>
-    apiClient<{ isPremium: boolean; used: number; remaining: number | null; allowed: boolean }>(
-      `/games/reset?game=${game}`, { token },
-    ),
+    apiClient<GameResetStatus>(`/games/reset?game=${game}`, { token }),
   reset: (game: 'roulette' | 'blackjack', token: string) =>
-    apiClient<{ allowed: boolean; balance: number; isPremium: boolean; remaining: number | null }>(
+    apiClient<{ allowed: boolean; balance: number; isPremium: boolean; remaining: number | null; nextResetAt: string | null }>(
       '/games/reset', { method: 'POST', body: { game }, token },
     ),
+  // Постоянный баланс (сохраняется между сессиями)
+  getBalance: (game: 'roulette' | 'blackjack', token: string) =>
+    apiClient<{ balance: number; reset: GameResetStatus }>(`/games/balance?game=${game}`, { token }),
+  saveBalance: (game: 'roulette' | 'blackjack', balance: number, token: string) =>
+    apiClient<{ balance: number }>('/games/balance', { method: 'PUT', body: { game, balance }, token }),
 };
 
 // Subscription / Premium API

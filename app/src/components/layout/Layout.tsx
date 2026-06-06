@@ -8,6 +8,7 @@ import { NightTicker } from '@/components/NightTicker';
 import { AuthGateModal } from '@/components/AuthGateModal';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { PremiumReminder } from '@/components/PremiumReminder';
+import { VerifyEmailBanner } from '@/components/VerifyEmailBanner';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -30,6 +31,8 @@ export function Layout({ children }: LayoutProps) {
       {/* In Focus mode the global header is hidden, so the offset is removed too.
           On mobile, pb-16 leaves room for the bottom tab bar. */}
       <main className={focusMode ? '' : 'pt-16 pb-16 lg:pb-0'}>
+        {/* Напоминание подтвердить email (для вошедших, но не подтверждённых) */}
+        <VerifyEmailBanner />
         {children}
         {/* Командный кликер — общий счётчик в самом низу каждой страницы
             (скрыт в фокус-режиме, чтобы не отвлекать) */}

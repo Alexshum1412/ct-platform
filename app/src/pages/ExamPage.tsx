@@ -20,6 +20,7 @@ export function ExamPage() {
     setFocusMode,
     examSidebarCollapsed,
     setExamSidebarCollapsed,
+    requireAuth,
   } = useAppStore();
 
   const subject = slug ? getSubjectBySlug(slug) : undefined;
@@ -82,6 +83,9 @@ export function ExamPage() {
   const [examLimitError, setExamLimitError] = useState<string | null>(null);
 
   const handleStart = async () => {
+    // Экзамен — только для зарегистрированных с подтверждённым email
+    // (защита и от прямого перехода по ссылке).
+    if (!requireAuth('Войдите или зарегистрируйтесь, чтобы проходить пробные экзамены.')) return;
     setExamLimitError(null);
     if (token && subject) {
       const result = await examApi.start(subject.id, token);

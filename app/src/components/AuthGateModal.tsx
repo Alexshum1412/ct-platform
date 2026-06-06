@@ -10,7 +10,7 @@
  */
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Lock, X, UserPlus, LogIn, CheckCircle2 } from 'lucide-react';
+import { Lock, X, UserPlus, LogIn, CheckCircle2, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -23,7 +23,10 @@ const perks = [
 
 export function AuthGateModal() {
   const navigate = useNavigate();
-  const { authGateOpen, authGateMessage, closeAuthGate } = useAppStore();
+  const { authGateOpen, authGateMessage, closeAuthGate, user, token } = useAppStore();
+
+  // Режим «подтвердите email»: пользователь вошёл, но почта не подтверждена.
+  const needsVerification = !!(user || token) && !!user && !user.emailVerified;
 
   const go = (path: string) => {
     closeAuthGate();
@@ -58,41 +61,57 @@ export function AuthGateModal() {
               </button>
               <div className="flex items-center gap-3 mb-1">
                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center shrink-0">
-                  <Lock className="w-7 h-7" />
+                  {needsVerification ? <MailCheck className="w-7 h-7" /> : <Lock className="w-7 h-7" />}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">Нужна регистрация</h2>
-                  <p className="text-white/80 text-sm">Доступно только участникам платформы</p>
+                  <h2 className="text-xl font-bold">{needsVerification ? 'Подтвердите email' : 'Нужна регистрация'}</h2>
+                  <p className="text-white/80 text-sm">{needsVerification ? 'Остался один шаг до доступа' : 'Доступно только участникам платформы'}</p>
                 </div>
               </div>
             </div>
 
             {/* Body */}
-            <div className="p-6">
-              <p className="text-sm text-muted-foreground mb-4">
-                {authGateMessage
-                  ? authGateMessage
-                  : 'Чтобы пользоваться этой функцией, войдите или создайте бесплатный аккаунт — это займёт меньше минуты.'}
-              </p>
-
-              <div className="space-y-2.5 mb-6">
-                {perks.map((p) => (
-                  <div key={p} className="flex items-center gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
-                    <span className="text-sm">{p}</span>
-                  </div>
-                ))}
+            {needsVerification ? (
+              <div className="p-6">
+                <p className="text-sm text-muted-foreground mb-4">
+                  {authGateMessage || 'Эта функция станет доступна после подтверждения почты.'}
+                  {' '}Мы отправили 6-значный код на <span className="font-medium text-foreground">{user?.email}</span>.
+                </p>
+                <Button className="w-full gap-2" size="lg" onClick={() => go('/verify-email')}>
+                  <MailCheck className="w-4 h-4" />
+                  Ввести код подтверждения
+                </Button>
+                <Button variant="ghost" className="w-full mt-2 text-muted-foreground" onClick={closeAuthGate}>
+                  Позже
+                </Button>
               </div>
+            ) : (
+              <div className="p-6">
+                <p className="text-sm text-muted-foreground mb-4">
+                  {authGateMessage
+                    ? authGateMessage
+                    : 'Чтобы пользоваться этой функцией, войдите или создайте бесплатный аккаунт — это займёт меньше минуты.'}
+                </p>
 
-              <Button className="w-full gap-2" size="lg" onClick={() => go('/register')}>
-                <UserPlus className="w-4 h-4" />
-                Зарегистрироваться бесплатно
-              </Button>
-              <Button variant="outline" className="w-full gap-2 mt-2" onClick={() => go('/login')}>
-                <LogIn className="w-4 h-4" />
-                У меня уже есть аккаунт
-              </Button>
-            </div>
+                <div className="space-y-2.5 mb-6">
+                  {perks.map((p) => (
+                    <div key={p} className="flex items-center gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                      <span className="text-sm">{p}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Button className="w-full gap-2" size="lg" onClick={() => go('/register')}>
+                  <UserPlus className="w-4 h-4" />
+                  Зарегистрироваться бесплатно
+                </Button>
+                <Button variant="outline" className="w-full gap-2 mt-2" onClick={() => go('/login')}>
+                  <LogIn className="w-4 h-4" />
+                  У меня уже есть аккаунт
+                </Button>
+              </div>
+            )}
           </motion.div>
         </motion.div>
       )}

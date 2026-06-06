@@ -69,6 +69,9 @@ const RegisterPage = lazy(() => import('@/pages/RegisterPage').then(m => ({ defa
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 
+/** Подтверждение email 6-значным кодом */
+const VerifyEmailPage = lazy(() => import('@/pages/VerifyEmailPage').then(m => ({ default: m.VerifyEmailPage })));
+
 /** Страница профиля пользователя */
 const ProfilePage = lazy(() => import('@/pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
@@ -180,6 +183,7 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
 
               {/* 
                 ПРОФИЛЬ И ДОСТИЖЕНИЯ 

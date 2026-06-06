@@ -92,12 +92,18 @@ export function LoginPage() {
     const result = await login(email, password);
 
     if (result.success) {
-      addNotification({
-        type: 'success',
-        title: 'Добро пожаловать!',
-        message: 'Вы успешно вошли в систему',
-      });
-      navigate('/');
+      // Если email не подтверждён — ведём на ввод кода, иначе на главную.
+      const verified = !!useAppStore.getState().user?.emailVerified;
+      if (!verified) {
+        navigate('/verify-email');
+      } else {
+        addNotification({
+          type: 'success',
+          title: 'Добро пожаловать!',
+          message: 'Вы успешно вошли в систему',
+        });
+        navigate('/');
+      }
     } else {
       setFormError(result.error || 'Ошибка входа');
     }

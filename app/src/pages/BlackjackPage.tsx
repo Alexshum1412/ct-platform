@@ -10,7 +10,7 @@
  * Полноценная логика: раздача, hit / stand / double, подсчёт очков (туз 1/11),
  * блэкджек 3:2, правила, таблица шансов и подсказки, история последних рук.
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -108,6 +108,12 @@ function CardView({ card, hidden, delay = 0 }: { card?: PlayingCard; hidden?: bo
   );
 }
 
+// Человекочитаемое время следующего доступного сброса.
+function formatResetTime(iso: string | null): string {
+  if (!iso) return 'завтра';
+  return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 function BlackjackGame() {
   const { token } = useAppStore();
   const [balance, setBalance] = useState(START_BALANCE);
@@ -124,14 +130,31 @@ function BlackjackGame() {
   const [showHelp, setShowHelp] = useState(false);
 
   const [resetting, setResetting] = useState(false);
-  const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean } | null>(null);
+  const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean; nextResetAt: string | null } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const lastSavedRef = useRef<number | null>(null);
 
-  const loadResetStatus = useCallback(async () => {
-    if (!token) { setResetInfo(null); return; }
-    const r = await gamesApi.getResetStatus('blackjack', token);
-    if (r.data) setResetInfo({ remaining: r.data.remaining, isPremium: r.data.isPremium });
+  // Загружаем сохранённый баланс (постоянный, между сессиями) + статус сброса.
+  const loadBalance = useCallback(async () => {
+    if (!token) { setResetInfo(null); setLoaded(true); return; }
+    const r = await gamesApi.getBalance('blackjack', token);
+    if (r.data) {
+      setBalance(r.data.balance);
+      lastSavedRef.current = r.data.balance;
+      setResetInfo({ remaining: r.data.reset.remaining, isPremium: r.data.reset.isPremium, nextResetAt: r.data.reset.nextResetAt });
+    }
+    setLoaded(true);
   }, [token]);
-  useEffect(() => { void loadResetStatus(); }, [loadResetStatus]);
+  useEffect(() => { void loadBalance(); }, [loadBalance]);
+
+  // Сохраняем баланс на сервере между раундами (не во время хода игрока),
+  // чтобы он пережил перезагрузку и новые сессии.
+  useEffect(() => {
+    if (!loaded || !token || phase === 'player') return;
+    if (lastSavedRef.current === balance) return;
+    lastSavedRef.current = balance;
+    void gamesApi.saveBalance('blackjack', balance, token);
+  }, [balance, phase, loaded, token]);
 
   const playerScore = useMemo(() => handScore(player), [player]);
   const dealerScore = useMemo(() => handScore(holeHidden ? dealer.slice(0, 1) : dealer), [dealer, holeHidden]);
@@ -259,12 +282,14 @@ function BlackjackGame() {
     const res = await gamesApi.reset('blackjack', token);
     setResetting(false);
     if (res.data?.allowed) {
-      setBalance(res.data.balance ?? START_BALANCE);
-      setResetInfo({ remaining: res.data.remaining, isPremium: res.data.isPremium });
+      const nb = res.data.balance ?? START_BALANCE;
+      setBalance(nb);
+      lastSavedRef.current = nb; // сервер уже сохранил баланс при сбросе
+      setResetInfo({ remaining: res.data.remaining, isPremium: res.data.isPremium, nextResetAt: res.data.nextResetAt });
       setFlash({ text: 'Баланс пополнен до 100 💎', positive: true });
     } else {
       setFlash({ text: res.error || 'Сброс на сегодня недоступен', positive: false });
-      void loadResetStatus();
+      void loadBalance();
     }
   };
 
@@ -313,7 +338,7 @@ function BlackjackGame() {
           </div>
           <p className="text-sm text-sky-800 dark:text-sky-200/90 leading-relaxed">
             <strong>Это демо-игра на виртуальные бриллианты 💎.</strong> Без реальных денег, ставок и валюты.
-            Валюта отдельная от рулетки. При обновлении страницы баланс снова станет равен {START_BALANCE}.
+            Валюта отдельная от рулетки. Баланс сохраняется между сессиями.
           </p>
         </motion.div>
 
@@ -369,10 +394,12 @@ function BlackjackGame() {
                   <p className="text-[11px] text-center text-muted-foreground mt-2 flex items-center justify-center gap-1">
                     {resetInfo?.isPremium && <Crown className="w-3 h-3 text-amber-500" />}
                     {!token
-                      ? 'Войдите, чтобы пополнять баланс. Обновление страницы всегда даёт 100.'
+                      ? 'Войдите, чтобы сохранять баланс между сессиями.'
                       : resetInfo?.isPremium
                         ? 'Premium: безлимитный сброс (при нулевом балансе).'
-                        : `Сброс при нуле: осталось ${resetInfo ? resetInfo.remaining : '…'} сегодня · Free 1/день.`}
+                        : resetInfo && resetInfo.remaining === 0
+                          ? `Лимит сброса на сегодня исчерпан. Следующий — ${formatResetTime(resetInfo.nextResetAt)}.`
+                          : `Сброс при нуле: осталось ${resetInfo ? resetInfo.remaining : '…'} сегодня · Free 1/день.`}
                   </p>
                 </div>
 

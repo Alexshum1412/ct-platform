@@ -27,7 +27,9 @@ const messages = [
 export function PremiumReminder() {
   const user = useAppStore((s) => s.user);
   const focusMode = useAppStore((s) => s.focusMode);
-  const isFree = !!user && user.plan === 'FREE';
+  // Напоминаем о Premium только подтверждённым бесплатным пользователям
+  // (неподтверждённым сначала показываем баннер подтверждения email).
+  const isFree = !!user && user.plan === 'FREE' && !!user.emailVerified;
 
   const [open, setOpen] = useState(false);
   const [msgIndex, setMsgIndex] = useState(0);

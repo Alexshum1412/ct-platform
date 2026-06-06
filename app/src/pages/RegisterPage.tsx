@@ -67,10 +67,11 @@ export function RegisterPage() {
     if (result.success) {
       addNotification({
         type: 'success',
-        title: 'Добро пожаловать!',
-        message: 'Регистрация прошла успешно',
+        title: 'Аккаунт создан!',
+        message: 'Подтвердите email, чтобы открыть доступ',
       });
-      navigate('/');
+      // Переходим к вводу кода подтверждения (devCode прокидываем для dev-режима).
+      navigate('/verify-email', { state: { devCode: result.devCode } });
     } else {
       setFormError(result.error || 'Ошибка регистрации');
     }

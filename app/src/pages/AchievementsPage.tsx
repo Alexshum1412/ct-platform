@@ -176,7 +176,7 @@ export function AchievementsPage() {
                   <p className="text-sm text-muted-foreground">Неограниченные задания и буст XP</p>
                 </div>
               </div>
-              <Button onClick={() => navigate('/contact')} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
+              <Button onClick={() => navigate('/payment')} className="bg-amber-500 hover:bg-amber-600 text-white shrink-0">
                 <Crown className="w-4 h-4 mr-2" />Попробовать Premium
               </Button>
             </CardContent>

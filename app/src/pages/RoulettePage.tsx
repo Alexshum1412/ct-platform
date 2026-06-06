@@ -10,7 +10,7 @@
  * дюжина / колонка), вращение колеса, определение выигрыша, расчёт выплат,
  * история спинов, правила, таблица вероятностей и подсказки.
  */
-import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -78,6 +78,12 @@ const ODDS_TABLE = [
   { name: '1–18 / 19–36', cover: '18 из 37', payout: '1 : 1', chance: '48.65%' },
 ];
 
+// Человекочитаемое время следующего доступного сброса.
+function formatResetTime(iso: string | null): string {
+  if (!iso) return 'завтра';
+  return new Date(iso).toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+}
+
 const cellColorCls = (n: number) =>
   n === 0 ? 'bg-emerald-600 hover:bg-emerald-500'
     : RED.has(n) ? 'bg-red-600 hover:bg-red-500'
@@ -130,19 +136,36 @@ function RouletteGame() {
   const [showHelp, setShowHelp] = useState(false);
   const [zoom, setZoom] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean } | null>(null);
+  const [resetInfo, setResetInfo] = useState<{ remaining: number | null; isPremium: boolean; nextResetAt: string | null } | null>(null);
+  const [loaded, setLoaded] = useState(false);
+  const lastSavedRef = useRef<number | null>(null);
 
   // В увеличенном режиме крутим медленнее — удобнее наблюдать за остановкой стрелки.
   const spinSec = zoom ? 6.8 : 4.2;
 
-  const loadResetStatus = useCallback(async () => {
-    if (!token) { setResetInfo(null); return; }
-    const r = await gamesApi.getResetStatus('roulette', token);
-    if (r.data) setResetInfo({ remaining: r.data.remaining, isPremium: r.data.isPremium });
+  // Загружаем сохранённый баланс (постоянный, между сессиями) + статус сброса.
+  const loadBalance = useCallback(async () => {
+    if (!token) { setResetInfo(null); setLoaded(true); return; }
+    const r = await gamesApi.getBalance('roulette', token);
+    if (r.data) {
+      setBalance(r.data.balance);
+      lastSavedRef.current = r.data.balance;
+      setResetInfo({ remaining: r.data.reset.remaining, isPremium: r.data.reset.isPremium, nextResetAt: r.data.reset.nextResetAt });
+    }
+    setLoaded(true);
   }, [token]);
-  useEffect(() => { void loadResetStatus(); }, [loadResetStatus]);
+  useEffect(() => { void loadBalance(); }, [loadBalance]);
 
   const totalBet = useMemo(() => Object.values(bets).reduce((a, b) => a + b, 0), [bets]);
+
+  // Сохраняем баланс на сервере в «чистом» состоянии (нет ставок и не крутится),
+  // чтобы он пережил перезагрузку и новые сессии.
+  useEffect(() => {
+    if (!loaded || !token || spinning || totalBet !== 0) return;
+    if (lastSavedRef.current === balance) return;
+    lastSavedRef.current = balance;
+    void gamesApi.saveBalance('roulette', balance, token);
+  }, [balance, spinning, totalBet, loaded, token]);
 
   const wheelGradient = useMemo(() => {
     const stops = WHEEL.map((n, i) => {
@@ -202,14 +225,16 @@ function RouletteGame() {
     const res = await gamesApi.reset('roulette', token);
     setResetting(false);
     if (res.data?.allowed) {
-      setBalance(res.data.balance ?? START_BALANCE);
+      const nb = res.data.balance ?? START_BALANCE;
+      setBalance(nb);
+      lastSavedRef.current = nb; // сервер уже сохранил баланс при сбросе
       setBets({});
       setStack([]);
-      setResetInfo({ remaining: res.data.remaining, isPremium: res.data.isPremium });
+      setResetInfo({ remaining: res.data.remaining, isPremium: res.data.isPremium, nextResetAt: res.data.nextResetAt });
       setFlash({ text: 'Баланс пополнен до 100 монет 🎉', positive: true });
     } else {
       setFlash({ text: res.error || 'Сброс на сегодня недоступен', positive: false });
-      void loadResetStatus();
+      void loadBalance();
     }
   };
 
@@ -412,8 +437,8 @@ function RouletteGame() {
           </div>
           <p className="text-sm text-amber-800 dark:text-amber-200/90 leading-relaxed">
             <strong>Это демонстрация на виртуальные монеты.</strong> Без реальных ставок, без настоящих денег
-            и без какой-либо валюты или платёжной системы. Баланс — условные «золотые монеты», которые
-            при обновлении страницы снова станут равны {START_BALANCE}. Игра создана только для развлечения.
+            и без какой-либо валюты или платёжной системы. Баланс — условные «золотые монеты»,
+            он сохраняется между сессиями. Игра создана только для развлечения.
           </p>
         </motion.div>
 
@@ -507,10 +532,12 @@ function RouletteGame() {
                   <p className="text-[11px] text-center text-muted-foreground flex items-center justify-center gap-1">
                     {resetInfo?.isPremium && <Crown className="w-3 h-3 text-amber-500" />}
                     {!token
-                      ? 'Войдите, чтобы пополнять баланс. Обновление страницы всегда даёт 100.'
+                      ? 'Войдите, чтобы сохранять баланс между сессиями.'
                       : resetInfo?.isPremium
                         ? 'Premium: безлимитный сброс (при нулевом балансе).'
-                        : `Сброс при нуле: осталось ${resetInfo ? resetInfo.remaining : '…'} сегодня · Free 1/день.`}
+                        : resetInfo && resetInfo.remaining === 0
+                          ? `Лимит сброса на сегодня исчерпан. Следующий — ${formatResetTime(resetInfo.nextResetAt)}.`
+                          : `Сброс при нуле: осталось ${resetInfo ? resetInfo.remaining : '…'} сегодня · Free 1/день.`}
                   </p>
                 </div>
 

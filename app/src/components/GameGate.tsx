@@ -11,7 +11,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, Crown, BookOpen, ArrowLeft, UserPlus, Sparkles } from 'lucide-react';
+import { Lock, Crown, BookOpen, ArrowLeft, UserPlus, Sparkles, MailCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -63,6 +63,29 @@ export function GameGate({ game, children }: { game: string; children: ReactNode
             </Button>
             <Button asChild variant="outline" size="lg" className="w-full gap-2 mt-2">
               <Link to="/login">Войти</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </GateShell>
+    );
+  }
+
+  // Вошёл, но email не подтверждён — сначала подтверждение.
+  if (user && !user.emailVerified) {
+    return (
+      <GateShell>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
+              <MailCheck className="w-8 h-8 text-primary" />
+            </div>
+            <h1 className="text-2xl font-bold mb-2">Подтвердите email</h1>
+            <p className="text-muted-foreground mb-6">
+              Мини-игра «{game}» откроется после подтверждения почты. Введите код,
+              который мы отправили на ваш email.
+            </p>
+            <Button asChild size="lg" className="w-full gap-2">
+              <Link to="/verify-email"><MailCheck className="w-4 h-4" />Ввести код</Link>
             </Button>
           </CardContent>
         </Card>

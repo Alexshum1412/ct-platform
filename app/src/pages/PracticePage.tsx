@@ -11,7 +11,7 @@ import { QuestionCard } from '@/components/question/QuestionCard';
 import { PremiumModal } from '@/components/PremiumModal';
 import { ReportModal } from '@/components/question/ReportModal';
 import { getSubjectBySlug, fetchQuestionsBySubjectId, fetchTopicsBySubjectId, fetchSubtopicsByTopicId } from '@/data/subjects';
-import { questionsApi, dailyApi } from '@/lib/api/client';
+import { questionsApi, dailyApi, userApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 import type { Question, Topic, DailyLimit } from '@/types';
 
@@ -29,7 +29,11 @@ export function PracticePage() {
     setFocusMode,
     practiceSidebarCollapsed,
     setPracticeSidebarCollapsed,
+    clearLocalProgress,
+    fetchUserStats,
+    addNotification,
   } = useAppStore();
+  const [resetting, setResetting] = useState(false);
   const questionStartTimeRef = useRef<number>(0);
   const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [topics, setTopics] = useState<Topic[]>([]);
@@ -221,13 +225,25 @@ export function PracticePage() {
     }
   };
 
-  const handleReset = () => {
+  // Полный сброс прогресса: чистим серверные ответы/достижения/геймификацию,
+  // локальное состояние (решённые/серии) и обновляем статистику. После этого
+  // задания снова можно решать (снимается блокировка «уже решено»).
+  const handleReset = async () => {
+    setResetting(true);
+    if (token) {
+      await userApi.resetProgress(token);
+      void fetchUserStats();
+    }
+    clearLocalProgress();
     setAnsweredQuestions(new Set());
     setCorrectAnswers(new Set());
     setStreak(0);
+    setBestStreak(0);
     setCurrentQuestionIndex(0);
     resetFilters();
     setShowResetConfirm(false);
+    setResetting(false);
+    addNotification({ type: 'success', title: 'Прогресс сброшен', message: 'Все ответы очищены — можно решать заново.' });
   };
 
   // Сброс только фильтров/сортировки — прогресс сессии не трогаем.
@@ -475,19 +491,20 @@ export function PracticePage() {
                   <AlertTriangle className="w-5 h-5 text-destructive" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-lg mb-1">Сбросить прогресс?</h3>
+                  <h3 className="font-semibold text-lg mb-1">Сбросить весь прогресс?</h3>
                   <p className="text-sm text-muted-foreground">
-                    Будут сброшены все ответы в текущей сессии практики: {answeredQuestions.size} решённых заданий,
-                    точность {accuracy}%. Также сбросятся все фильтры. Это действие необратимо.
+                    Будут <strong>безвозвратно</strong> удалены все ваши ответы, статистика, достижения,
+                    XP, уровень и серии — и на этом устройстве, и на сервере. После сброса задания можно
+                    решать заново. Аккаунт, подписка и баланс игр не затрагиваются.
                   </p>
                 </div>
               </div>
               <div className="flex gap-3 mt-6">
-                <Button variant="outline" className="flex-1" onClick={() => setShowResetConfirm(false)}>
+                <Button variant="outline" className="flex-1" onClick={() => setShowResetConfirm(false)} disabled={resetting}>
                   Отмена
                 </Button>
-                <Button variant="destructive" className="flex-1" onClick={handleReset}>
-                  <RotateCcw className="w-4 h-4 mr-2" />Да, сбросить
+                <Button variant="destructive" className="flex-1" onClick={handleReset} disabled={resetting}>
+                  <RotateCcw className="w-4 h-4 mr-2" />{resetting ? 'Сброс…' : 'Да, сбросить'}
                 </Button>
               </div>
             </CardContent>

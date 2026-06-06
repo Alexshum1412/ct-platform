@@ -229,6 +229,8 @@ export interface User {
   role: UserRole;
   image?: string;
   plan: PlanType;
+  /** Дата подтверждения email (null/undefined — не подтверждён) */
+  emailVerified?: string | null;
   createdAt: Date;
   updatedAt: Date;
   city?: string;

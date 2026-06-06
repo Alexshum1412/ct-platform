@@ -28,7 +28,7 @@ interface AppState {
   
   // Auth actions
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; devCode?: string; needsVerification?: boolean }>;
   logout: () => void;
   
   // Navigation
@@ -78,6 +78,8 @@ interface AppState {
   addSolvedQuestion: (questionId: string, isCorrect: boolean) => void;
   isQuestionSolved: (questionId: string) => boolean;
   getQuestionResult: (questionId: string) => boolean | null;
+  /** Полный сброс локального прогресса (решённые, недавние, геймификация). */
+  clearLocalProgress: () => void;
   
   // Notifications
   notifications: Notification[];
@@ -166,13 +168,16 @@ export const useAppStore = create<AppState>()(
       
       register: async (name, email, password) => {
         const result = await authApi.register({ name, email, password });
-        
+
         if (result.error) {
           return { success: false, error: result.error };
         }
-        
-        // Auto login after registration
-        return get().login(email, password);
+
+        const data = result.data as { devCode?: string; needsVerification?: boolean } | undefined;
+        // Авто-вход после регистрации: выдаёт токен сессии (пользователь ещё НЕ
+        // подтверждён — emailVerified=null), чтобы он мог ввести код на /verify-email.
+        const loginRes = await get().login(email, password);
+        return { ...loginRes, devCode: data?.devCode, needsVerification: data?.needsVerification ?? true };
       },
       
       logout: () => {
@@ -313,6 +318,14 @@ export const useAppStore = create<AppState>()(
         const solved = solvedQuestions.find(q => q.questionId === questionId);
         return solved ? solved.isCorrect : null;
       },
+      clearLocalProgress: () => set({
+        solvedQuestions: [],
+        recentQuestions: [],
+        gamification: {
+          level: 1, xp: 0, totalXp: 0, streakDays: 0,
+          lastStudyDate: null, achievements: defaultAchievements, badges: [],
+        },
+      }),
       
       // Notifications
       notifications: [],
@@ -467,6 +480,12 @@ export const useAppStore = create<AppState>()(
         const { user, token } = get();
         const signedIn = !!user || !!token;
         if (!signedIn) {
+          set({ authGateOpen: true, authGateMessage: message ?? null });
+          return false;
+        }
+        // Зарегистрирован, но email не подтверждён — тоже не пускаем
+        // (AuthGateModal покажет вариант с подтверждением почты).
+        if (user && !user.emailVerified) {
           set({ authGateOpen: true, authGateMessage: message ?? null });
           return false;
         }

@@ -91,6 +91,27 @@ export function PaymentPage() {
     );
   }
 
+  // ---- Вошёл, но email не подтверждён ----
+  if (user && !user.emailVerified) {
+    return (
+      <Shell>
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Crown className="w-12 h-12 mx-auto mb-4 text-amber-500" />
+            <h1 className="text-2xl font-bold mb-2">Сначала подтвердите email</h1>
+            <p className="text-muted-foreground mb-6">
+              Оформить Premium можно после подтверждения почты. Введите код,
+              отправленный на ваш email.
+            </p>
+            <Button asChild size="lg" className="w-full">
+              <Link to="/verify-email">Ввести код подтверждения</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </Shell>
+    );
+  }
+
   // ---- Успешная покупка ----
   if (done) {
     return (
