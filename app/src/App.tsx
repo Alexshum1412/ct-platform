@@ -14,6 +14,7 @@ import { Suspense, lazy, Component, useEffect, type ReactNode, type ErrorInfo } 
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from '@/components/layout/Layout';
+import { MembersOnly } from '@/components/MembersOnly';
 import { HomePage } from '@/pages/HomePage';
 import './App.css';
 
@@ -171,9 +172,10 @@ function App() {
               <Route path="/practice/:slug" element={<PracticePage />} />
               <Route path="/exam/:slug" element={<ExamListPage />} />
               <Route path="/exam/:slug/:examId" element={<ExamPage />} />
+              {/* Теория — только для зарегистрированных с подтверждённым email */}
               {/* Единый каталог теории по всем предметам (static path — выше динамического /theory/:slug) */}
-              <Route path="/theory" element={<TheoryHubPage />} />
-              <Route path="/theory/:slug/:topicId?" element={<TheoryPage />} />
+              <Route path="/theory" element={<MembersOnly feature="Каталог теории"><TheoryHubPage /></MembersOnly>} />
+              <Route path="/theory/:slug/:topicId?" element={<MembersOnly feature="Теория"><TheoryPage /></MembersOnly>} />
 
               {/* 
                 АУТЕНТИФИКАЦИЯ 
@@ -206,7 +208,7 @@ function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/contact" element={<ContactPage />} />
               <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/theory/search" element={<TheorySearchPage />} />
+              <Route path="/theory/search" element={<MembersOnly feature="Поиск по теории"><TheorySearchPage /></MembersOnly>} />
 
               {/* Оплата Premium-подписки */}
               <Route path="/payment" element={<PaymentPage />} />

@@ -111,9 +111,10 @@ export function VerifyEmailPage() {
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 inputMode="numeric"
+                autoComplete="one-time-code"
                 autoFocus
                 placeholder="______"
-                className="w-full text-center text-3xl font-mono tracking-[0.5em] py-3 rounded-xl border-2 border-border bg-background focus:border-primary focus:outline-none"
+                className="w-full text-center text-2xl sm:text-3xl font-mono tracking-[0.4em] sm:tracking-[0.5em] py-3 rounded-xl border-2 border-border bg-background focus:border-primary focus:outline-none"
               />
               {error && <p className="text-sm text-red-500 text-center">{error}</p>}
               <Button type="submit" size="lg" className="w-full gap-2" disabled={code.length !== 6 || submitting}>

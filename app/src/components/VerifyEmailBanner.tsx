@@ -20,9 +20,9 @@ export function VerifyEmailBanner() {
       to="/verify-email"
       className="block bg-amber-500/95 text-amber-950 hover:bg-amber-500 transition-colors"
     >
-      <div className="container py-2 flex items-center justify-center gap-2 text-sm font-medium text-center">
+      <div className="container py-2 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-xs sm:text-sm font-medium text-center">
         <MailWarning className="w-4 h-4 shrink-0" />
-        <span>Подтвердите email, чтобы открыть практику, экзамены и игры.</span>
+        <span>Подтвердите email, чтобы открыть все функции.</span>
         <span className="inline-flex items-center gap-0.5 underline underline-offset-2 shrink-0">
           Ввести код<ChevronRight className="w-3.5 h-3.5" />
         </span>
