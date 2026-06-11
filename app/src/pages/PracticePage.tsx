@@ -13,6 +13,7 @@ import { ReportModal } from '@/components/question/ReportModal';
 import { getSubjectBySlug, fetchQuestionsBySubjectId, fetchTopicsBySubjectId, fetchSubtopicsByTopicId } from '@/data/subjects';
 import { questionsApi, dailyApi, userApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
+import { normalizeAnswer } from '@/lib/utils';
 import type { Question, Topic, DailyLimit } from '@/types';
 
 export function PracticePage() {
@@ -245,7 +246,8 @@ export function PracticePage() {
     }
 
     setAnsweredQuestions(prev => new Set(prev).add(question.id));
-    if (answer === question.correctAnswer) {
+    // Нормализованное сравнение — как на сервере (« 5», «0,5», регистр).
+    if (normalizeAnswer(answer) === normalizeAnswer(String(question.correctAnswer))) {
       setCorrectAnswers(prev => new Set(prev).add(question.id));
     }
     return true;

@@ -11,14 +11,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get('search') ?? '';
     const planFilter = searchParams.get('plan');
-    const limit = parseInt(searchParams.get('limit') ?? '50', 10);
-    const offset = parseInt(searchParams.get('offset') ?? '0', 10);
+    const limit = Math.min(200, Math.max(1, parseInt(searchParams.get('limit') ?? '50', 10) || 50));
+    const offset = Math.max(0, parseInt(searchParams.get('offset') ?? '0', 10) || 0);
 
     const where: Record<string, unknown> = {};
     if (search) {
       where.OR = [
-        { email: { contains: search } },
-        { name: { contains: search } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
       ];
     }
     if (planFilter && planFilter !== 'all') where.plan = planFilter;

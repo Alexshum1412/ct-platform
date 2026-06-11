@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'global';
     const subjectId = searchParams.get('subjectId');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    // NaN-безопасно + потолок: ?limit=100000 раньше выгружал всех пользователей.
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10));
 
     let leaderboard: any[] = [];
 

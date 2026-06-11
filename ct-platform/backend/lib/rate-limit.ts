@@ -64,6 +64,21 @@ export const clickLimiter = redisClient
       duration: 60,
     });
 
+// Limiter for the public contact form (DB-writing, unauthenticated):
+// 5 messages per hour per IP is plenty for a human, blocks scripted spam.
+export const contactLimiter = redisClient
+  ? new RateLimiterRedis({
+      storeClient: redisClient,
+      keyPrefix: 'contact_limit',
+      points: 5,
+      duration: 3600,
+    })
+  : new RateLimiterMemory({
+      keyPrefix: 'contact_limit',
+      points: 5,
+      duration: 3600,
+    });
+
 export async function checkRateLimit(
   limiter: RateLimiterRedis | RateLimiterMemory,
   key: string,

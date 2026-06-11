@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { registerSchema } from '@/lib/validation';
 import { issueVerificationCode } from '@/lib/verification';
+import { authLimiter, checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +21,17 @@ export async function POST(req: NextRequest) {
     }
 
     const { name, email, password } = result.data;
+
+    // Антиспам: регистрация создаёт пользователя и шлёт письмо — без лимита это
+    // вектор для забивания БД и рассылки писем (login/forgot уже ограничены).
+    const clientIp = req.headers.get('x-forwarded-for') || 'unknown';
+    const rateLimit = await checkRateLimit(authLimiter, `register:${clientIp}`);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Слишком много попыток. Попробуйте позже.' },
+        { status: 429 }
+      );
+    }
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({

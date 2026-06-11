@@ -38,7 +38,20 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.tags !== undefined) data.tags = typeof body.tags === 'string' ? body.tags : JSON.stringify(body.tags);
     if (body.hints !== undefined) data.hints = body.hints == null ? null : (typeof body.hints === 'string' ? body.hints : JSON.stringify(body.hints));
 
-    const question = await prisma.question.update({ where: { id: params.id }, data });
+    // Перенос в другой предмет должен переносить и денормализованный счётчик.
+    const prev = await prisma.question.findUnique({ where: { id: params.id }, select: { subjectId: true } });
+    if (!prev) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
+
+    const movingTo = typeof data.subjectId === 'string' && data.subjectId !== prev.subjectId ? data.subjectId : null;
+    const [question] = await prisma.$transaction([
+      prisma.question.update({ where: { id: params.id }, data }),
+      ...(movingTo
+        ? [
+            prisma.subject.updateMany({ where: { id: prev.subjectId, questionsCount: { gt: 0 } }, data: { questionsCount: { decrement: 1 } } }),
+            prisma.subject.update({ where: { id: movingTo }, data: { questionsCount: { increment: 1 } } }),
+          ]
+        : []),
+    ]);
     return NextResponse.json(formatQuestion(question));
   } catch (error) {
     console.error('Update question error:', error);
@@ -53,9 +66,18 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
     }
 
-    await prisma.question.delete({
-      where: { id: params.id },
-    });
+    // POST инкрементирует subject.questionsCount — удаление должно декрементировать
+    // (раньше счётчик навсегда «уплывал» вверх после каждого удаления).
+    const existing = await prisma.question.findUnique({ where: { id: params.id }, select: { subjectId: true } });
+    if (!existing) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
+
+    await prisma.$transaction([
+      prisma.question.delete({ where: { id: params.id } }),
+      prisma.subject.updateMany({
+        where: { id: existing.subjectId, questionsCount: { gt: 0 } },
+        data: { questionsCount: { decrement: 1 } },
+      }),
+    ]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

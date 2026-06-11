@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { updateProfileSchema } from '@/lib/validation';
+import { getEffectivePlan } from '@/lib/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,6 +11,10 @@ export async function GET(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 });
     }
+
+    // Лениво понижает план в БД, если подписка истекла, — профиль всегда
+    // показывает актуальный план.
+    await getEffectivePlan(userId);
 
     const user = await prisma.user.findUnique({
       where: { id: userId },

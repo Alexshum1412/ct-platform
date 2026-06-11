@@ -16,6 +16,11 @@ export const loginSchema = z.object({
   password: z.string().min(1, 'Введите пароль'),
 });
 
+// Уровень подсказки: принимаем строку ИЛИ массив строк, нормализуем к массиву.
+const hintList = z.union([z.string(), z.array(z.string())])
+  .transform((v) => (Array.isArray(v) ? v : [v]))
+  .optional();
+
 // Question validation schemas
 export const createQuestionSchema = z.object({
   subjectId: z.string(),
@@ -36,11 +41,18 @@ export const createQuestionSchema = z.object({
   imageUrl: z.string().optional(),
   images: z.array(z.string()).optional(),
   tags: z.array(z.string()).default([]),
+  // Подсказки хранятся и читаются фронтендом как МАССИВЫ строк с ключами
+  // small/detailed/stepby (см. QuestionCard + сиды). Строку коэрсим в массив,
+  // легаси-ключ stepByStep переносим в stepby.
   hints: z.object({
-    small: z.string().optional(),
-    detailed: z.string().optional(),
-    stepByStep: z.array(z.string()).optional(),
-  }).optional(),
+    small: hintList,
+    detailed: hintList,
+    stepby: hintList,
+    stepByStep: hintList,
+  }).transform(({ stepByStep, stepby, ...rest }) => ({
+    ...rest,
+    stepby: stepby ?? stepByStep,
+  })).optional(),
 });
 
 // Comment validation

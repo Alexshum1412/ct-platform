@@ -109,13 +109,17 @@ export interface Question {
    */
   hints?: {
     /** Маленькая подсказка (направление мысли) */
-    small?: string[];
+    small?: string[] | string;
     /** Подробная подсказка (формулы, правила) */
-    detailed?: string[];
+    detailed?: string[] | string;
     /** Пошаговое решение */
-    stepby?: string[];
+    stepby?: string[] | string;
+    /** Легаси-ключ пошагового решения (нормализуется в stepby при рендере) */
+    stepByStep?: string[] | string;
   };
-  /** URL видео-разбора (YouTube, Vimeo и т.д.) */
+  /** URL видео-разбора — поле БД (backend отдаёт его как videoUrl) */
+  videoUrl?: string;
+  /** URL видео-разбора (легаси-имя; оставлено для совместимости) */
   videoExplanationUrl?: string;
   /** ID блока заданий (если задание часть блока с общим текстом) */
   blockId?: string;

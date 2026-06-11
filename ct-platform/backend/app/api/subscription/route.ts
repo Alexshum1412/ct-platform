@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { getEffectivePlan } from '@/lib/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,15 +23,16 @@ export async function GET(req: NextRequest) {
     const userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 });
 
+    // Эффективный план: если подписка истекла, здесь же лениво понижаем до FREE.
+    const planInfo = await getEffectivePlan(userId);
     const sub = await prisma.subscription.findFirst({
       where: { userId, isActive: true },
       orderBy: { startDate: 'desc' },
     });
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
 
     return NextResponse.json({
-      plan: user?.plan ?? 'FREE',
-      isPremium: !!user && user.plan !== 'FREE',
+      plan: planInfo?.plan ?? 'FREE',
+      isPremium: !!planInfo && planInfo.isPremium,
       subscription: sub, // содержит startDate = время покупки, endDate, paymentId
     });
   } catch (error) {

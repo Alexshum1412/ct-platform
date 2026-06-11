@@ -45,7 +45,13 @@ export async function issueVerificationCode(
   const { subject, html } = purpose === 'PASSWORD_RESET'
     ? getPasswordResetEmail(name || 'Ученик', code)
     : getVerificationEmail(name || 'Ученик', code);
-  await sendEmail({ to: email, subject, html });
+  // Сбой SMTP не должен ронять регистрацию/сброс пароля 500-кой: код уже сохранён,
+  // пользователь сможет нажать «Отправить повторно» (или попросить новый код).
+  try {
+    await sendEmail({ to: email, subject, html });
+  } catch (e) {
+    console.error(`[verify] email send failed (${purpose}) for ${email}:`, e);
+  }
 
   const devMode = !process.env.SMTP_USER;
   if (devMode) {

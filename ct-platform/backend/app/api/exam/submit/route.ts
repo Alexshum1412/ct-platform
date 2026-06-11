@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { convertScore } from '@/lib/scoreConversion';
+import { normalizeAnswer } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,35 +25,99 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Попытка не найдена' }, { status: 404 });
     }
 
-    // Get subject slug for score conversion
-    const subject = await prisma.subject.findUnique({ where: { id: attempt.subjectId }, select: { slug: true } });
-
-    const questionIds = Object.keys(parsed.data.answers);
-    const questions = await prisma.question.findMany({
-      where: { id: { in: questionIds } },
-      select: { id: true, correctAnswer: true, part: true },
-    });
-
-    const results: Array<{ questionId: string; isCorrect: boolean; userAnswer: string }> = [];
-    let correct = 0;
-
-    for (const q of questions) {
-      const userAnswer = parsed.data.answers[q.id] ?? '';
-      const isCorrect = userAnswer.trim().toLowerCase() === q.correctAnswer.trim().toLowerCase();
-      if (isCorrect) correct++;
-      results.push({ questionId: q.id, isCorrect, userAnswer });
+    // Попытку нельзя сдать дважды — иначе результат можно «переписать»
+    // после просмотра разбора (читерство в истории и достижениях).
+    if (attempt.isCompleted) {
+      return NextResponse.json(
+        { error: 'Эта попытка уже завершена', code: 'ALREADY_SUBMITTED' },
+        { status: 409 },
+      );
     }
 
-    const maxScore = questions.length;
-    const percentage = maxScore > 0 ? Math.round((correct / maxScore) * 100) : 0;
-    const testScore = convertScore(correct, subject?.slug ?? '', maxScore);
-
-    await prisma.examAttempt.update({
-      where: { id: attempt.id },
-      data: { score: correct, maxScore, percentage, isCompleted: true, completedAt: new Date() },
+    // Get subject slug for score conversion (предмет хранится cuid'ом, но в
+    // старых записях мог лежать slug — ищем по обоим).
+    const subject = await prisma.subject.findFirst({
+      where: { OR: [{ id: attempt.subjectId }, { slug: attempt.subjectId }] },
+      select: { slug: true },
     });
 
-    return NextResponse.json({ score: correct, maxScore, percentage, testScore, results });
+    // Источник истины о составе экзамена — сам экзамен (attempt.examId), а НЕ
+    // присланные клиентом ключи: иначе можно прислать ответы на произвольный
+    // (более лёгкий) набор вопросов. Для старых попыток без examId
+    // (легаси-поток) грейдим присланные ключи, как раньше.
+    let questionIds = Object.keys(parsed.data.answers);
+    if (attempt.examId) {
+      const exam = await prisma.exam.findUnique({
+        where: { id: attempt.examId },
+        select: { questionIds: true },
+      });
+      if (exam) {
+        try {
+          const ids = JSON.parse(exam.questionIds);
+          if (Array.isArray(ids) && ids.length > 0) questionIds = ids;
+        } catch { /* повреждённый JSON — остаёмся на присланных ключах */ }
+      }
+    }
+
+    const questions = await prisma.question.findMany({
+      where: { id: { in: questionIds } },
+      select: { id: true, correctAnswer: true, explanation: true, solution: true, part: true },
+    });
+    const byId = new Map(questions.map(q => [q.id, q]));
+    // Сохраняем порядок вопросов экзамена.
+    const ordered = questionIds.map(id => byId.get(id)).filter(Boolean) as typeof questions;
+
+    const results: Array<{
+      questionId: string;
+      isCorrect: boolean;
+      userAnswer: string;
+      correctAnswer: string;
+      explanation: string;
+      solution: string | null;
+    }> = [];
+    let correct = 0;
+
+    for (const q of ordered) {
+      const userAnswer = parsed.data.answers[q.id] ?? '';
+      // Единая нормализация (как в практике): trim/lowercase/запятая→точка.
+      const isCorrect = normalizeAnswer(userAnswer) === normalizeAnswer(q.correctAnswer);
+      if (isCorrect) correct++;
+      // Правильный ответ и объяснение возвращаются ТОЛЬКО здесь (после сдачи) —
+      // в выдаче экзамена их больше нет (см. /api/exams/[id]).
+      results.push({
+        questionId: q.id,
+        isCorrect,
+        userAnswer,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        solution: q.solution,
+      });
+    }
+
+    const maxScore = ordered.length;
+    const percentage = maxScore > 0 ? Math.round((correct / maxScore) * 100) : 0;
+    const testScore = convertScore(correct, subject?.slug ?? '', maxScore);
+    // Фактическая длительность попытки (раньше totalTime всегда оставался 0).
+    const totalTime = Math.max(0, Math.round((Date.now() - attempt.startedAt.getTime()) / 1000));
+
+    await prisma.$transaction([
+      prisma.examAttempt.update({
+        where: { id: attempt.id },
+        data: { score: correct, maxScore, percentage, isCompleted: true, completedAt: new Date(), totalTime },
+      }),
+      // Персистим поквестionный разбор (раньше ExamQuestion не создавались вовсе).
+      prisma.examQuestion.createMany({
+        data: results.map((r, i) => ({
+          examAttemptId: attempt.id,
+          questionId: r.questionId,
+          order: i,
+          userAnswer: r.userAnswer || null,
+          isCorrect: r.isCorrect,
+        })),
+      }),
+    ]);
+
+    return NextResponse.json({ score: correct, maxScore, percentage, testScore, totalTime, results });
   } catch (error) {
     console.error('Submit exam error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

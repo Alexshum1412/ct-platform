@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { formatQuestion } from '@/lib/utils';
+import { formatQuestionForExam } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/exams/:id — exam details + its curated questions (in order)
+// GET /api/exams/:id — exam details + its curated questions (in order).
+// Вопросы отдаются БЕЗ правильных ответов/объяснений (formatQuestionForExam):
+// раньше correctAnswer был виден в Network-вкладке прямо во время экзамена.
+// Разбор с ответами возвращает POST /api/exam/submit после сдачи.
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   try {
     const exam = await prisma.exam.findUnique({ where: { id: params.id } });
@@ -26,7 +29,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
       description: exam.description,
       durationMinutes: exam.durationMinutes,
       passingScore: exam.passingScore,
-      questions: ordered.map((q) => formatQuestion(q as never)),
+      questions: ordered.map((q) => formatQuestionForExam(q as never)),
     });
   } catch (error) {
     console.error('Get exam error:', error);

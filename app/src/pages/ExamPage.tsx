@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, BookOpen, Play, Pause } from 'lucide-react';
@@ -10,6 +10,24 @@ import { getSubjectBySlug, fetchExamById, type ExamDetail } from '@/data/subject
 import { examApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 import type { ExamConfig, Question } from '@/types';
+
+// Ответ POST /api/exam/submit — серверный разбор (включая правильные ответы,
+// которые в выдаче экзамена намеренно отсутствуют до сдачи).
+interface ExamSubmitResult {
+  score: number;
+  maxScore: number;
+  percentage: number;
+  testScore?: number;
+  totalTime?: number;
+  results: Array<{
+    questionId: string;
+    isCorrect: boolean;
+    userAnswer: string;
+    correctAnswer: string;
+    explanation: string;
+    solution: string | null;
+  }>;
+}
 
 export function ExamPage() {
   const { slug, examId } = useParams<{ slug: string; examId?: string }>();
@@ -29,6 +47,26 @@ export function ExamPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const attemptIdRef = useRef<string | null>(null);
+
+  const [examQuestions, setExamQuestions] = useState<Question[]>([]);
+  const [isStarted, setIsStarted] = useState(false);
+  const [isFinished, setIsFinished] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [timeRemaining, setTimeRemaining] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+
+  const [examLimitError, setExamLimitError] = useState<string | null>(null);
+  // Результаты сдачи приходят С СЕРВЕРА: правильных ответов в выдаче экзамена
+  // больше нет (закрыта возможность подсмотреть их в Network во время экзамена).
+  const [serverResults, setServerResults] = useState<ExamSubmitResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const finishingRef = useRef(false);
+  // Снимок ответов для submit (ref, чтобы автозавершение по таймеру не
+  // пересоздавало интервал на каждый введённый ответ).
+  const answersRef = useRef<Record<string, string>>({});
+  useEffect(() => { answersRef.current = answers; }, [answers]);
 
   // Load the specific exam chosen on the exam list page.
   useEffect(() => {
@@ -54,51 +92,27 @@ export function ExamPage() {
       .finally(() => setIsLoading(false));
   }, [examId]);
 
-  const [examQuestions, setExamQuestions] = useState<Question[]>([]);
-  const [isStarted, setIsStarted] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [timeRemaining, setTimeRemaining] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-  // Timer
-  useEffect(() => {
-    if (!isStarted || isFinished || isPaused) return;
-
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => {
-        if (prev <= 1) {
-          setIsFinished(true);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isStarted, isFinished, isPaused]);
-
-  const [examLimitError, setExamLimitError] = useState<string | null>(null);
-
   const handleStart = async () => {
     // Экзамен — только для зарегистрированных с подтверждённым email
     // (защита и от прямого перехода по ссылке).
     if (!requireAuth('Войдите или зарегистрируйтесь, чтобы проходить пробные экзамены.')) return;
+    if (!token || !subject) return;
     setExamLimitError(null);
-    if (token && subject) {
-      const result = await examApi.start(subject.id, token, examId);
-      if (result.error) {
-        if ((result as { code?: string }).code === 'EXAM_LIMIT_REACHED' || result.error.includes('лимит') || result.error.includes('Бесплатный')) {
-          setExamLimitError(result.error);
-          return;
-        }
-      }
-      if (result.data) {
-        attemptIdRef.current = (result.data as { attemptId: string }).attemptId ?? null;
-      }
+
+    const result = await examApi.start(subject.id, token, examId);
+    // Fail-closed: без успешно созданной попытки экзамен НЕ начинается — иначе
+    // при любой ошибке (лимит/сеть/верификация) он шёл «вхолостую» без записи.
+    if (result.error || !result.data) {
+      setExamLimitError(result.error || 'Не удалось начать экзамен. Попробуйте ещё раз.');
+      return;
     }
+    const attemptId = (result.data as { attemptId?: string }).attemptId;
+    if (!attemptId) {
+      setExamLimitError('Не удалось начать экзамен. Попробуйте ещё раз.');
+      return;
+    }
+    attemptIdRef.current = attemptId;
+    finishingRef.current = false;
     setIsStarted(true);
   };
 
@@ -106,20 +120,45 @@ export function ExamPage() {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
-  const [testScore, setTestScore] = useState<number | null>(null);
-
-  const handleFinish = async () => {
-    setIsFinished(true);
-    if (token && attemptIdRef.current) {
-      setIsSaving(true);
-      const result = await examApi.submit(attemptIdRef.current, answers, token).catch(() => null);
-      if (result?.data) {
-        const data = result.data as { testScore?: number };
-        if (data.testScore !== undefined) setTestScore(data.testScore);
-      }
-      setIsSaving(false);
+  const submitAttempt = useCallback(async () => {
+    if (!token || !attemptIdRef.current) {
+      setSubmitError('Сессия экзамена не найдена. Войдите заново и начните экзамен ещё раз.');
+      return;
     }
-  };
+    setIsSaving(true);
+    setSubmitError(null);
+    const result = await examApi.submit(attemptIdRef.current, answersRef.current, token).catch(() => null);
+    setIsSaving(false);
+    if (result?.data && typeof (result.data as ExamSubmitResult).score === 'number') {
+      setServerResults(result.data as ExamSubmitResult);
+    } else {
+      setSubmitError(result?.error || 'Не удалось отправить результаты. Проверьте соединение и повторите.');
+    }
+  }, [token]);
+
+  // Идемпотентное завершение (кнопка «Завершить», истечение таймера).
+  const handleFinish = useCallback(async () => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    setIsFinished(true);
+    await submitAttempt();
+  }, [submitAttempt]);
+
+  // Timer — на нуле экзамен ЗАВЕРШАЕТСЯ С ОТПРАВКОЙ (раньше просто
+  // выставлялся isFinished и попытка никогда не сохранялась).
+  useEffect(() => {
+    if (!isStarted || isFinished || isPaused) return;
+
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isStarted, isFinished, isPaused]);
+
+  useEffect(() => {
+    if (isStarted && !isFinished && timeRemaining === 0) void handleFinish();
+  }, [isStarted, isFinished, timeRemaining, handleFinish]);
 
   const handleTogglePause = () => setIsPaused(prev => !prev);
 
@@ -129,8 +168,10 @@ export function ExamPage() {
     setCurrentQuestionIndex(0);
     setIsFinished(false);
     setIsPaused(false);
-    setTestScore(null);
+    setServerResults(null);
+    setSubmitError(null);
     attemptIdRef.current = null;
+    finishingRef.current = false;
     if (examConfig) setTimeRemaining(examConfig.durationMinutes * 60);
     setIsStarted(false);
   };
@@ -154,21 +195,6 @@ export function ExamPage() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [focusMode, examQuestions.length, setFocusMode]);
-
-  const calculateResults = () => {
-    let correct = 0;
-    examQuestions.forEach(q => {
-      const userAnswer = answers[q.id];
-      const ca = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-      if (userAnswer?.trim().toLowerCase() === ca?.trim().toLowerCase()) correct++;
-    });
-    return {
-      score: correct,
-      correct,
-      total: examQuestions.length,
-      percentage: examQuestions.length > 0 ? Math.round((correct / examQuestions.length) * 100) : 0,
-    };
-  };
 
   if (isLoading && subject) {
     return (
@@ -276,18 +302,47 @@ export function ExamPage() {
     );
   }
 
-  // Results Screen
+  // Results Screen — данные приходят с сервера (submit); пока их нет,
+  // показываем «отправка…» или ошибку с повтором.
   if (isFinished) {
-    const results = calculateResults();
-    const passed = results.score >= examConfig.passingScore;
-    // Mirror calculateResults' normalization so this count matches "неверно"
-    // and skipped questions are included in the review (they were scored as wrong).
-    const norm = (s?: string) => (s ?? '').trim().toLowerCase();
-    const wrongQuestions = examQuestions.filter(q => {
-      const ua = answers[q.id];
-      const ca = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-      return norm(ua) !== norm(ca);
-    });
+    if (!serverResults) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="max-w-xl w-full">
+            <CardContent className="p-8 sm:p-10 text-center">
+              {isSaving ? (
+                <>
+                  <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                  <h1 className="text-xl font-bold mb-1">Проверяем ваши ответы…</h1>
+                  <p className="text-muted-foreground">Отправляем результаты на сервер.</p>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
+                  <h1 className="text-xl font-bold mb-2">Не удалось отправить результаты</h1>
+                  <p className="text-muted-foreground mb-6">
+                    {submitError || 'Произошла ошибка.'} Ваши ответы сохранены в этой вкладке — попробуйте ещё раз.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/exam/${slug}`)}>
+                      К экзаменам
+                    </Button>
+                    <Button size="lg" className="flex-1" onClick={() => void submitAttempt()} style={{ background: subject.color }}>
+                      Повторить отправку
+                    </Button>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    const passed = serverResults.score >= examConfig.passingScore;
+    const questionById = new Map(examQuestions.map(q => [q.id, q]));
+    const wrongResults = serverResults.results.filter(r => !r.isCorrect);
+    const testScore = serverResults.testScore ?? null;
 
     return (
       <div className="min-h-screen bg-background">
@@ -301,7 +356,7 @@ export function ExamPage() {
                 transition={{ type: 'spring', duration: 0.5 }}
                 className={`w-24 h-24 rounded-full mx-auto mb-4 flex items-center justify-center text-white text-3xl font-bold tabular-nums ${passed ? 'bg-green-500' : 'bg-red-500'}`}
               >
-                {results.percentage}%
+                {serverResults.percentage}%
               </motion.div>
               <h1 className="text-2xl font-bold mb-1">{passed ? 'Экзамен сдан!' : 'Экзамен не сдан'}</h1>
               <p className="text-muted-foreground mb-6">
@@ -310,15 +365,15 @@ export function ExamPage() {
 
               <div className="grid grid-cols-3 gap-3 mb-4">
                 <div className="p-4 bg-muted rounded-xl">
-                  <p className="text-2xl font-bold text-green-600 tabular-nums">{results.correct}</p>
+                  <p className="text-2xl font-bold text-green-600 tabular-nums">{serverResults.score}</p>
                   <p className="text-xs text-muted-foreground">верно</p>
                 </div>
                 <div className="p-4 bg-muted rounded-xl">
-                  <p className="text-2xl font-bold text-red-500 tabular-nums">{results.total - results.correct}</p>
+                  <p className="text-2xl font-bold text-red-500 tabular-nums">{serverResults.maxScore - serverResults.score}</p>
                   <p className="text-xs text-muted-foreground">неверно</p>
                 </div>
                 <div className="p-4 bg-muted rounded-xl">
-                  <p className="text-2xl font-bold tabular-nums">{results.score}/{results.total}</p>
+                  <p className="text-2xl font-bold tabular-nums">{serverResults.score}/{serverResults.maxScore}</p>
                   <p className="text-xs text-muted-foreground">первичных</p>
                 </div>
               </div>
@@ -334,8 +389,6 @@ export function ExamPage() {
                 </div>
               )}
 
-              {isSaving && <p className="text-sm text-muted-foreground mb-4">Сохранение...</p>}
-
               <div className="flex gap-3">
                 <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/exam/${slug}`)}>
                   К экзаменам
@@ -348,27 +401,26 @@ export function ExamPage() {
           </Card>
 
           {/* Review Section */}
-          {wrongQuestions.length > 0 && (
+          {wrongResults.length > 0 && (
             <div>
               <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                <h2 className="text-xl font-bold">📝 Разбор ошибок ({wrongQuestions.length})</h2>
+                <h2 className="text-xl font-bold">📝 Разбор ошибок ({wrongResults.length})</h2>
                 <Button
                   size="sm"
-                  onClick={() => navigate(`/practice/${slug}?ids=${wrongQuestions.map(q => q.id).join(',')}`)}
+                  onClick={() => navigate(`/practice/${slug}?ids=${wrongResults.map(r => r.questionId).join(',')}`)}
                   className="gap-1.5"
                 >
                   <Play className="w-3.5 h-3.5" />Тренировать только ошибки
                 </Button>
               </div>
               <div className="space-y-3">
-                {wrongQuestions.map((q, i) => {
-                  const ua = answers[q.id];
-                  const ca = Array.isArray(q.correctAnswer) ? q.correctAnswer[0] : q.correctAnswer;
-                  const userAnswerText = q.options?.find(o => o.id === ua)?.text ?? ua;
-                  const correctAnswerText = q.options?.find(o => o.id === ca)?.text ?? ca;
+                {wrongResults.map((r, i) => {
+                  const q = questionById.get(r.questionId);
+                  const userAnswerText = q?.options?.find(o => o.id === r.userAnswer)?.text ?? r.userAnswer;
+                  const correctAnswerText = q?.options?.find(o => o.id === r.correctAnswer)?.text ?? r.correctAnswer;
                   return (
                     <motion.div
-                      key={q.id}
+                      key={r.questionId}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.04 }}
@@ -380,9 +432,11 @@ export function ExamPage() {
                               {i + 1}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-base font-medium mb-3">
-                                <MathFormula formula={q.content} />
-                              </div>
+                              {q && (
+                                <div className="text-base font-medium mb-3">
+                                  <MathFormula formula={q.content} />
+                                </div>
+                              )}
                               <div className="space-y-2">
                                 <div className="flex items-start gap-2 text-sm p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
                                   <span className="text-red-600 font-semibold shrink-0">✗</span>
@@ -398,21 +452,21 @@ export function ExamPage() {
                                     <p><MathFormula formula={correctAnswerText} inline /></p>
                                   </div>
                                 </div>
-                                {q.explanation && (
+                                {r.explanation && (
                                   <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 text-sm">
                                     <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">💡 Объяснение:</p>
-                                    <MathFormula formula={q.explanation} />
+                                    <MathFormula formula={r.explanation} />
                                   </div>
                                 )}
                               </div>
                               {/* Quick links: revise theory or re-solve this exact question */}
                               <div className="flex flex-wrap gap-2 mt-3">
-                                {q.topicId && (
+                                {q?.topicId && (
                                   <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/theory/${slug}/${q.topicId}`)}>
                                     <BookOpen className="w-3.5 h-3.5" /> Теория по теме
                                   </Button>
                                 )}
-                                <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/practice/${slug}?ids=${q.id}`)}>
+                                <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/practice/${slug}?ids=${r.questionId}`)}>
                                   <Play className="w-3.5 h-3.5" /> Решить заново
                                 </Button>
                               </div>

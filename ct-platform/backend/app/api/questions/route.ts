@@ -18,19 +18,22 @@ export async function GET(req: NextRequest) {
     const part = searchParams.get('part');
     const section = searchParams.get('section');
     const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const offset = parseInt(searchParams.get('offset') || '0');
+    // NaN-безопасный разбор + границы: ?limit=abc раньше давал take:NaN (500-ка),
+    // а отсутствие потолка позволяло выкачать всю базу одним запросом.
+    const limit = Math.min(500, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20));
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0);
 
     const where: Record<string, unknown> = { status: 'ACTIVE' };
 
     if (subjectId) where.subjectId = subjectId;
     if (topicId) where.topicId = topicId;
     if (subtopicId) where.subtopicId = subtopicId;
-    if (difficulty) where.difficulty = parseInt(difficulty);
+    if (difficulty) where.difficulty = parseInt(difficulty, 10) || undefined;
     if (type) where.type = type;
     if (part) where.part = part;
     if (section) where.section = section;
-    if (search) where.content = { contains: search };
+    // Регистронезависимый поиск (в Postgres contains по умолчанию чувствителен).
+    if (search) where.content = { contains: search, mode: 'insensitive' };
 
     const [questions, total] = await Promise.all([
       prisma.question.findMany({

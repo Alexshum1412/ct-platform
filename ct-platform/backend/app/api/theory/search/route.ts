@@ -17,14 +17,16 @@ export async function GET(req: NextRequest) {
     const where: Record<string, unknown> = { status: 'ACTIVE' };
     const OR: Array<Record<string, unknown>> = [];
 
+    // mode:'insensitive' — в Postgres contains регистрозависим, из-за чего поиск
+    // «Производная» не находил «производная» и наоборот.
     if (tag) {
-      OR.push({ tags: { contains: tag } });
-      OR.push({ title: { contains: tag } });
-      OR.push({ content: { contains: tag } });
+      OR.push({ tags: { contains: tag, mode: 'insensitive' } });
+      OR.push({ title: { contains: tag, mode: 'insensitive' } });
+      OR.push({ content: { contains: tag, mode: 'insensitive' } });
     }
     if (q) {
-      OR.push({ title: { contains: q } });
-      OR.push({ content: { contains: q } });
+      OR.push({ title: { contains: q, mode: 'insensitive' } });
+      OR.push({ content: { contains: q, mode: 'insensitive' } });
     }
 
     if (OR.length > 0) where.OR = OR;

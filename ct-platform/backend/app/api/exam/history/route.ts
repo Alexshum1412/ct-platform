@@ -12,16 +12,21 @@ export async function GET(req: NextRequest) {
       where: { userId, isCompleted: true },
       orderBy: { startedAt: 'desc' },
       take: 20,
-      include: {
-        questions: { select: { isCorrect: true } },
-      },
     });
 
-    const subject = await prisma.subject.findMany({
-      where: { id: { in: attempts.map(a => a.subjectId) } },
-      select: { id: true, name: true, color: true, slug: true },
+    // В старых записях subjectId — это slug ('math'), в новых — cuid.
+    // Ищем предметы по обоим ключам и строим карту id+slug → предмет,
+    // чтобы история не показывала «Неизвестный предмет».
+    const refs = Array.from(new Set(attempts.map(a => a.subjectId)));
+    const subjects = await prisma.subject.findMany({
+      where: { OR: [{ id: { in: refs } }, { slug: { in: refs } }] },
+      select: { id: true, slug: true, name: true, color: true },
     });
-    const subjectMap = Object.fromEntries(subject.map(s => [s.id, s]));
+    const subjectMap: Record<string, (typeof subjects)[number]> = {};
+    for (const s of subjects) {
+      subjectMap[s.id] = s;
+      subjectMap[s.slug] = s;
+    }
 
     return NextResponse.json(attempts.map(a => ({
       id: a.id,

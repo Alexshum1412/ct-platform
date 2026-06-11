@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { FREE_DAILY_GAME_RESETS as FREE_DAILY_RESETS, GAME_START_BALANCE as START_BALANCE } from '@/lib/limits';
+import { getEffectivePlan } from '@/lib/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,8 +29,8 @@ export async function GET(req: NextRequest) {
     const game = parseGame(new URL(req.url).searchParams.get('game'));
     if (!game) return NextResponse.json({ error: 'Неизвестная игра' }, { status: 400 });
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    const isPremium = !!user && user.plan !== 'FREE';
+    const planInfo = await getEffectivePlan(userId);
+    const isPremium = !!planInfo && planInfo.isPremium;
 
     const row = await prisma.gameReset.findUnique({
       where: { userId_game_date: { userId, game, date: today() } },
@@ -55,8 +56,8 @@ export async function POST(req: NextRequest) {
     const game = parseGame(body?.game ?? null);
     if (!game) return NextResponse.json({ error: 'Неизвестная игра' }, { status: 400 });
 
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    const isPremium = !!user && user.plan !== 'FREE';
+    const planInfo = await getEffectivePlan(userId);
+    const isPremium = !!planInfo && planInfo.isPremium;
 
     // Сбрасываем постоянный баланс к стартовому.
     const resetBalanceRow = () => prisma.gameBalance.upsert({
@@ -76,27 +77,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ allowed: true, balance: START_BALANCE, isPremium: true, remaining: null, nextResetAt: null });
     }
 
-    // Не-Premium: атомарно проверяем дневной лимит.
+    // Не-Premium: АТОМАРНО бронируем сброс — гарантируем строку (upsert),
+    // затем одиночный условный UPDATE с count < limit (как в /api/progress).
+    // Раньше здесь был check-then-act: параллельные запросы могли превысить лимит.
     const date = today();
-    const existing = await prisma.gameReset.findUnique({
+    await prisma.gameReset.upsert({
       where: { userId_game_date: { userId, game, date } },
+      create: { userId, game, date, count: 0 },
+      update: {},
     });
-    const used = existing?.count ?? 0;
-    if (used >= FREE_DAILY_RESETS) {
+    const reserved = await prisma.gameReset.updateMany({
+      where: { userId, game, date, count: { lt: FREE_DAILY_RESETS } },
+      data: { count: { increment: 1 } },
+    });
+    if (reserved.count === 0) {
       return NextResponse.json(
         { allowed: false, error: 'Сброс доступен 1 раз в день. Оформите Premium для безлимита.', remaining: 0, isPremium: false },
         { status: 429 },
       );
     }
-
-    await prisma.gameReset.upsert({
-      where: { userId_game_date: { userId, game, date } },
-      create: { userId, game, date, count: 1 },
-      update: { count: { increment: 1 } },
-    });
     await resetBalanceRow();
 
-    const remaining = Math.max(0, FREE_DAILY_RESETS - (used + 1));
+    const fresh = await prisma.gameReset.findUnique({ where: { userId_game_date: { userId, game, date } } });
+    const remaining = Math.max(0, FREE_DAILY_RESETS - (fresh?.count ?? FREE_DAILY_RESETS));
     return NextResponse.json({
       allowed: true,
       balance: START_BALANCE,

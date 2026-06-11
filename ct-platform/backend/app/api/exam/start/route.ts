@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { FREE_DAILY_EXAMS } from '@/lib/limits';
+import { getEffectivePlan } from '@/lib/plan';
 
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
-  subjectId: z.string().min(1),
+  subjectId: z.string().min(1), // принимаем cuid ИЛИ slug (фронт шлёт slug из статического каталога)
   examId: z.string().optional(), // конкретный пробный экзамен из списка
 });
 
@@ -23,11 +24,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Validation error' }, { status: 400 });
     }
 
-    // Check user plan + daily exam limit for FREE users
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    if (!user) return NextResponse.json({ error: 'Не найдено' }, { status: 404 });
+    // Резолвим предмет по id ИЛИ slug и храним КАНОНИЧЕСКИЙ cuid — раньше в
+    // ExamAttempt.subjectId попадал slug ('math'), из-за чего история экзаменов
+    // показывала «Неизвестный предмет», а конвертация балла теряла предмет.
+    const subject = await prisma.subject.findFirst({
+      where: { OR: [{ id: parsed.data.subjectId }, { slug: parsed.data.subjectId }] },
+      select: { id: true },
+    });
+    if (!subject) {
+      return NextResponse.json({ error: 'Предмет не найден' }, { status: 404 });
+    }
 
-    if (user.plan === 'FREE') {
+    // Если указан конкретный экзамен — он должен существовать, быть активным
+    // и принадлежать этому предмету.
+    let examId: string | null = null;
+    if (parsed.data.examId) {
+      const exam = await prisma.exam.findUnique({
+        where: { id: parsed.data.examId },
+        select: { id: true, subjectId: true, isActive: true },
+      });
+      if (!exam || !exam.isActive || exam.subjectId !== subject.id) {
+        return NextResponse.json({ error: 'Экзамен не найден' }, { status: 404 });
+      }
+      examId = exam.id;
+    }
+
+    // Daily exam limit for FREE users (по эффективному плану — с учётом
+    // истечения подписки).
+    const planInfo = await getEffectivePlan(userId);
+    if (!planInfo) return NextResponse.json({ error: 'Не найдено' }, { status: 404 });
+
+    if (!planInfo.isPremium) {
       const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
       // Считаем ВСЕ начатые сегодня попытки (а не только завершённые) — иначе free
       // мог запустить несколько экзаменов до завершения и обойти лимит «1 в день».
@@ -47,8 +74,8 @@ export async function POST(req: NextRequest) {
     const attempt = await prisma.examAttempt.create({
       data: {
         userId,
-        subjectId: parsed.data.subjectId,
-        examId: parsed.data.examId ?? null,
+        subjectId: subject.id,
+        examId,
         score: 0,
         maxScore: 0,
         percentage: 0,

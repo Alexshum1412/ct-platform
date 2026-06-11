@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { FREE_DAILY_QUESTIONS as FREE_DAILY_LIMIT } from '@/lib/limits';
+import { getEffectivePlan } from '@/lib/plan';
+import { normalizeAnswer } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,14 +26,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 400 });
     }
 
-    // Check user plan
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-    if (!user) return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
+    // Эффективный план (с учётом истечения подписки — Premium больше не «вечный»).
+    const planInfo = await getEffectivePlan(userId);
+    if (!planInfo) return NextResponse.json({ error: 'Пользователь не найден' }, { status: 404 });
 
     const question = await prisma.question.findUnique({ where: { id: parsed.data.questionId } });
     if (!question) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
 
-    const isFree = user.plan === 'FREE';
+    const isFree = !planInfo.isPremium;
     const today = new Date().toISOString().split('T')[0];
     let dailyCount: number | null = null;
 
@@ -62,7 +64,9 @@ export async function POST(req: NextRequest) {
     }
 
     const prevAttempts = await prisma.userProgress.count({ where: { userId, questionId: parsed.data.questionId } });
-    const isCorrect = parsed.data.answer === question.correctAnswer;
+    // Единая нормализация (как в экзамене): trim/lowercase/запятая→точка —
+    // раньше « 5» или «А» вместо «а» засчитывались как ошибка.
+    const isCorrect = normalizeAnswer(parsed.data.answer) === normalizeAnswer(question.correctAnswer);
     const xpGain = isCorrect && prevAttempts === 0 ? 10 : 0;
 
     const [progress] = await prisma.$transaction([
@@ -74,6 +78,15 @@ export async function POST(req: NextRequest) {
           timeSpent: parsed.data.timeSpent,
           isCorrect,
           attemptNumber: prevAttempts + 1,
+        },
+      }),
+      // Живая статистика карточки «N% решают верно · M решений» — раньше
+      // timesSolved/timesCorrect никогда не обновлялись и всюду было «0 решений».
+      prisma.question.update({
+        where: { id: parsed.data.questionId },
+        data: {
+          timesSolved: { increment: 1 },
+          ...(isCorrect ? { timesCorrect: { increment: 1 } } : {}),
         },
       }),
       ...(xpGain > 0 ? [prisma.user.update({ where: { id: userId }, data: { xp: { increment: xpGain } } })] : []),

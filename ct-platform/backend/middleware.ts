@@ -35,8 +35,16 @@ const unverifiedAllowed = [
   '/api/users/me',
 ];
 
-function getSecret() {
-  const secret = process.env.NEXTAUTH_SECRET || 'dev-insecure-secret';
+// В production отсутствие NEXTAUTH_SECRET — фатальная мисконфигурация: с
+// fallback-секретом токены можно подделать. Возвращаем null → запросы с
+// токеном получают 503, а не тихо принимаются (fail closed; lib/auth.ts
+// при этом бросает на старте, так что сюда попадаем только в edge-случаях).
+function getSecret(): Uint8Array | null {
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') return null;
+    return new TextEncoder().encode('dev-insecure-secret');
+  }
   return new TextEncoder().encode(secret);
 }
 
@@ -48,8 +56,10 @@ interface TokenPayload {
 }
 
 async function verifyJwt(token: string): Promise<TokenPayload | null> {
+  const secret = getSecret();
+  if (!secret) return null;
   try {
-    const { payload } = await jwtVerify(token, getSecret());
+    const { payload } = await jwtVerify(token, secret);
     return payload as unknown as TokenPayload;
   } catch {
     return null;

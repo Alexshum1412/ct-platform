@@ -16,7 +16,25 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { MathFormula } from '@/components/ui/MathFormula';
 import { useAppStore } from '@/store/useAppStore';
+import { normalizeAnswer } from '@/lib/utils';
 import type { Question } from '@/types';
+
+/**
+ * Подсказки в данных встречаются в двух формах: массивы строк (сиды) и строки
+ * (старые/админские записи), а пошаговый уровень — под ключами stepby ИЛИ
+ * stepByStep. Приводим всё к массивам, чтобы рендер не падал на `.map`.
+ */
+function normalizeHints(hints: Question['hints']): Record<string, string[]> {
+  if (!hints) return {};
+  const raw = hints as Record<string, string | string[] | undefined>;
+  const toList = (v: string | string[] | undefined): string[] =>
+    Array.isArray(v) ? v.filter(Boolean) : (v ? [v] : []);
+  return {
+    small: toList(raw.small),
+    detailed: toList(raw.detailed),
+    stepby: toList(raw.stepby ?? raw.stepByStep),
+  };
+}
 
 // =====================================================
 // ТИПЫ И ИНТЕРФЕЙСЫ
@@ -264,8 +282,8 @@ export const QuestionCard = memo(function QuestionCard({
 
   /** Находится ли вопрос в избранном */
   const isFavorite = favorites.includes(question.id);
-  /** Правильно ли ответил пользователь */
-  const isCorrect = selectedAnswer === question.correctAnswer;
+  /** Правильно ли ответил пользователь (нормализовано — как на сервере) */
+  const isCorrect = normalizeAnswer(selectedAnswer) === normalizeAnswer(String(question.correctAnswer));
   /** Итог для блока результата: в режиме просмотра берём прошлый результат. */
   const resultCorrect = reviewMode ? !!previousResult : isCorrect;
 
@@ -286,7 +304,7 @@ export const QuestionCard = memo(function QuestionCard({
     if (!selectedAnswer || checking || isAnswered) return;
     // Гость не может решать — показываем окно регистрации.
     if (!requireAuth('Войдите или зарегистрируйтесь, чтобы решать задания и сохранять прогресс.')) return;
-    const correct = selectedAnswer === question.correctAnswer;
+    const correct = normalizeAnswer(selectedAnswer) === normalizeAnswer(String(question.correctAnswer));
     setChecking(true);
     // Сервер — источник истины: раскрываем ответ ТОЛЬКО если он принят (onAnswer
     // вернул не false). При исчерпании дневного лимита сервер/родитель вернёт false,
@@ -570,16 +588,19 @@ export const QuestionCard = memo(function QuestionCard({
                         Поддерживаются формулы в LaTeX формате
                       */}
                       <ul className="space-y-2">
-                        {question.hints?.[activeHintLevel as keyof typeof question.hints]?.map((hint, i) => (
-                          <li key={i} className="text-sm text-amber-700 dark:text-amber-500 flex items-start gap-2">
-                            <span className="text-amber-400 mt-0.5">•</span>
-                            <MathFormula formula={hint} inline />
-                          </li>
-                        )) || (
-                          <li className="text-sm text-muted-foreground italic">
-                            Подсказки для этого вопроса ещё не добавлены
-                          </li>
-                        )}
+                        {(() => {
+                          const list = normalizeHints(question.hints)[activeHintLevel] ?? [];
+                          return list.length > 0 ? list.map((hint, i) => (
+                            <li key={i} className="text-sm text-amber-700 dark:text-amber-500 flex items-start gap-2">
+                              <span className="text-amber-400 mt-0.5">•</span>
+                              <MathFormula formula={hint} inline />
+                            </li>
+                          )) : (
+                            <li className="text-sm text-muted-foreground italic">
+                              Подсказки для этого вопроса ещё не добавлены
+                            </li>
+                          );
+                        })()}
                       </ul>
                     </motion.div>
                   )}
@@ -599,7 +620,7 @@ export const QuestionCard = memo(function QuestionCard({
           >
             {question.options.map((option) => {
               const isSelected = selectedAnswer === option.id;
-              const isCorrectOption = option.id === question.correctAnswer;
+              const isCorrectOption = normalizeAnswer(option.id) === normalizeAnswer(String(question.correctAnswer));
               const showCorrect = locked && isCorrectOption;
               const showWrong = isAnswered && isSelected && !isCorrect;
               
@@ -663,7 +684,7 @@ export const QuestionCard = memo(function QuestionCard({
                   const stat = answerStats[option.id] || 0;
                   const total = Object.values(answerStats).reduce((a, b) => a + b, 0);
                   const percentage = total > 0 ? Math.round((stat / total) * 100) : 0;
-                  const isCorrectOption = option.id === question.correctAnswer;
+                  const isCorrectOption = normalizeAnswer(option.id) === normalizeAnswer(String(question.correctAnswer));
                   
                   return (
                     <div key={option.id} className="relative">
@@ -774,7 +795,14 @@ export const QuestionCard = memo(function QuestionCard({
                     <div>
                       <p className="font-semibold">Неправильно</p>
                       <p className="text-sm opacity-80">
-                        Правильный ответ: {question.correctAnswer}
+                        Правильный ответ:{' '}
+                        {(() => {
+                          // Для заданий с вариантами показываем текст варианта,
+                          // а не голый id («B») — он ничего не говорит ученику.
+                          const ca = String(question.correctAnswer);
+                          const opt = question.options?.find(o => normalizeAnswer(o.id) === normalizeAnswer(ca));
+                          return <MathFormula formula={opt ? `${opt.id.toUpperCase()}) ${opt.text}` : ca} inline />;
+                        })()}
                       </p>
                     </div>
                   </>
@@ -810,9 +838,9 @@ export const QuestionCard = memo(function QuestionCard({
             {/* ================================================= */}
             {/* ВИДЕО-РАЗБОР (встроенный YouTube плеер)            */}
             {/* ================================================= */}
-            {question.videoExplanationUrl && (
+            {(question.videoUrl || question.videoExplanationUrl) && (
               <YouTubePlayer
-                videoUrl={question.videoExplanationUrl}
+                videoUrl={(question.videoUrl || question.videoExplanationUrl)!}
                 title="Видео-разбор задания"
               />
             )}
@@ -831,20 +859,29 @@ export const QuestionCard = memo(function QuestionCard({
         {/* СТАТИСТИКА ВОПРОСА (реальные данные из БД)         */}
         {/* ================================================= */}
         <div className="flex items-center justify-between pt-4 border-t border-border text-sm text-muted-foreground">
-          <div className="flex items-center gap-4">
-            {/* Процент правильных ответов */}
-            <span className="flex items-center gap-1" title="Процент правильных ответов">
+          {question.timesSolved > 0 ? (
+            <>
+              <div className="flex items-center gap-4">
+                {/* Процент правильных ответов */}
+                <span className="flex items-center gap-1" title="Процент правильных ответов">
+                  <TrendingUp className="w-4 h-4" />
+                  {correctPercentage}% решают верно
+                </span>
+                {/* Среднее время решения */}
+                <span className="flex items-center gap-1" title="Среднее время решения">
+                  <Clock className="w-4 h-4" />
+                  ~{avgTime} сек
+                </span>
+              </div>
+              {/* Общее количество решений */}
+              <span>{question.timesSolved} решений</span>
+            </>
+          ) : (
+            <span className="flex items-center gap-1">
               <TrendingUp className="w-4 h-4" />
-              {correctPercentage}% решают верно
+              Это задание ещё никто не решал — будьте первым!
             </span>
-            {/* Среднее время решения */}
-            <span className="flex items-center gap-1" title="Среднее время решения">
-              <Clock className="w-4 h-4" />
-              ~{avgTime} сек
-            </span>
-          </div>
-          {/* Общее количество решений */}
-          <span>{question.timesSolved} решений</span>
+          )}
         </div>
       </CardContent>
     </Card>

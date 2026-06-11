@@ -21,8 +21,9 @@ export async function GET(req: NextRequest, { params }: { params: { subjectId: s
     const difficulty = searchParams.get('difficulty');
     const part = searchParams.get('part');
     const section = searchParams.get('section');
-    const limit = parseInt(searchParams.get('limit') || '200', 10);
-    const offset = parseInt(searchParams.get('offset') || '0', 10);
+    // NaN-безопасный разбор + границы (?limit=abc раньше ронял запрос 500-кой).
+    const limit = Math.min(2000, Math.max(1, parseInt(searchParams.get('limit') || '200', 10) || 200));
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10) || 0);
 
     const questions = await prisma.question.findMany({
       where: {

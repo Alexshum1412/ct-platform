@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { FREE_DAILY_GAME_RESETS as FREE_DAILY_RESETS, GAME_START_BALANCE as START_BALANCE } from '@/lib/limits';
+import { getEffectivePlan } from '@/lib/plan';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,8 @@ function parseGame(value: string | null): string | null {
 
 // Текущий статус дневного сброса (+ время до следующего, когда лимит исчерпан).
 async function resetStatus(userId: string, game: string) {
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
-  const isPremium = !!user && user.plan !== 'FREE';
+  const planInfo = await getEffectivePlan(userId);
+  const isPremium = !!planInfo && planInfo.isPremium;
   const row = await prisma.gameReset.findUnique({ where: { userId_game_date: { userId, game, date: today() } } });
   const used = row?.count ?? 0;
   const remaining = isPremium ? null : Math.max(0, FREE_DAILY_RESETS - used);

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contactLimiter, checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -8,6 +9,16 @@ const ALLOWED_SUBJECTS = new Set(['bug', 'technical', 'suggestion', 'premium', '
 // POST /api/contact — store a message from the public contact form.
 export async function POST(req: NextRequest) {
   try {
+    // Антиспам: форма публичная и пишет в БД — ограничиваем 5 сообщений/час с IP.
+    const ip = (req.headers.get('x-forwarded-for') || 'unknown').split(',')[0].trim();
+    const rl = await checkRateLimit(contactLimiter, `contact:${ip}`);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'Слишком много сообщений. Попробуйте позже.' },
+        { status: 429 }
+      );
+    }
+
     const b = await req.json();
     const name = String(b.name ?? '').trim();
     const email = String(b.email ?? '').trim();

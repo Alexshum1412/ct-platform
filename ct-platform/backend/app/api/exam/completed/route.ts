@@ -5,19 +5,31 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/exam/completed[?subjectId=] — ID пробных экзаменов, которые пользователь
 // уже завершил (для пометки «решён ранее» в списке экзаменов).
+// subjectId принимает cuid ИЛИ slug; в старых попытках subjectId — slug,
+// в новых — cuid, поэтому фильтруем по обоим значениям.
 export async function GET(req: NextRequest) {
   try {
     const userId = req.headers.get('x-user-id');
     if (!userId) return NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 });
 
-    const subjectId = new URL(req.url).searchParams.get('subjectId') || undefined;
+    const subjectRef = new URL(req.url).searchParams.get('subjectId') || undefined;
+
+    let subjectFilter: { subjectId: { in: string[] } } | Record<string, never> = {};
+    if (subjectRef) {
+      const subject = await prisma.subject.findFirst({
+        where: { OR: [{ id: subjectRef }, { slug: subjectRef }] },
+        select: { id: true, slug: true },
+      });
+      const keys = subject ? [subject.id, subject.slug] : [subjectRef];
+      subjectFilter = { subjectId: { in: keys } };
+    }
 
     const attempts = await prisma.examAttempt.findMany({
       where: {
         userId,
         isCompleted: true,
         examId: { not: null },
-        ...(subjectId ? { subjectId } : {}),
+        ...subjectFilter,
       },
       select: { examId: true },
     });
