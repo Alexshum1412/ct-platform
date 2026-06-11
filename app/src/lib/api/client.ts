@@ -392,3 +392,16 @@ export interface OlympiadOverview {
 export const olympiadOverviewApi = {
   get: () => apiClient<OlympiadOverview>('/olympiad/overview'),
 };
+
+// История практики (личный кабинет, вкладка «Практика»)
+export interface PracticeHistoryItem {
+  id: string; questionId: string; isCorrect: boolean; timeSpent: number; createdAt: string;
+  preview: string; part: string | null; topic: string | null;
+  subject: { name: string; slug: string; color: string | null } | null;
+}
+export const practiceHistoryApi = {
+  get: (token: string, limit = 20, offset = 0) =>
+    apiClient<{ total: number; limit: number; offset: number; items: PracticeHistoryItem[] }>(
+      `/users/progress?limit=${limit}&offset=${offset}`, { token },
+    ),
+};

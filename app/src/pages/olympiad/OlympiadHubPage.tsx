@@ -134,7 +134,7 @@ export function OlympiadHubPage() {
                         </p>
                         <div className="flex gap-1 mt-1.5">
                           {LEVEL_ORDER.map(l => (byLevel[l] ?? 0) > 0 && (
-                            <span key={l} className={`h-1.5 rounded-full ${LEVEL_META[l].bg.split(' ')[0]}`} style={{ width: `${Math.max(10, ((byLevel[l] ?? 0) / total) * 100)}%` }} title={`${LEVEL_META[l].label}: ${byLevel[l]}`} />
+                            <span key={l} className={`h-1.5 rounded-full ${LEVEL_META[l].bar}`} style={{ width: `${Math.max(10, ((byLevel[l] ?? 0) / total) * 100)}%` }} title={`${LEVEL_META[l].label}: ${byLevel[l]}`} />
                           ))}
                         </div>
                       </div>

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
   Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, X, CheckCircle, Camera,
+  Medal, History, XCircle, ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,13 +15,27 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AvatarUpload } from '@/components/profile/AvatarUpload';
 import { useAppStore } from '@/store/useAppStore';
-import { userApi, apiClient } from '@/lib/api/client';
+import {
+  userApi, apiClient, olympiadApi, subscriptionApi, practiceHistoryApi,
+  type OlympiadProgress, type PracticeHistoryItem,
+} from '@/lib/api/client';
+import { LEVEL_META, LEVEL_ORDER } from '@/components/olympiad/levels';
+
+interface TopicStat { topicId: string; topicName: string; totalSolved: number; correctCount: number; accuracy: number }
 
 interface Stats {
   totalSolved: number; correctCount: number; accuracy: number; totalTime: number;
   streakDays: number; xp: number; level: number;
-  bySubject: Array<{ subjectId: string; subjectName: string; color: string; slug: string; totalSolved: number; correctCount: number; accuracy: number }>;
+  bySubject: Array<{ subjectId: string; subjectName: string; color: string; slug: string; totalSolved: number; correctCount: number; accuracy: number; byTopic?: TopicStat[] }>;
+  recentActivity?: Record<string, { total: number; correct: number }>;
   examCount: number; bestExamScore: number;
+}
+
+interface RankInfo { rank: number; xp: number; xpToday: number; percentile: number }
+
+interface SubscriptionInfo {
+  plan: string; isPremium: boolean;
+  subscription: { startDate: string; endDate: string; plan: string } | null;
 }
 
 interface Achievement {
@@ -51,6 +66,13 @@ export function ProfilePage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [examHistory, setExamHistory] = useState<ExamHistory[]>([]);
+  const [rankInfo, setRankInfo] = useState<RankInfo | null>(null);
+  const [olympiad, setOlympiad] = useState<OlympiadProgress | null>(null);
+  const [olympiadRank, setOlympiadRank] = useState<number | null>(null);
+  const [practice, setPractice] = useState<PracticeHistoryItem[]>([]);
+  const [practiceTotal, setPracticeTotal] = useState(0);
+  const [practiceLoadingMore, setPracticeLoadingMore] = useState(false);
+  const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(user?.name ?? '');
@@ -77,16 +99,34 @@ export function ProfilePage() {
   const loadData = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
-    const [statsRes, achRes, histRes] = await Promise.all([
+    const [statsRes, achRes, histRes, rankRes, olyRes, olyLbRes, practiceRes, subRes] = await Promise.all([
       apiClient('/users/stats', { token }),
       apiClient('/users/achievements', { token }),
       apiClient('/exam/history', { token }),
+      apiClient('/leaderboard/me', { token }),
+      olympiadApi.getProgress(token),
+      olympiadApi.getLeaderboard(token),
+      practiceHistoryApi.get(token, 15, 0),
+      subscriptionApi.get(token),
     ]);
     if (statsRes.data) setStats(statsRes.data as Stats);
     if (achRes.data) setAchievements((achRes.data as { achievements: Achievement[] }).achievements ?? []);
     if (histRes.data) setExamHistory((histRes.data as ExamHistory[]) ?? []);
+    if (rankRes.data) setRankInfo(rankRes.data as RankInfo);
+    if (olyRes.data) setOlympiad(olyRes.data);
+    if (olyLbRes.data?.me) setOlympiadRank(olyLbRes.data.me.rank);
+    if (practiceRes.data) { setPractice(practiceRes.data.items); setPracticeTotal(practiceRes.data.total); }
+    if (subRes.data) setSubInfo(subRes.data as SubscriptionInfo);
     setIsLoading(false);
   }, [token]);
+
+  const loadMorePractice = async () => {
+    if (!token || practiceLoadingMore) return;
+    setPracticeLoadingMore(true);
+    const r = await practiceHistoryApi.get(token, 15, practice.length);
+    if (r.data) { setPractice(prev => [...prev, ...r.data!.items]); setPracticeTotal(r.data.total); }
+    setPracticeLoadingMore(false);
+  };
 
   useEffect(() => { void loadData(); }, [loadData]);
 
@@ -134,6 +174,31 @@ export function ProfilePage() {
   const filteredAch = achievements.filter(a =>
     achievementFilter === 'all' ? true : achievementFilter === 'unlocked' ? a.unlocked : !a.unlocked
   );
+
+  // Любимые темы — топ-5 тем по количеству решённых (из byTopic статистики)
+  const favoriteTopics = (stats?.bySubject ?? [])
+    .flatMap(s => (s.byTopic ?? []).map(t => ({ ...t, subjectName: s.subjectName, slug: s.slug, color: s.color })))
+    .sort((a, b) => b.totalSolved - a.totalSolved)
+    .slice(0, 5);
+
+  // Динамика за 7 дней: ряд по календарным дням (включая пустые)
+  const activitySeries = (() => {
+    const days: Array<{ key: string; label: string; total: number; correct: number }> = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split('T')[0];
+      const row = stats?.recentActivity?.[key];
+      days.push({
+        key,
+        label: d.toLocaleDateString('ru-RU', { weekday: 'short' }),
+        total: row?.total ?? 0,
+        correct: row?.correct ?? 0,
+      });
+    }
+    return days;
+  })();
+  const activityMax = Math.max(1, ...activitySeries.map(d => d.total));
+  const activityHasData = activitySeries.some(d => d.total > 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -324,8 +389,116 @@ export function ProfilePage() {
                     <Button className="mt-4" onClick={() => navigate('/')}>Начать обучение</Button>
                   </div>
                 )}
+
+                {/* Динамика за 7 дней */}
+                {!isLoading && activityHasData && (
+                  <div className="mt-6">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Динамика за 7 дней</h4>
+                    <div className="flex items-end gap-2 h-24">
+                      {activitySeries.map(d => (
+                        <div key={d.key} className="flex-1 flex flex-col items-center gap-1 min-w-0" title={`${d.correct} верно из ${d.total}`}>
+                          <span className="text-[10px] text-muted-foreground tabular-nums">{d.total > 0 ? d.total : ''}</span>
+                          <div className="w-full max-w-[2.5rem] flex flex-col justify-end rounded-md overflow-hidden bg-muted" style={{ height: '4rem' }}>
+                            <div className="w-full bg-red-400/60" style={{ height: `${((d.total - d.correct) / activityMax) * 100}%` }} />
+                            <div className="w-full bg-emerald-500" style={{ height: `${(d.correct / activityMax) * 100}%` }} />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{d.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-emerald-500 mr-1 align-middle" />верные
+                      <span className="inline-block w-2.5 h-2.5 rounded-sm bg-red-400/60 ml-3 mr-1 align-middle" />ошибки
+                    </p>
+                  </div>
+                )}
+
+                {/* Любимые темы */}
+                {!isLoading && favoriteTopics.length > 0 && (
+                  <div className="mt-6">
+                    <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">Любимые темы</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {favoriteTopics.map(t => (
+                        <Link
+                          key={t.topicId}
+                          to={`/practice/${t.slug}`}
+                          className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm hover:bg-muted hover:border-primary/40 transition-colors"
+                          title={`${t.subjectName}: решено ${t.totalSolved}, точность ${t.accuracy}%`}
+                        >
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: t.color }} />
+                          <span className="truncate max-w-[12rem]">{t.topicName}</span>
+                          <span className="text-muted-foreground text-xs">{t.totalSolved} · {t.accuracy}%</span>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
+
+            {/* Место в рейтинге + олимпиады */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base"><Medal className="w-4 h-4 text-primary" />Место в рейтинге</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? <Skeleton className="h-16 rounded-xl" /> : rankInfo ? (
+                    <div className="flex items-center gap-4">
+                      <p className="text-3xl font-extrabold">#{rankInfo.rank}</p>
+                      <div className="text-sm text-muted-foreground">
+                        <p>Топ {Math.max(1, 100 - rankInfo.percentile + 1)}% пользователей</p>
+                        <p>{rankInfo.xpToday > 0 ? `Сегодня: +${rankInfo.xpToday} верных ответов` : 'Сегодня ещё без ответов'}</p>
+                      </div>
+                      <Button asChild size="sm" variant="ghost" className="ml-auto shrink-0">
+                        <Link to="/leaderboard">Рейтинг<ChevronRight className="w-4 h-4" /></Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Рейтинг недоступен</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base"><Trophy className="w-4 h-4 text-amber-500" />Олимпиадная подготовка</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoading ? <Skeleton className="h-16 rounded-xl" /> : olympiad && olympiad.solved > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="font-bold text-lg">{olympiad.solved}<span className="text-muted-foreground font-normal text-sm"> / {olympiad.totalProblems} задач</span></span>
+                        <span className="font-semibold text-amber-600 dark:text-amber-400">{olympiad.points} очков</span>
+                        {olympiadRank && <span className="text-muted-foreground">место #{olympiadRank}</span>}
+                      </div>
+                      <div className="flex gap-1.5">
+                        {LEVEL_ORDER.map(l => {
+                          const row = olympiad.byLevel[l];
+                          if (!row || row.total === 0) return null;
+                          return (
+                            <div key={l} className="flex-1" title={`${LEVEL_META[l].label}: ${row.solved}/${row.total}`}>
+                              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div className={`h-full rounded-full ${LEVEL_META[l].bar}`} style={{ width: `${(row.solved / row.total) * 100}%` }} />
+                              </div>
+                              <p className={`text-[10px] mt-0.5 text-center ${LEVEL_META[l].color}`}>{LEVEL_META[l].short}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <Button asChild size="sm" variant="ghost" className="-ml-2">
+                        <Link to="/olympiad">Продолжить<ChevronRight className="w-4 h-4" /></Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-muted-foreground">Решайте олимпиадные задачи — отдельный рейтинг и достижения.</p>
+                      <Button asChild size="sm" variant="outline" className="shrink-0"><Link to="/olympiad">Начать</Link></Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
 
@@ -338,6 +511,9 @@ export function ProfilePage() {
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-2">
               <TrendingUp className="w-4 h-4" />История экзаменов
+            </TabsTrigger>
+            <TabsTrigger value="practice" className="gap-2">
+              <History className="w-4 h-4" />Практика
             </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Edit2 className="w-4 h-4" />Настройки
@@ -436,6 +612,62 @@ export function ProfilePage() {
             )}
           </TabsContent>
 
+          {/* История практики — последние ответы с фильтрацией по виду */}
+          <TabsContent value="practice">
+            {isLoading ? (
+              <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}</div>
+            ) : practice.length > 0 ? (
+              <div className="space-y-2">
+                {practice.map((p, i) => (
+                  <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.03 }}>
+                    <Card>
+                      <CardContent className="p-3 md:p-4 flex items-center gap-3">
+                        {p.isCorrect
+                          ? <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" aria-label="Верно" />
+                          : <XCircle className="w-5 h-5 text-red-500 shrink-0" aria-label="Неверно" />}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm truncate">{p.preview}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 flex-wrap mt-0.5">
+                            {p.subject && (
+                              <span className="inline-flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full" style={{ background: p.subject.color ?? 'hsl(var(--primary))' }} />
+                                {p.subject.name}
+                              </span>
+                            )}
+                            {p.topic && <span>· {p.topic}</span>}
+                            {p.part && <span>· часть {p.part === 'A' ? 'А' : 'Б'}</span>}
+                            <span>· {new Date(p.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                            {p.timeSpent > 0 && <span>· {p.timeSpent} с</span>}
+                          </p>
+                        </div>
+                        {p.subject && (
+                          <Button asChild size="sm" variant="ghost" className="shrink-0">
+                            <Link to={`/practice/${p.subject.slug}?question=${p.questionId}`}>Открыть</Link>
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+                {practice.length < practiceTotal && (
+                  <div className="text-center pt-2">
+                    <Button variant="outline" disabled={practiceLoadingMore} onClick={loadMorePractice}>
+                      {practiceLoadingMore ? 'Загрузка…' : `Показать ещё (${practiceTotal - practice.length})`}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <History className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+                  <p className="text-muted-foreground">История практики пуста — решите первое задание</p>
+                  <Button className="mt-4" onClick={() => navigate('/')}>К практике</Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
           <TabsContent value="settings">
             <div className="max-w-lg space-y-6">
               <Card>
@@ -462,7 +694,7 @@ export function ProfilePage() {
                 </CardContent>
               </Card>
 
-              {user.plan === 'FREE' && (
+              {user.plan === 'FREE' ? (
                 <Card className="border-amber-300 dark:border-amber-700">
                   <CardContent className="p-6">
                     <div className="flex items-center gap-3 mb-3">
@@ -475,6 +707,26 @@ export function ProfilePage() {
                     <Button onClick={() => navigate('/payment')} className="w-full bg-amber-500 hover:bg-amber-600 text-white">
                       <Crown className="w-4 h-4 mr-2" />От 15 BYN/месяц
                     </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-amber-300 dark:border-amber-700">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2"><Crown className="w-4 h-4 text-amber-500" />Premium-подписка</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm">
+                      Тариф: <span className="font-semibold">{user.plan === 'PREMIUM_YEARLY' ? 'годовой' : user.plan === 'PREMIUM_MONTHLY' ? 'месячный' : user.plan}</span>
+                    </p>
+                    {subInfo?.subscription ? (
+                      <p className="text-sm text-muted-foreground">
+                        Действует до {new Date(subInfo.subscription.endDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {' '}(с {new Date(subInfo.subscription.startDate).toLocaleDateString('ru-RU')})
+                      </p>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Постоянный доступ (выдан администратором)</p>
+                    )}
+                    <Button size="sm" variant="outline" onClick={() => navigate('/payment')}>Продлить / сменить тариф</Button>
                   </CardContent>
                 </Card>
               )}
