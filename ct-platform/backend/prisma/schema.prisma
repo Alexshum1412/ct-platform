@@ -45,6 +45,7 @@ model User {
   gameResets    GameReset[]
   gameBalances  GameBalance[]
   verificationCodes VerificationCode[]
+  olympiadAttempts  OlympiadAttempt[]
 
   xp            Int       @default(0)
   level         Int       @default(1)
@@ -107,6 +108,8 @@ model Subject {
   examConfigs ExamConfig[]
   exams       Exam[]
   theory      Theory[]
+  olympiadProblems OlympiadProblem[]
+  olympiadTheory   OlympiadTheory[]
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -561,6 +564,90 @@ model GameBalance {
 
   @@unique([userId, game])
   @@map("game_balances")
+}
+
+// ==================== OLYMPIAD MODELS ====================
+// Республиканская олимпиада РБ по учебным предметам, уровни этапов:
+// SCHOOL (школьный) → DISTRICT (районный/городской) → REGION (областной) → REPUBLIC (заключительный).
+
+model OlympiadProblem {
+  id         String  @id @default(cuid())
+  externalId String? @unique // для идемпотентного сидинга (OLY-<slug>-<n>)
+
+  subjectId  String
+  title      String
+  content    String
+  answer     String           // канонический ответ (сравнение через normalizeAnswer)
+  answerType String  @default("TEXT") // TEXT | CHOICE (варианты в options)
+  options    String?          // JSON [{id,text}] для CHOICE
+  solution   String           // полный пошаговый разбор (plain text + $...$)
+  hints      String  @default("[]") // JSON array of strings
+  level      String           // SCHOOL | DISTRICT | REGION | REPUBLIC
+  difficulty Int     @default(3)    // 1–5
+  topic      String?          // олимпиадная тема («Инварианты», «Неравенства», …)
+  grade      String?          // целевые классы, например «9–11»
+  year       Int?             // год олимпиады (для архива)
+  points     Int     @default(10)
+  tags       String  @default("[]")
+  source     String?
+  status     String  @default("ACTIVE")
+
+  subject    Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  attempts   OlympiadAttempt[]
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([subjectId, level, status])
+  @@index([year])
+  @@map("olympiad_problems")
+}
+
+// Одна строка на пару (user, problem): очки начисляются один раз (антинакрутка),
+// повторные попытки только инкрементят tries. revealed = открыл разбор до решения (0 очков).
+model OlympiadAttempt {
+  id           String  @id @default(cuid())
+  userId       String
+  problemId    String
+
+  isCorrect    Boolean @default(false)
+  revealed     Boolean @default(false)
+  pointsEarned Int     @default(0)
+  xpGranted    Boolean @default(false) // атомарный флаг: XP за задачу выдан ровно один раз
+  tries        Int     @default(1)
+  lastAnswer   String?
+
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem      OlympiadProblem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@map("olympiad_attempts")
+}
+
+// Теория повышенного уровня для олимпиадной подготовки (отдельно от базовой Theory).
+model OlympiadTheory {
+  id         String  @id @default(cuid())
+  externalId String? @unique
+  subjectId  String
+  title      String
+  content    String
+  level      String  @default("REGION")
+  topic      String?
+  order      Int     @default(0)
+  tags       String  @default("[]")
+  status     String  @default("ACTIVE")
+
+  subject    Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([subjectId, status])
+  @@map("olympiad_theory")
 }
 
 // Одноразовый код подтверждения email (6 цифр). Храним только bcrypt-хэш кода,

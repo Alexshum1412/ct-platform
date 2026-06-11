@@ -35,7 +35,7 @@ const rarityLabel: Record<string, string> = {
   common: 'Обычное', rare: 'Редкое', epic: 'Эпическое', legendary: 'Легендарное',
 };
 const categoryLabel: Record<string, string> = {
-  practice: 'Практика', streak: 'Серии', exam: 'Экзамены',
+  practice: 'Практика', streak: 'Серии', exam: 'Экзамены', OLYMPIAD: 'Олимпиады',
 };
 
 export function AchievementsPage() {
@@ -105,7 +105,7 @@ export function AchievementsPage() {
             </Button>
           ))}
           <div className="w-px bg-border mx-1" />
-          {['all', 'practice', 'streak', 'exam'].map(c => (
+          {['all', 'practice', 'streak', 'exam', 'OLYMPIAD'].map(c => (
             <Button key={c} size="sm" variant={categoryFilter === c ? 'secondary' : 'ghost'} onClick={() => setCategoryFilter(c)}>
               {c === 'all' ? 'Все' : categoryLabel[c]}
             </Button>

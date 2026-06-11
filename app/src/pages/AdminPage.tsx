@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
   CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
-  TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList,
+  TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList, Trophy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import { apiClient, API_BASE_URL } from '@/lib/api/client';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { AdminContentManager } from '@/components/admin/AdminContentManager';
 import { ExamBuilder } from '@/components/admin/ExamBuilder';
+import { OlympiadManager } from '@/components/admin/OlympiadManager';
 import type { Question } from '@/types';
 
 interface AdminStats {
@@ -419,6 +420,7 @@ export function AdminPage() {
             <TabsTrigger value="content" className="gap-2"><FolderTree className="w-4 h-4" />Контент</TabsTrigger>
             <TabsTrigger value="exams" className="gap-2"><ClipboardList className="w-4 h-4" />Экзамены</TabsTrigger>
             <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
+            <TabsTrigger value="olympiad" className="gap-2"><Trophy className="w-4 h-4" />Олимпиада</TabsTrigger>
             <TabsTrigger value="pending" className="gap-2">
               <FileText className="w-4 h-4" />На проверке
               {pendingQuestions.length > 0 && <Badge variant="destructive" className="text-xs">{pendingQuestions.length}</Badge>}
@@ -454,6 +456,18 @@ export function AdminPage() {
               </CardHeader>
               <CardContent>
                 <ExamBuilder token={token} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Olympiad — задачи и теория повышенного уровня */}
+          <TabsContent value="olympiad">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Trophy className="w-5 h-5" />Олимпиадная подготовка</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <OlympiadManager token={token} />
               </CardContent>
             </Card>
           </TabsContent>

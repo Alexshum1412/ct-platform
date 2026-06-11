@@ -267,3 +267,128 @@ export const examApi = {
       `/exam/completed${subjectId ? `?subjectId=${subjectId}` : ''}`, { token },
     ),
 };
+
+// ===================== Olympiad API (олимпиадная подготовка) =====================
+
+export type OlympiadLevel = 'SCHOOL' | 'DISTRICT' | 'REGION' | 'REPUBLIC';
+
+export interface OlympiadSubjectRef {
+  id: string; slug: string; name: string; icon: string | null; color: string | null;
+}
+export interface OlympiadMyState { solved: boolean; revealed: boolean; tries: number; pointsEarned?: number }
+export interface OlympiadCard {
+  id: string; title: string; subjectId: string; level: OlympiadLevel; difficulty: number;
+  topic: string | null; grade: string | null; year: number | null; points: number; tags: string[];
+  my: OlympiadMyState | null;
+}
+export interface OlympiadProblemFull {
+  id: string; title: string; subjectId: string; content: string; level: OlympiadLevel;
+  difficulty: number; topic: string | null; grade: string | null; year: number | null;
+  points: number; tags: string[]; hints: string[]; source: string | null;
+  answer?: string; solution?: string;
+  subject?: OlympiadSubjectRef;
+}
+export interface OlympiadProgress {
+  solved: number; totalProblems: number; points: number;
+  byLevel: Record<OlympiadLevel, { total: number; solved: number }>;
+  bySubject: Array<{ subject: OlympiadSubjectRef; total: number; solved: number; points: number }>;
+}
+export interface OlympiadArchiveYear {
+  year: number;
+  levels: Array<{ level: OlympiadLevel; total: number; subjects: Array<{ subject: OlympiadSubjectRef; count: number }> }>;
+}
+export interface OlympiadTheoryCard {
+  id: string; subjectId: string; title: string; level: OlympiadLevel; topic: string | null;
+  tags: string[]; order: number; preview: string; subject: OlympiadSubjectRef;
+}
+export interface UnlockedAchievement {
+  id: string; name: string; description: string; icon: string; xp: number; rarity: string;
+}
+
+export const olympiadApi = {
+  getProblems: (params: { subjectId?: string; level?: string; topic?: string; year?: number; q?: string; limit?: number; offset?: number }, token?: string) => {
+    const qp = new URLSearchParams();
+    if (params.subjectId) qp.append('subjectId', params.subjectId);
+    if (params.level) qp.append('level', params.level);
+    if (params.topic) qp.append('topic', params.topic);
+    if (params.year) qp.append('year', String(params.year));
+    if (params.q) qp.append('q', params.q);
+    if (params.limit) qp.append('limit', String(params.limit));
+    if (params.offset) qp.append('offset', String(params.offset));
+    return apiClient<{ problems: OlympiadCard[]; total: number; limit: number; offset: number; facets: { topics: string[]; years: number[] } }>(
+      `/olympiad/problems?${qp.toString()}`, { token },
+    );
+  },
+  getProblem: (id: string, token?: string) =>
+    apiClient<{ problem: OlympiadProblemFull; my: OlympiadMyState | null }>(`/olympiad/problems/${id}`, { token }),
+  submitAnswer: (id: string, answer: string, token: string) =>
+    apiClient<{ correct: boolean; alreadySolved?: boolean; pointsEarned?: number; tries?: number; problem?: OlympiadProblemFull; unlockedAchievements?: UnlockedAchievement[] }>(
+      `/olympiad/problems/${id}/submit`, { method: 'POST', body: { answer }, token },
+    ),
+  revealSolution: (id: string, token: string) =>
+    apiClient<{ problem: OlympiadProblemFull; my: OlympiadMyState }>(
+      `/olympiad/problems/${id}/solution`, { method: 'POST', token },
+    ),
+  getArchive: (subjectId?: string) =>
+    apiClient<{ years: OlympiadArchiveYear[] }>(`/olympiad/archive${subjectId ? `?subjectId=${subjectId}` : ''}`),
+  getLeaderboard: (token?: string) =>
+    apiClient<{ leaderboard: Array<{ rank: number; userId: string; name: string; image: string | null; level: number; points: number; solved: number }>; me: { rank: number; points: number; solved: number } | null; totalParticipants: number }>(
+      '/olympiad/leaderboard', { token },
+    ),
+  getProgress: (token: string) => apiClient<OlympiadProgress>('/olympiad/progress', { token }),
+  getTheory: (params?: { subjectId?: string; level?: string; q?: string }) => {
+    const qp = new URLSearchParams();
+    if (params?.subjectId) qp.append('subjectId', params.subjectId);
+    if (params?.level) qp.append('level', params.level);
+    if (params?.q) qp.append('q', params.q);
+    const qs = qp.toString();
+    return apiClient<{ articles: OlympiadTheoryCard[] }>(`/olympiad/theory${qs ? `?${qs}` : ''}`);
+  },
+  getTheoryArticle: (id: string) =>
+    apiClient<{ article: OlympiadTheoryCard & { content: string } }>(`/olympiad/theory/${id}`),
+};
+
+// Admin: олимпиадные задачи и теория
+export const adminOlympiadApi = {
+  getProblems: (params: { subjectId?: string; level?: string; q?: string; limit?: number; offset?: number }, token: string) => {
+    const qp = new URLSearchParams();
+    if (params.subjectId) qp.append('subjectId', params.subjectId);
+    if (params.level) qp.append('level', params.level);
+    if (params.q) qp.append('q', params.q);
+    if (params.limit) qp.append('limit', String(params.limit));
+    if (params.offset) qp.append('offset', String(params.offset));
+    return apiClient<{ problems: Array<OlympiadProblemFull & { answer: string; solution: string; status: string; subject?: { id: string; slug: string; name: string } }>; total: number }>(
+      `/admin/olympiad/problems?${qp.toString()}`, { token },
+    );
+  },
+  createProblem: (data: Record<string, unknown>, token: string) =>
+    apiClient('/admin/olympiad/problems', { method: 'POST', body: data, token }),
+  updateProblem: (id: string, data: Record<string, unknown>, token: string) =>
+    apiClient(`/admin/olympiad/problems/${id}`, { method: 'PATCH', body: data, token }),
+  deleteProblem: (id: string, token: string) =>
+    apiClient(`/admin/olympiad/problems/${id}`, { method: 'DELETE', token }),
+  getTheory: (params: { subjectId?: string; q?: string }, token: string) => {
+    const qp = new URLSearchParams();
+    if (params.subjectId) qp.append('subjectId', params.subjectId);
+    if (params.q) qp.append('q', params.q);
+    return apiClient<{ articles: Array<OlympiadTheoryCard & { content: string; status: string }> }>(
+      `/admin/olympiad/theory?${qp.toString()}`, { token },
+    );
+  },
+  createTheory: (data: Record<string, unknown>, token: string) =>
+    apiClient('/admin/olympiad/theory', { method: 'POST', body: data, token }),
+  updateTheory: (id: string, data: Record<string, unknown>, token: string) =>
+    apiClient(`/admin/olympiad/theory/${id}`, { method: 'PATCH', body: data, token }),
+  deleteTheory: (id: string, token: string) =>
+    apiClient(`/admin/olympiad/theory/${id}`, { method: 'DELETE', token }),
+};
+
+export interface OlympiadOverview {
+  totalProblems: number;
+  theoryCount: number;
+  byLevel: Record<OlympiadLevel, number>;
+  subjects: Array<{ subject: OlympiadSubjectRef & { order?: number }; total: number; byLevel: Partial<Record<OlympiadLevel, number>> }>;
+}
+export const olympiadOverviewApi = {
+  get: () => apiClient<OlympiadOverview>('/olympiad/overview'),
+};

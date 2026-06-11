@@ -19,6 +19,7 @@ const protectedRoutes = [
   '/api/games/reset',
   '/api/games/balance',
   '/api/subscription',
+  '/api/olympiad/progress',
   '/api/auth/verify-email',
   '/api/auth/resend-code',
 ];
@@ -125,6 +126,7 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-user-id', payload.userId);
     requestHeaders.set('x-user-role', payload.role);
+    requestHeaders.set('x-user-verified', String(payload.verified !== false));
 
     const response = NextResponse.next({
       request: { headers: requestHeaders },
@@ -142,6 +144,9 @@ export async function middleware(request: NextRequest) {
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set('x-user-id', payload.userId);
       requestHeaders.set('x-user-role', payload.role);
+      // Хэндлеры с auth-логикой вне protectedRoutes (например, сабмит олимпиадной
+      // задачи) сами проверяют этот заголовок, чтобы требовать подтверждённый email.
+      requestHeaders.set('x-user-verified', String(payload.verified !== false));
       const response = NextResponse.next({ request: { headers: requestHeaders } });
       response.headers.set('Access-Control-Allow-Origin', origin);
       return response;
@@ -154,6 +159,7 @@ export async function middleware(request: NextRequest) {
   const cleanHeaders = new Headers(request.headers);
   cleanHeaders.delete('x-user-id');
   cleanHeaders.delete('x-user-role');
+  cleanHeaders.delete('x-user-verified');
   const response = NextResponse.next({ request: { headers: cleanHeaders } });
   response.headers.set('Access-Control-Allow-Origin', origin);
   return response;

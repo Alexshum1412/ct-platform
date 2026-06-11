@@ -101,6 +101,16 @@ const TheoryHubPage = lazy(() => import('@/pages/TheoryHubPage').then(m => ({ de
 /** Страница оплаты Premium-подписки */
 const PaymentPage = lazy(() => import('@/pages/PaymentPage').then(m => ({ default: m.PaymentPage })));
 
+/** Олимпиадная подготовка — отдельный раздел (хаб, задачи, архив, теория PRO, рейтинг, гид) */
+const OlympiadHubPage = lazy(() => import('@/pages/olympiad/OlympiadHubPage').then(m => ({ default: m.OlympiadHubPage })));
+const OlympiadProblemsPage = lazy(() => import('@/pages/olympiad/OlympiadProblemsPage').then(m => ({ default: m.OlympiadProblemsPage })));
+const OlympiadProblemPage = lazy(() => import('@/pages/olympiad/OlympiadProblemPage').then(m => ({ default: m.OlympiadProblemPage })));
+const OlympiadArchivePage = lazy(() => import('@/pages/olympiad/OlympiadArchivePage').then(m => ({ default: m.OlympiadArchivePage })));
+const OlympiadTheoryPage = lazy(() => import('@/pages/olympiad/OlympiadTheoryPage').then(m => ({ default: m.OlympiadTheoryPage })));
+const OlympiadTheoryArticlePage = lazy(() => import('@/pages/olympiad/OlympiadTheoryPage').then(m => ({ default: m.OlympiadTheoryArticlePage })));
+const OlympiadLeaderboardPage = lazy(() => import('@/pages/olympiad/OlympiadLeaderboardPage').then(m => ({ default: m.OlympiadLeaderboardPage })));
+const OlympiadGuidePage = lazy(() => import('@/pages/olympiad/OlympiadGuidePage').then(m => ({ default: m.OlympiadGuidePage })));
+
 /** Секретная демо-страница «Рулетка» (виртуальные монеты, без реальных денег) */
 const RoulettePage = lazy(() => import('@/pages/RoulettePage').then(m => ({ default: m.RoulettePage })));
 
@@ -176,6 +186,18 @@ function App() {
               {/* Единый каталог теории по всем предметам (static path — выше динамического /theory/:slug) */}
               <Route path="/theory" element={<MembersOnly feature="Каталог теории"><TheoryHubPage /></MembersOnly>} />
               <Route path="/theory/:slug/:topicId?" element={<MembersOnly feature="Теория"><TheoryPage /></MembersOnly>} />
+
+              {/* ОЛИМПИАДНАЯ ПОДГОТОВКА — отдельный раздел.
+                  Каталог и задачи открыты для просмотра (решение гейтится requireAuth),
+                  теория PRO — members-only, как и базовая теория. */}
+              <Route path="/olympiad" element={<OlympiadHubPage />} />
+              <Route path="/olympiad/tasks" element={<OlympiadProblemsPage />} />
+              <Route path="/olympiad/problem/:id" element={<OlympiadProblemPage />} />
+              <Route path="/olympiad/archive" element={<OlympiadArchivePage />} />
+              <Route path="/olympiad/theory" element={<MembersOnly feature="Теория повышенного уровня"><OlympiadTheoryPage /></MembersOnly>} />
+              <Route path="/olympiad/theory/:id" element={<MembersOnly feature="Теория повышенного уровня"><OlympiadTheoryArticlePage /></MembersOnly>} />
+              <Route path="/olympiad/rating" element={<OlympiadLeaderboardPage />} />
+              <Route path="/olympiad/guide" element={<OlympiadGuidePage />} />
 
               {/* 
                 АУТЕНТИФИКАЦИЯ 

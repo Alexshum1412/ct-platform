@@ -150,6 +150,9 @@ export function Header() {
             <Link to="/theory" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/theory') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
               Теория
             </Link>
+            <Link to="/olympiad" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/olympiad') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+              Олимпиады
+            </Link>
             <Link to="/leaderboard" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/leaderboard') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
               Рейтинг
             </Link>
@@ -303,6 +306,7 @@ export function Header() {
               {[
                 { to: '/', label: 'Главная' },
                 { to: '/theory', label: 'Теория' },
+                { to: '/olympiad', label: 'Олимпиады' },
                 { to: '/leaderboard', label: 'Рейтинг' },
                 { to: '/favorites', label: 'Избранное' },
                 { to: '/achievements', label: 'Достижения' },

@@ -4,7 +4,7 @@
  * Hidden in Focus mode. The desktop header is untouched.
  */
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, BookOpen, Target, User } from 'lucide-react';
+import { Home, BookOpen, Target, Trophy, User } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
 export function MobileTabBar() {
@@ -20,6 +20,7 @@ export function MobileTabBar() {
     { label: 'Главная', icon: Home, to: '/', active: onHome && !search.includes('subjects') },
     { label: 'Теория', icon: BookOpen, to: '/theory', active: pathname.startsWith('/theory') },
     { label: 'Практика', icon: Target, to: '/?scroll=subjects', active: pathname.startsWith('/practice') || pathname.startsWith('/subject') },
+    { label: 'Олимп.', icon: Trophy, to: '/olympiad', active: pathname.startsWith('/olympiad') },
     { label: 'Профиль', icon: User, to: isAuthenticated ? '/profile' : '/login', active: pathname.startsWith('/profile') || pathname.startsWith('/login') },
   ];
 
@@ -29,7 +30,7 @@ export function MobileTabBar() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Основная навигация"
     >
-      <div className="grid grid-cols-4">
+      <div className="grid grid-cols-5">
         {tabs.map((t) => {
           const Icon = t.icon;
           const handleClick = (e: React.MouseEvent) => {
