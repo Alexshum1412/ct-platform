@@ -43,7 +43,7 @@ export function FooterSection() {
           {/* Brand */}
           <div className="lg:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-violet-600 shadow-md shadow-primary/25 flex items-center justify-center">
                 <BookOpen className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold">CT-Platform</span>

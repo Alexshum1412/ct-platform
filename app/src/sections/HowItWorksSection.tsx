@@ -66,16 +66,19 @@ export function HowItWorksSection() {
               
               <div className="relative">
                 {/* Number */}
-                <span className="text-6xl font-bold text-primary/10 absolute -top-4 -left-2">
+                <span
+                  className="text-7xl font-extrabold absolute -top-5 -left-2 bg-gradient-to-b from-primary/20 to-transparent bg-clip-text text-transparent select-none"
+                  aria-hidden
+                >
                   {step.number}
                 </span>
-                
+
                 {/* Content */}
-                <div className="relative pt-8">
-                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
-                    <step.icon className="w-6 h-6 text-primary" />
+                <div className="relative pt-9">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/20 flex items-center justify-center mb-4">
+                    <step.icon className="w-6 h-6 text-white" />
                   </div>
-                  
+
                   <h3 className="text-xl font-semibold mb-3">{step.title}</h3>
                   <p className="text-muted-foreground leading-relaxed">
                     {step.description}
