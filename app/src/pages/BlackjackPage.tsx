@@ -311,6 +311,7 @@ function BlackjackGame() {
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary/5 via-background to-background">
       <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-primary/10 blur-3xl opacity-60" />
       <div className="pointer-events-none absolute top-1/3 -left-24 w-80 h-80 rounded-full bg-sky-400/10 blur-3xl opacity-50" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-faint" />
 
       <div className="relative container py-8 sm:py-10 max-w-6xl">
         {/* Шапка */}
@@ -499,7 +500,12 @@ function BlackjackGame() {
                 {/* Действия */}
                 <div className="mt-4">
                   {phase === 'betting' && (
-                    <Button onClick={deal} size="lg" disabled={balance < 1} className="w-full h-12 text-base gap-2">
+                    <Button
+                      onClick={deal}
+                      size="lg"
+                      disabled={balance < 1}
+                      className="w-full h-12 text-base gap-2 btn-shine bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-lg shadow-sky-500/25 hover:opacity-95"
+                    >
                       <Play className="w-5 h-5" />Раздать ({Math.min(bet, balance)} 💎)
                     </Button>
                   )}

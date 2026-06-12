@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, BookOpen, Target, Clock, TrendingUp,
+  ArrowLeft, BookOpen, Target, Clock,
   ChevronRight, GraduationCap, Play, Book, ChevronDown, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -75,62 +75,63 @@ export function SubjectPage() {
   }
   
   const Icon = subject.icon === 'BookOpen' ? BookOpen : Book;
-  
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container py-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
+      <main className="container py-8">
+        {/* Hero предмета — единый язык внутренних страниц (аврора + сетка + плитка) */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="relative overflow-hidden rounded-3xl border bg-card/60 mb-8"
+        >
+          <div
+            className="absolute -top-24 -right-16 w-80 h-80 rounded-full blur-[80px] opacity-20 pointer-events-none"
+            style={{ background: subject.color }}
+          />
+          <div className="absolute inset-0 bg-grid-faint pointer-events-none" />
+          <div className="relative px-6 py-7 md:px-9 md:py-9">
+            <button
+              type="button"
               onClick={() => navigate('/')}
-              className="shrink-0"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
             >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+              <ArrowLeft className="w-4 h-4" /> Все предметы
+            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <div
+                className="w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center text-white shrink-0"
                 style={{ background: subject.color }}
               >
-                <Icon className="w-5 h-5" />
+                <Icon className="w-7 h-7" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold">{subject.name}</h1>
-                <p className="text-sm text-muted-foreground">
-                  Подготовка к ЦТ и ЦЭ
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{subject.name}</h1>
+                <p className="text-muted-foreground mt-1 max-w-2xl">
+                  Подготовка к ЦТ и ЦЭ: практика по темам, теория и пробные экзамены.
                 </p>
               </div>
             </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {[
+                { icon: BookOpen, value: stats?.questionsCount ?? subject.stats.questionsCount, label: 'заданий' },
+                { icon: Target, value: stats?.topicsCount ?? subject.stats.topicsCount, label: 'тем' },
+                { icon: Clock, value: examConfig?.durationMinutes ?? 120, label: 'минут на экзамен' },
+              ].map(({ icon: ChipIcon, value, label }) => (
+                <span
+                  key={label}
+                  className="inline-flex items-center gap-2 rounded-full border bg-background/70 px-3.5 py-1.5 text-sm font-medium"
+                >
+                  <ChipIcon className="w-4 h-4" style={{ color: subject.color }} />
+                  <span className="tabular-nums font-bold">{value}</span>
+                  <span className="text-muted-foreground font-normal">{label}</span>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      </header>
-      
-      <main className="container py-8">
-        {/* Stats — compact, informational only (not actions) */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6 sm:mb-8">
-          <StatCard
-            icon={BookOpen}
-            value={stats?.questionsCount ?? subject.stats.questionsCount}
-            label="Заданий"
-            color={subject.color}
-          />
-          <StatCard
-            icon={Target}
-            value={stats?.topicsCount ?? subject.stats.topicsCount}
-            label="Тем"
-            color={subject.color}
-          />
-          <StatCard
-            icon={TrendingUp}
-            value={examConfig?.durationMinutes ?? 120}
-            label="Минут"
-            color={subject.color}
-          />
-        </div>
-        
+        </motion.div>
+
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Actions */}
@@ -202,8 +203,12 @@ export function SubjectPage() {
                         transition={{ delay: index * 0.05 }}
                         className="border border-border rounded-xl overflow-hidden"
                       >
-                        <button
-                          type="button"
+                        {/* div role=button вместо <button>: внутри лежат настоящие кнопки
+                            «Теория»/«Практика», а вложенные button невалидны и ломают a11y */}
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          aria-expanded={isExpanded}
                           onClick={async () => {
                             const next = new Set(expandedTopics);
                             if (isExpanded) next.delete(topic.id);
@@ -216,7 +221,13 @@ export function SubjectPage() {
                             }
                             setExpandedTopics(next);
                           }}
-                          className="w-full p-4 hover:bg-muted/50 transition-all text-left"
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              (e.currentTarget as HTMLDivElement).click();
+                            }
+                          }}
+                          className="w-full p-4 hover:bg-muted/50 transition-all text-left cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                           <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -248,7 +259,7 @@ export function SubjectPage() {
                           {topic.description && (
                             <p className="text-sm text-muted-foreground pl-6 truncate">{topic.description}</p>
                           )}
-                        </button>
+                        </div>
 
                         <AnimatePresence>
                           {isExpanded && subs.length > 0 && (
@@ -354,29 +365,3 @@ export function SubjectPage() {
 
 // Named export для lazy loading
 export default SubjectPage;
-
-interface StatCardProps {
-  icon: React.ComponentType<{ className?: string }>;
-  value: string | number;
-  label: string;
-  color: string;
-}
-
-function StatCard({ icon: Icon, value, label, color }: StatCardProps) {
-  // Compact, non-interactive info tile: small on mobile (3 across, doesn't fill the
-  // screen), a bit larger on desktop. Deliberately not a clickable-looking Card.
-  return (
-    <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-card px-2 py-3 text-center sm:flex-row sm:gap-3 sm:px-4 sm:py-4 sm:text-left">
-      <div
-        className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center text-white shrink-0"
-        style={{ background: color }}
-      >
-        <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-base sm:text-2xl font-bold leading-tight tabular-nums">{value}</p>
-        <p className="text-[11px] sm:text-sm text-muted-foreground leading-tight">{label}</p>
-      </div>
-    </div>
-  );
-}

@@ -52,27 +52,44 @@ export function ExamListPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 bg-background/85 backdrop-blur-md border-b border-border">
-        <div className="container py-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="icon" onClick={() => navigate(`/subject/${slug}`)} title="К предмету">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0" style={{ background: subject.color }}>
-              <ClipboardList className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold truncate">{subject.name}</h1>
-              <p className="text-sm text-muted-foreground">Пробные экзамены</p>
+      <main className="container py-8 max-w-4xl">
+        {/* Hero — единый язык внутренних страниц (аврора + сетка + плитка) */}
+        <motion.div
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45 }}
+          className="relative overflow-hidden rounded-3xl border bg-card/60 mb-8"
+        >
+          <div
+            className="absolute -top-24 -right-16 w-80 h-80 rounded-full blur-[80px] opacity-20 pointer-events-none"
+            style={{ background: subject.color }}
+          />
+          <div className="absolute inset-0 bg-grid-faint pointer-events-none" />
+          <div className="relative px-6 py-7 md:px-9 md:py-9">
+            <button
+              type="button"
+              onClick={() => navigate(`/subject/${slug}`)}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors mb-4"
+            >
+              <ArrowLeft className="w-4 h-4" /> {subject.name}
+            </button>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+              <div
+                className="w-14 h-14 rounded-2xl shadow-lg flex items-center justify-center text-white shrink-0"
+                style={{ background: subject.color }}
+              >
+                <ClipboardList className="w-7 h-7" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Пробные экзамены</h1>
+                <p className="text-muted-foreground mt-1 max-w-2xl">
+                  Подготовленные наборы заданий в формате ЦТ/ЦЭ с таймером и тестовым баллом.
+                  {!isLoading && exams.length > 0 && <> Доступно: {exams.length}.</>}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </header>
-
-      <main className="container py-8 max-w-4xl">
-        <p className="text-muted-foreground mb-6">
-          Выберите пробный экзамен. Каждый экзамен — это подготовленный набор заданий в формате ЦТ/ЦЭ с таймером и тестовым баллом.
-        </p>
+        </motion.div>
 
         {isLoading ? (
           <CardRowsSkeleton rows={4} />
@@ -96,7 +113,7 @@ export function ExamListPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(i, 6) * 0.05 }}
               >
-                <Card className="h-full overflow-hidden transition-shadow hover:shadow-lg">
+                <Card className="h-full overflow-hidden card-lift">
                   <div className="h-1.5 w-full" style={{ background: subject.color }} />
                   <CardContent className="p-5 flex flex-col h-full">
                     <div className="flex items-start justify-between gap-2 mb-1">

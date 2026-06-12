@@ -357,9 +357,10 @@ function RouletteGame() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-primary/5 via-background to-background">
-      {/* Мягкое фоновое свечение в стиле главной страницы */}
+      {/* Мягкое фоновое свечение + фирменная сетка в стиле главной страницы */}
       <div className="pointer-events-none absolute -top-24 -right-24 w-[28rem] h-[28rem] rounded-full bg-primary/10 blur-3xl opacity-60" />
       <div className="pointer-events-none absolute top-1/3 -left-24 w-80 h-80 rounded-full bg-amber-400/10 blur-3xl opacity-50" />
+      <div className="pointer-events-none absolute inset-0 bg-grid-faint" />
 
       {/* Увеличенное колесо (оверлей для наблюдения) */}
       <AnimatePresence>
@@ -511,7 +512,12 @@ function RouletteGame() {
 
                 {/* Кнопки управления */}
                 <div className="mt-4 w-full space-y-2">
-                  <Button onClick={spin} disabled={spinning || totalBet === 0} size="lg" className="w-full h-12 text-base gap-2">
+                  <Button
+                    onClick={spin}
+                    disabled={spinning || totalBet === 0}
+                    size="lg"
+                    className="w-full h-12 text-base gap-2 btn-shine bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25 hover:opacity-95"
+                  >
                     <Play className="w-5 h-5" />{spinning ? 'Колесо крутится…' : 'Крутить колесо'}
                   </Button>
                   <div className="grid grid-cols-2 gap-2">
