@@ -19,16 +19,16 @@ export function SubjectsSection({ onSubjectClick }: SubjectsSectionProps) {
           transition={{ duration: 0.5 }}
           className="text-center mb-12"
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-semibold mb-5">
             <BookOpen className="w-4 h-4" />
-            Выберите предмет
+            11 предметов ЦТ/ЦЭ
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Предметы для подготовки
+          <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">
+            С какого предмета{' '}
+            <span className="bg-gradient-to-r from-primary to-blue-700 bg-clip-text text-transparent">начнём?</span>
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Выберите предмет, к которому хотите подготовиться. 
-            Каждый предмет содержит задания разных типов и подробную теорию.
+            В каждом предмете — задания обеих частей, теория по программе и пробные варианты.
           </p>
         </motion.div>
         
