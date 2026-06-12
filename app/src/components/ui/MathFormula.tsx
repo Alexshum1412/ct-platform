@@ -1,33 +1,33 @@
 /**
  * Компонент для отображения математических формул
  * Использует KaTeX для рендеринга LaTeX формул
- * 
+ *
+ * KaTeX загружается ЛЕНИВО (см. lib/katexLoader): пока модуль не подгружен,
+ * показывается экранированный исходный текст, затем формулы дорисовываются.
+ *
  * Поддерживает:
  * - Чистые LaTeX формулы: "x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}"
  * - Смешанный текст с формулами: "Решите уравнение $x^2 + 2x + 1 = 0$"
  * - Блочные формулы: "$$E = mc^2$$"
- * 
- * Пример использования:
- * <MathFormula formula="x = {-b \\pm \\sqrt{b^2-4ac} \\over 2a}" />
- * <MathFormula formula="E = mc^2" inline />
- * <MathFormula formula="Решите $x^2 + 2x + 1 = 0$" /> (смешанный текст)
  */
 
-import 'katex/dist/katex.min.css';
-import katex from 'katex';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type katexType from 'katex';
+import { getKatex, loadKatex } from '@/lib/katexLoader';
+
+type KatexModule = typeof katexType;
 
 // =====================================================
 // ТИПЫ И ИНТЕРФЕЙСЫ
 // =====================================================
 
 interface MathFormulaProps {
-  /** 
+  /**
    * LaTeX формула или текст с формулами для отображения
    * Поддерживает $...$ для inline и $$...$$ для блочных формул
    */
   formula: string;
-  /** 
+  /**
    * Режим отображения:
    * - inline: встроенная формула (в тексте)
    * - block: блочная формула (по центру, отдельно)
@@ -43,10 +43,7 @@ interface MathFormulaProps {
 
 /**
  * Проверяет, содержит ли строка LaTeX разделители
- * $...$ - inline формулы
- * $$...$$ - блочные формулы
- * \[...\] - блочные формулы (альтернативный синтаксис)
- * \(...\) - inline формулы (альтернативный синтаксис)
+ * $...$ - inline формулы, $$...$$ - блочные
  */
 function containsLatexDelimiters(text: string): boolean {
   return /\$\$?[\s\S]*?\$\$?|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\)/.test(text);
@@ -64,51 +61,48 @@ function escapeText(s: string): string {
     .replace(/\n/g, '<br />');
 }
 
+/** Нужен ли KaTeX для этой строки (есть формулы или это «чистая» формула без кириллицы). */
+function needsKatex(formula: string): boolean {
+  if (!formula) return false;
+  if (containsLatexDelimiters(formula)) return true;
+  return !/[а-яё]/i.test(formula);
+}
+
 /**
  * Рендерит смешанный текст с формулами
  * Разбивает текст на части и рендерит формулы через KaTeX
  */
-function renderMixedContent(text: string): string {
+function renderMixedContent(text: string, katex: KatexModule): string {
   if (!text) return '';
-  
-  // Регулярное выражение для поиска формул
-  // $$...$$ - блочные формулы
-  // $...$ - inline формулы
+
+  // $$...$$ — блочные формулы, $...$ — inline
   const latexRegex = /(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)/g;
-  
+
   const parts = text.split(latexRegex);
-  
+
   return parts.map((part) => {
     // Блочная формула $$...$$
     if (part.startsWith('$$') && part.endsWith('$$')) {
       const formula = part.slice(2, -2).trim();
       try {
-        return katex.renderToString(formula, {
-          throwOnError: false,
-          displayMode: true,
-          strict: false,
-        });
+        return katex.renderToString(formula, { throwOnError: false, displayMode: true, strict: false });
       } catch (error) {
         console.error('KaTeX block render error:', error);
-        return `<div class="text-red-500">${formula}</div>`;
+        return `<div class="text-red-500">${escapeText(formula)}</div>`;
       }
     }
-    
+
     // Inline формула $...$
     if (part.startsWith('$') && part.endsWith('$') && part.length > 1) {
       const formula = part.slice(1, -1).trim();
       try {
-        return katex.renderToString(formula, {
-          throwOnError: false,
-          displayMode: false,
-          strict: false,
-        });
+        return katex.renderToString(formula, { throwOnError: false, displayMode: false, strict: false });
       } catch (error) {
         console.error('KaTeX inline render error:', error);
-        return `<span class="text-red-500">${formula}</span>`;
+        return `<span class="text-red-500">${escapeText(formula)}</span>`;
       }
     }
-    
+
     // Обычный текст — экранируем HTML, пробелы и переносы сохраняются
     return escapeText(part);
   }).join('');
@@ -123,12 +117,26 @@ function renderMixedContent(text: string): string {
  * Автоматически определяет тип контента и рендерит соответственно
  */
 export function MathFormula({ formula, inline = false, className = '' }: MathFormulaProps) {
+  const wantsKatex = useMemo(() => needsKatex(formula), [formula]);
+  // Если модуль уже в памяти — рендерим формулы сразу, без мигания.
+  const [katexReady, setKatexReady] = useState(() => !!getKatex());
+
+  useEffect(() => {
+    if (!wantsKatex || katexReady) return;
+    let alive = true;
+    void loadKatex().then(() => { if (alive) setKatexReady(true); });
+    return () => { alive = false; };
+  }, [wantsKatex, katexReady]);
+
   const renderedContent = useMemo(() => {
     if (!formula) return '';
-    
+
+    const katex = getKatex();
+
     // Есть разделители LaTeX ($...$ / $$...$$) — смешанный текст с формулами
     if (containsLatexDelimiters(formula)) {
-      return renderMixedContent(formula);
+      // Пока KaTeX грузится — показываем исходный текст (формулы дорисуются).
+      return katex ? renderMixedContent(formula, katex) : escapeText(formula);
     }
 
     // Нет разделителей, но есть кириллица — это обычный текст (условие/ответ/теория),
@@ -139,17 +147,15 @@ export function MathFormula({ formula, inline = false, className = '' }: MathFor
     }
 
     // Иначе считаем строку «чистой» формулой (латиница/символы: "E=mc^2", "x^2", "16")
+    if (!katex) return escapeText(formula);
     try {
-      return katex.renderToString(formula, {
-        throwOnError: false,
-        displayMode: !inline,
-        strict: false,
-      });
+      return katex.renderToString(formula, { throwOnError: false, displayMode: !inline, strict: false });
     } catch (error) {
       console.error('KaTeX render error:', error);
       return escapeText(formula);
     }
-  }, [formula, inline]);
+    // katexReady в зависимостях — после загрузки модуля контент пересчитывается.
+  }, [formula, inline, katexReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <span
@@ -171,13 +177,13 @@ export function MathFormula({ formula, inline = false, className = '' }: MathFor
  * Компонент для отображения формулы в блоке с фоном
  * Подходит для важных формул в теории
  */
-export function FormulaBlock({ 
-  formula, 
-  name, 
-  description 
-}: { 
-  formula: string; 
-  name?: string; 
+export function FormulaBlock({
+  formula,
+  name,
+  description
+}: {
+  formula: string;
+  name?: string;
   description?: string;
 }) {
   return (

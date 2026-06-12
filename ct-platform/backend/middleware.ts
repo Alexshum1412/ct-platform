@@ -20,12 +20,23 @@ const protectedRoutes = [
   '/api/games/balance',
   '/api/subscription',
   '/api/olympiad/progress',
+  '/api/notifications',
   '/api/auth/verify-email',
   '/api/auth/resend-code',
 ];
 
 const adminRoutes = [
   '/api/admin',
+];
+
+// Разделы админки, доступные роли MODERATOR (модерация, без управления
+// контентом/пользователями). ADMIN имеет доступ ко всему /api/admin.
+const moderatorAllowed = [
+  '/api/admin/pending',
+  '/api/admin/reports',
+  '/api/admin/contact',
+  '/api/admin/audit',
+  '/api/admin/stats',
 ];
 
 // Защищённые маршруты, доступные ДО подтверждения email (нужны для самого процесса
@@ -105,11 +116,15 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    if (isAdmin && payload.role !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'Доступ запрещён' },
-        { status: 403, headers: { 'Access-Control-Allow-Origin': origin } }
-      );
+    if (isAdmin) {
+      const isModeratorPath = moderatorAllowed.some(route => pathname.startsWith(route));
+      const allowed = payload.role === 'ADMIN' || (payload.role === 'MODERATOR' && isModeratorPath);
+      if (!allowed) {
+        return NextResponse.json(
+          { error: 'Доступ запрещён' },
+          { status: 403, headers: { 'Access-Control-Allow-Origin': origin } }
+        );
+      }
     }
 
     // Блокируем функции для пользователей с неподтверждённым email.

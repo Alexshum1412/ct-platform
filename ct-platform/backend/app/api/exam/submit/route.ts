@@ -46,17 +46,42 @@ export async function POST(req: NextRequest) {
     // (более лёгкий) набор вопросов. Для старых попыток без examId
     // (легаси-поток) грейдим присланные ключи, как раньше.
     let questionIds = Object.keys(parsed.data.answers);
+    let examDurationMinutes: number | null = null;
     if (attempt.examId) {
       const exam = await prisma.exam.findUnique({
         where: { id: attempt.examId },
-        select: { questionIds: true },
+        select: { questionIds: true, durationMinutes: true },
       });
       if (exam) {
+        examDurationMinutes = exam.durationMinutes;
         try {
           const ids = JSON.parse(exam.questionIds);
           if (Array.isArray(ids) && ids.length > 0) questionIds = ids;
         } catch { /* повреждённый JSON — остаёмся на присланных ключах */ }
       }
+    }
+
+    // Серверный контроль времени: клиентский таймер можно подделать, поэтому
+    // дедлайн проверяется по startedAt. Grace 5 минут покрывает сеть и
+    // расхождение часов; легитимный клиент сабмитит сам по таймеру.
+    const GRACE_MS = 5 * 60 * 1000;
+    if (examDurationMinutes && Date.now() > attempt.startedAt.getTime() + examDurationMinutes * 60_000 + GRACE_MS) {
+      // Закрываем попытку нулём, чтобы её нельзя было досдать позже.
+      await prisma.examAttempt.update({
+        where: { id: attempt.id },
+        data: {
+          isCompleted: true,
+          completedAt: new Date(),
+          score: 0,
+          maxScore: questionIds.length,
+          percentage: 0,
+          totalTime: Math.max(0, Math.round((Date.now() - attempt.startedAt.getTime()) / 1000)),
+        },
+      });
+      return NextResponse.json(
+        { error: 'Время экзамена истекло — ответы не приняты', code: 'EXAM_TIME_EXPIRED' },
+        { status: 410 },
+      );
     }
 
     const questions = await prisma.question.findMany({

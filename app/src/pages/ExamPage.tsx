@@ -62,6 +62,8 @@ export function ExamPage() {
   // больше нет (закрыта возможность подсмотреть их в Network во время экзамена).
   const [serverResults, setServerResults] = useState<ExamSubmitResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // true, когда сервер закрыл попытку (время вышло/уже сдана) — повтор бессмыслен.
+  const [submitFatal, setSubmitFatal] = useState(false);
   const finishingRef = useRef(false);
   // Снимок ответов для submit (ref, чтобы автозавершение по таймеру не
   // пересоздавало интервал на каждый введённый ответ).
@@ -132,6 +134,9 @@ export function ExamPage() {
     if (result?.data && typeof (result.data as ExamSubmitResult).score === 'number') {
       setServerResults(result.data as ExamSubmitResult);
     } else {
+      // Просроченная/уже сданная попытка закрыта на сервере — повтор не поможет.
+      const code = (result as { code?: string } | null)?.code;
+      setSubmitFatal(code === 'EXAM_TIME_EXPIRED' || code === 'ALREADY_SUBMITTED');
       setSubmitError(result?.error || 'Не удалось отправить результаты. Проверьте соединение и повторите.');
     }
   }, [token]);
@@ -319,17 +324,22 @@ export function ExamPage() {
               ) : (
                 <>
                   <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
-                  <h1 className="text-xl font-bold mb-2">Не удалось отправить результаты</h1>
+                  <h1 className="text-xl font-bold mb-2">
+                    {submitFatal ? 'Попытка не засчитана' : 'Не удалось отправить результаты'}
+                  </h1>
                   <p className="text-muted-foreground mb-6">
-                    {submitError || 'Произошла ошибка.'} Ваши ответы сохранены в этой вкладке — попробуйте ещё раз.
+                    {submitError || 'Произошла ошибка.'}
+                    {!submitFatal && ' Ваши ответы сохранены в этой вкладке — попробуйте ещё раз.'}
                   </p>
                   <div className="flex gap-3">
                     <Button variant="outline" size="lg" className="flex-1" onClick={() => navigate(`/exam/${slug}`)}>
                       К экзаменам
                     </Button>
-                    <Button size="lg" className="flex-1" onClick={() => void submitAttempt()} style={{ background: subject.color }}>
-                      Повторить отправку
-                    </Button>
+                    {!submitFatal && (
+                      <Button size="lg" className="flex-1" onClick={() => void submitAttempt()} style={{ background: subject.color }}>
+                        Повторить отправку
+                      </Button>
+                    )}
                   </div>
                 </>
               )}

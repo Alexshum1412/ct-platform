@@ -3,10 +3,14 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
-  Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, X, CheckCircle, Camera,
+  Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, CheckCircle, Camera,
   Medal, History, XCircle, ChevronRight, UserRound,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -204,24 +208,26 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-6xl">
-        {/* Delete confirmation overlay */}
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <Card className="max-w-sm w-full mx-4">
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <X className="w-6 h-6 text-destructive" />
-                </div>
-                <h3 className="text-lg font-bold mb-2">Удалить аккаунт?</h3>
-                <p className="text-muted-foreground text-sm mb-6">Это действие необратимо. Весь прогресс будет утерян.</p>
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={() => setShowDeleteConfirm(false)}>Отмена</Button>
-                  <Button variant="destructive" className="flex-1" onClick={() => { logout(); navigate('/'); }}>Удалить</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+        {/* Подтверждение удаления аккаунта — AlertDialog (фокус-треп, Esc, aria) */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить аккаунт?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Это действие необратимо. Весь прогресс будет утерян.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => { logout(); navigate('/'); }}
+              >
+                Удалить
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <PageHeader
           icon={UserRound}

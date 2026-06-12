@@ -7,6 +7,7 @@
 //   olympiad_republic — решено ≥ value задач республиканского уровня
 
 import { prisma } from '@/lib/prisma';
+import { createNotification } from '@/lib/notify';
 
 export interface UnlockedAchievement {
   id: string;
@@ -58,6 +59,12 @@ export async function checkOlympiadAchievements(userId: string): Promise<Unlocke
         // XP за достижение — только когда create прошёл (unique-констрейнт исключает дубль)
         if (a.xp > 0) await prisma.user.update({ where: { id: userId }, data: { xp: { increment: a.xp } } });
         unlocked.push({ id: a.id, name: a.name, description: a.description, icon: a.icon, xp: a.xp, rarity: a.rarity });
+        await createNotification(userId, {
+          type: 'ACHIEVEMENT',
+          title: `Новое достижение: ${a.name}`,
+          message: a.description,
+          actionUrl: '/achievements',
+        });
       } catch {
         // P2002 (параллельная выдача) — достижение уже есть, пропускаем
       }

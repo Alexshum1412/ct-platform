@@ -8,6 +8,10 @@ import { prisma } from '@/lib/prisma';
  */
 
 const MAX_VALUE_LENGTH = 8000;
+// Retention: записи старше 12 месяцев чистятся лениво (~1% вызовов logAudit),
+// чтобы таблица не росла бесконечно без отдельного крона.
+const RETENTION_MS = 365 * 24 * 60 * 60 * 1000;
+const CLEANUP_PROBABILITY = 0.01;
 
 export type AuditAction =
   | 'CREATE'
@@ -67,6 +71,11 @@ export async function logAudit(req: NextRequest, entry: AuditEntry): Promise<voi
         userAgent,
       },
     });
+
+    if (Math.random() < CLEANUP_PROBABILITY) {
+      const cutoff = new Date(Date.now() - RETENTION_MS);
+      await prisma.auditLog.deleteMany({ where: { createdAt: { lt: cutoff } } });
+    }
   } catch (error) {
     console.error('Audit log write failed:', error);
   }

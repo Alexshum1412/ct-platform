@@ -72,6 +72,10 @@ export function ExamBuilder({ token }: { token: string | null }) {
   const [subjects, setSubjects] = useState<SubjectLite[]>([]);
   const [subjectId, setSubjectId] = useState('');
   const [exams, setExams] = useState<Exam[]>([]);
+  const [examSel, setExamSel] = useState<Set<string>>(new Set());
+  const [examBulkBusy, setExamBulkBusy] = useState(false);
+  // Смена предмета сбрасывает выбор массовых операций.
+  useEffect(() => { setExamSel(new Set()); }, [subjectId]);
   const [loadingExams, setLoadingExams] = useState(false);
 
   const [mode, setMode] = useState<'list' | 'edit'>('list');
@@ -267,6 +271,37 @@ export function ExamBuilder({ token }: { token: string | null }) {
 
   const subjectName = subjects.find((s) => s.id === subjectId)?.name ?? '';
 
+  // Массовые операции над сохранёнными экзаменами (list view)
+  const toggleExamSel = (id: string) => {
+    setExamSel(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allExamsSelected = exams.length > 0 && exams.every(e => examSel.has(e.id));
+  const toggleAllExams = () => {
+    setExamSel(prev => {
+      const next = new Set(prev);
+      if (allExamsSelected) exams.forEach(e => next.delete(e.id));
+      else exams.forEach(e => next.add(e.id));
+      return next;
+    });
+  };
+  const runExamsBulk = async (op: 'delete' | 'update', data?: Record<string, unknown>) => {
+    if (examSel.size === 0 || examBulkBusy) return;
+    if (op === 'delete' && !window.confirm(`Удалить выбранные экзамены (${examSel.size})? Действие необратимо.`)) return;
+    setExamBulkBusy(true);
+    try {
+      const res = await authFetch('/admin/exams/bulk', 'POST', { ids: Array.from(examSel), op, data }) as { count?: number };
+      notify('success', op === 'delete' ? `Удалено экзаменов: ${res.count ?? 0}` : `Изменено экзаменов: ${res.count ?? 0}`);
+      setExamSel(new Set());
+      await loadExams();
+    } catch (e) {
+      notify('error', 'Ошибка массовой операции', e instanceof Error ? e.message : undefined);
+    } finally { setExamBulkBusy(false); }
+  };
+
   const filteredPool = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return pool;
@@ -295,6 +330,21 @@ export function ExamBuilder({ token }: { token: string | null }) {
           </p>
         </div>
 
+        {/* Панель массовых операций */}
+        {examSel.size > 0 && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold">{examSel.size} выбрано</span>
+            <div className="ml-auto flex items-center gap-2">
+              <Button size="sm" variant="outline" disabled={examBulkBusy} onClick={() => void runExamsBulk('update', { isActive: false })}>Скрыть</Button>
+              <Button size="sm" variant="outline" disabled={examBulkBusy} onClick={() => void runExamsBulk('update', { isActive: true })}>Показать</Button>
+              <Button size="sm" variant="destructive" disabled={examBulkBusy} onClick={() => void runExamsBulk('delete')}>
+                <Trash2 className="w-3.5 h-3.5 mr-1" />Удалить
+              </Button>
+              <Button size="sm" variant="ghost" disabled={examBulkBusy} onClick={() => setExamSel(new Set())}>Отмена</Button>
+            </div>
+          </div>
+        )}
+
         {loadingExams ? (
           <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center">
             <Loader2 className="w-5 h-5 animate-spin" />Загрузка…
@@ -306,8 +356,19 @@ export function ExamBuilder({ token }: { token: string | null }) {
           </div>
         ) : (
           <div className="border border-border rounded-xl divide-y divide-border">
+            <label className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground cursor-pointer select-none bg-muted/30">
+              <input type="checkbox" checked={allExamsSelected} onChange={toggleAllExams} className="w-4 h-4 rounded border-input accent-primary" />
+              Выбрать все ({exams.length})
+            </label>
             {exams.map((exam) => (
-              <div key={exam.id} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/40">
+              <div key={exam.id} className={`flex items-center gap-3 px-4 py-3 hover:bg-muted/40 ${examSel.has(exam.id) ? 'bg-primary/5' : ''}`}>
+                <input
+                  type="checkbox"
+                  checked={examSel.has(exam.id)}
+                  onChange={() => toggleExamSel(exam.id)}
+                  className="w-4 h-4 shrink-0 rounded border-input accent-primary"
+                  aria-label="Выбрать экзамен"
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium truncate">{exam.title}</p>

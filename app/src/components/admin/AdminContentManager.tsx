@@ -32,6 +32,10 @@ export function AdminContentManager({ token }: { token: string | null }) {
   const [form, setForm] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
 
+  // Массовые операции (доступны для теории)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const apiCall = useCallback(async (path: string, method: string, body?: unknown) => {
     const r = await fetch(`${API_BASE_URL}${path}`, {
       method,
@@ -80,6 +84,8 @@ export function AdminContentManager({ token }: { token: string | null }) {
   }, [entity, subjectId, topicId]);
 
   useEffect(() => { void reload(); }, [reload]);
+  // Смена сущности/контекста сбрасывает выбор массовых операций.
+  useEffect(() => { setSelectedIds(new Set()); }, [entity, subjectId, topicId]);
 
   const notify = (type: 'success' | 'error', title: string, message?: string) => addNotification({ type, title, message });
 
@@ -159,6 +165,38 @@ export function AdminContentManager({ token }: { token: string | null }) {
   const filtered = items.filter((r) => !search || title(r).toLowerCase().includes(search.toLowerCase()));
   const needsSubject = entity !== 'subjects';
   const needsTopic = entity === 'subtopics' || entity === 'theory';
+  const bulkCapable = entity === 'theory';
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allSelected = filtered.length > 0 && filtered.every(r => selectedIds.has(String(r.id)));
+  const toggleAll = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) filtered.forEach(r => next.delete(String(r.id)));
+      else filtered.forEach(r => next.add(String(r.id)));
+      return next;
+    });
+  };
+
+  const runBulk = async (op: 'delete' | 'update', data?: Record<string, unknown>) => {
+    if (selectedIds.size === 0 || bulkBusy) return;
+    if (op === 'delete' && !window.confirm(`Удалить выбранные статьи (${selectedIds.size})? Действие необратимо.`)) return;
+    setBulkBusy(true);
+    try {
+      const res = await apiCall('/admin/theory/bulk', 'POST', { ids: Array.from(selectedIds), op, data }) as { count?: number };
+      notify('success', op === 'delete' ? `Удалено: ${res.count ?? 0}` : `Изменено: ${res.count ?? 0}`);
+      setSelectedIds(new Set());
+      await reload();
+    } catch (e) {
+      notify('error', 'Ошибка массовой операции', e instanceof Error ? e.message : undefined);
+    } finally { setBulkBusy(false); }
+  };
 
   return (
     <div className="space-y-4">
@@ -195,6 +233,21 @@ export function AdminContentManager({ token }: { token: string | null }) {
         </Button>
       </div>
 
+      {/* Панель массовых операций (теория) */}
+      {bulkCapable && selectedIds.size > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold">{selectedIds.size} выбрано</span>
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => void runBulk('update', { status: 'HIDDEN' })}>Скрыть</Button>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => void runBulk('update', { status: 'ACTIVE' })}>Показать</Button>
+            <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => void runBulk('delete')}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" />Удалить
+            </Button>
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>Отмена</Button>
+          </div>
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground py-8 justify-center"><Loader2 className="w-5 h-5 animate-spin" />Загрузка…</div>
@@ -204,8 +257,23 @@ export function AdminContentManager({ token }: { token: string | null }) {
         </div>
       ) : (
         <div className="border border-border rounded-xl divide-y divide-border max-h-[55vh] overflow-y-auto">
+          {bulkCapable && (
+            <label className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground cursor-pointer select-none bg-muted/30">
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 rounded border-input accent-primary" />
+              Выбрать все ({filtered.length})
+            </label>
+          )}
           {filtered.map((row) => (
-            <div key={row.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40">
+            <div key={row.id} className={`flex items-center gap-3 px-4 py-2.5 hover:bg-muted/40 ${selectedIds.has(String(row.id)) ? 'bg-primary/5' : ''}`}>
+              {bulkCapable && (
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(String(row.id))}
+                  onChange={() => toggleSelected(String(row.id))}
+                  className="w-4 h-4 shrink-0 rounded border-input accent-primary"
+                  aria-label="Выбрать статью"
+                />
+              )}
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{title(row)}</p>
                 {(entity === 'theory') && row.subtopicName ? <p className="text-xs text-muted-foreground truncate">{String(row.topicName || '')}{row.subtopicName ? ` › ${row.subtopicName}` : ''}</p> : null}

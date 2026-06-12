@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const role = req.headers.get('x-user-role');
-    if (role !== 'ADMIN') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+    if (role !== 'ADMIN' && role !== 'MODERATOR') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');

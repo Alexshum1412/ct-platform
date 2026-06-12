@@ -86,7 +86,9 @@ export function AdminPage() {
   const navigate = useNavigate();
   const { user, token } = useAppStore();
 
-  const [activeTab, setActiveTab] = useState('questions');
+  // MODERATOR видит только модерацию: «На проверке», «Жалобы», «Сообщения», «Журнал».
+  const isModerator = user?.role === 'MODERATOR';
+  const [activeTab, setActiveTab] = useState(user?.role === 'MODERATOR' ? 'pending' : 'questions');
   const [messages, setMessages] = useState<ContactMessageRow[]>([]);
   const [msgFilter, setMsgFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,13 +181,14 @@ export function AdminPage() {
     if (!token) return;
     setIsLoading(true); setError(null);
     try {
+      // Модератору список заданий не нужен (и не разрешён) — только статистика и модерация.
       const [statsRes, qRes, pendRes] = await Promise.all([
         apiClient('/admin/stats', { token }),
-        apiClient('/questions?limit=500', { token }),
+        isModerator ? Promise.resolve(null) : apiClient('/questions?limit=500', { token }),
         apiClient('/admin/pending', { token }),
       ]);
       if (statsRes.data) setStats(statsRes.data as AdminStats);
-      if (qRes.data) {
+      if (qRes?.data) {
         const d = qRes.data as { questions: Question[] };
         setQuestions(d.questions ?? []);
       }
@@ -195,7 +198,7 @@ export function AdminPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [token]);
+  }, [token, isModerator]);
 
   const loadUsers = useCallback(async () => {
     if (!token) return;
@@ -261,7 +264,10 @@ export function AdminPage() {
     setMessages(prev => prev.filter(m => m.id !== id));
   };
 
-  useEffect(() => { void loadData(); void loadAnalytics(); }, [loadData, loadAnalytics]);
+  useEffect(() => {
+    void loadData();
+    if (!isModerator) void loadAnalytics();
+  }, [loadData, loadAnalytics, isModerator]);
   useEffect(() => {
     if (activeTab === 'users') void loadUsers();
     if (activeTab === 'stats') void loadAnalytics();
@@ -269,7 +275,7 @@ export function AdminPage() {
     if (activeTab === 'messages') void loadMessages();
   }, [activeTab, loadUsers, loadAnalytics, loadReports, loadMessages]);
 
-  if (!user || user.role !== 'ADMIN') {
+  if (!user || (user.role !== 'ADMIN' && user.role !== 'MODERATOR')) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="p-8 text-center max-w-sm">
@@ -423,7 +429,7 @@ export function AdminPage() {
           accent="from-slate-700 to-slate-900"
           actions={
             <Badge variant="secondary" className="gap-1">
-              <CheckCircle className="w-3 h-3" />Администратор
+              <CheckCircle className="w-3 h-3" />{isModerator ? 'Модератор' : 'Администратор'}
             </Badge>
           }
         />
@@ -467,10 +473,14 @@ export function AdminPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 h-auto flex-wrap justify-start gap-1">
-            <TabsTrigger value="content" className="gap-2"><FolderTree className="w-4 h-4" />Контент</TabsTrigger>
-            <TabsTrigger value="exams" className="gap-2"><ClipboardList className="w-4 h-4" />Экзамены</TabsTrigger>
-            <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
-            <TabsTrigger value="olympiad" className="gap-2"><Trophy className="w-4 h-4" />Олимпиада</TabsTrigger>
+            {!isModerator && (
+              <>
+                <TabsTrigger value="content" className="gap-2"><FolderTree className="w-4 h-4" />Контент</TabsTrigger>
+                <TabsTrigger value="exams" className="gap-2"><ClipboardList className="w-4 h-4" />Экзамены</TabsTrigger>
+                <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
+                <TabsTrigger value="olympiad" className="gap-2"><Trophy className="w-4 h-4" />Олимпиада</TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="pending" className="gap-2">
               <FileText className="w-4 h-4" />На проверке
               {pendingQuestions.length > 0 && <Badge variant="destructive" className="text-xs">{pendingQuestions.length}</Badge>}
@@ -481,8 +491,12 @@ export function AdminPage() {
                 <Badge variant="destructive" className="text-xs">{analytics.reports.pending}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
-            <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
+            {!isModerator && (
+              <>
+                <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
+                <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="messages" className="gap-2"><Mail className="w-4 h-4" />Сообщения</TabsTrigger>
             <TabsTrigger value="audit" className="gap-2"><History className="w-4 h-4" />Журнал</TabsTrigger>
           </TabsList>
@@ -802,17 +816,21 @@ export function AdminPage() {
                                     <Eye className="w-3 h-3 mr-1.5" />Перейти к заданию
                                   </Button>
                                 )}
-                                {r.question && (
+                                {r.question && !isModerator && (
                                   <Button
                                     size="sm"
                                     variant="outline"
                                     className="justify-start"
-                                    onClick={() => alert('Открыть редактор задания (в разработке)')}
+                                    onClick={async () => {
+                                      const qRes = await apiClient(`/questions/${r.question!.id}`);
+                                      if (qRes.data) openEditQuestion(qRes.data as Question);
+                                      else alert('Не удалось загрузить задание');
+                                    }}
                                   >
                                     <Edit2 className="w-3 h-3 mr-1.5" />Исправить задание
                                   </Button>
                                 )}
-                                {r.question && (
+                                {r.question && !isModerator && (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -901,6 +919,7 @@ export function AdminPage() {
                       <thead>
                         <tr className="border-b text-xs uppercase tracking-wide text-muted-foreground">
                           <th className="text-left p-2">Пользователь</th>
+                          <th className="text-left p-2">Роль</th>
                           <th className="text-left p-2">План</th>
                           <th className="text-left p-2">Уровень</th>
                           <th className="text-left p-2">Решено</th>
@@ -921,6 +940,30 @@ export function AdminPage() {
                                   <p className="text-xs text-muted-foreground truncate">{u.email}</p>
                                 </div>
                               </div>
+                            </td>
+                            <td className="p-2">
+                              {u.id === user.id ? (
+                                <Badge variant="secondary" className="text-xs">{u.role}</Badge>
+                              ) : (
+                                <select
+                                  value={u.role}
+                                  onChange={async (e) => {
+                                    const role = e.target.value;
+                                    const r = await fetch(`${API_BASE_URL}/admin/users/${u.id}`, {
+                                      method: 'PATCH',
+                                      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                      body: JSON.stringify({ role }),
+                                    });
+                                    if (r.ok) setUsers(prev => prev.map(x => x.id === u.id ? { ...x, role } : x));
+                                    else alert((await r.json().catch(() => null))?.error ?? 'Не удалось изменить роль');
+                                  }}
+                                  className="h-8 rounded-lg border border-input bg-background px-2 text-xs"
+                                >
+                                  <option value="USER">USER</option>
+                                  <option value="MODERATOR">MODERATOR</option>
+                                  <option value="ADMIN">ADMIN</option>
+                                </select>
+                              )}
                             </td>
                             <td className="p-2">
                               {u.plan !== 'FREE' ? (

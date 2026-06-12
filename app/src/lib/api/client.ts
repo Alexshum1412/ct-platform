@@ -146,15 +146,6 @@ export const dailyApi = {
   getStatus: (token: string) => apiClient('/users/daily', { token }),
 };
 
-// Comments API
-export const commentsApi = {
-  getByQuestion: (questionId: string) =>
-    apiClient(`/comments?questionId=${questionId}`),
-
-  create: (data: { questionId: string; content: string; parentId?: string }, token: string) =>
-    apiClient('/comments', { method: 'POST', body: data, token }),
-};
-
 // Leaderboard API
 export const leaderboardApi = {
   getGlobal: (limit = 10) => apiClient(`/leaderboard?type=global&limit=${limit}`),
@@ -411,6 +402,23 @@ const auditQueryString = (params: AuditLogQuery): string => {
     if (v !== undefined && v !== '') qp.append(k, String(v));
   }
   return qp.toString();
+};
+
+export interface NotificationRow {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  actionUrl: string | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export const notificationsApi = {
+  list: (token: string) =>
+    apiClient<{ notifications: NotificationRow[]; unreadCount: number }>('/notifications', { token }),
+  markRead: (params: { ids?: string[]; all?: boolean }, token: string) =>
+    apiClient<{ success: boolean; count: number }>('/notifications', { method: 'PATCH', body: params, token }),
 };
 
 export const adminAuditApi = {

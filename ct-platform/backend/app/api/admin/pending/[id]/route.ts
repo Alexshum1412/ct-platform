@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const role = req.headers.get('x-user-role');
-    if (role !== 'ADMIN') {
+    if (role !== 'ADMIN' && role !== 'MODERATOR') {
       return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
     }
 

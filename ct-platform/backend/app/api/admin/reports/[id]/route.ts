@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const role = req.headers.get('x-user-role');
-    if (role !== 'ADMIN') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+    if (role !== 'ADMIN' && role !== 'MODERATOR') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
 
     const body = await req.json();
     const action = body.action as 'resolve' | 'reject' | undefined;
@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
     const role = req.headers.get('x-user-role');
-    if (role !== 'ADMIN') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+    if (role !== 'ADMIN' && role !== 'MODERATOR') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
 
     const before = await prisma.questionReport.findUnique({ where: { id: params.id } });
     await prisma.questionReport.delete({ where: { id: params.id } });

@@ -183,6 +183,7 @@ CREATE TABLE "exam_attempts" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "subjectId" TEXT NOT NULL,
+    "examId" TEXT,
     "score" INTEGER NOT NULL,
     "maxScore" INTEGER NOT NULL,
     "percentage" DOUBLE PRECISION NOT NULL,
@@ -218,6 +219,24 @@ CREATE TABLE "exam_configs" (
     "structure" TEXT NOT NULL,
 
     CONSTRAINT "exam_configs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "exams" (
+    "id" TEXT NOT NULL,
+    "subjectId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "durationMinutes" INTEGER NOT NULL DEFAULT 120,
+    "passingScore" INTEGER NOT NULL DEFAULT 0,
+    "questionIds" TEXT NOT NULL DEFAULT '[]',
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "createdBy" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "exams_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -329,6 +348,147 @@ CREATE TABLE "analytics_events" (
     CONSTRAINT "analytics_events_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "contact_messages" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "subject" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "userId" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'NEW',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "contact_messages_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "global_counters" (
+    "id" TEXT NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 0,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "global_counters_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "game_resets" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "game" TEXT NOT NULL,
+    "date" TEXT NOT NULL,
+    "count" INTEGER NOT NULL DEFAULT 0,
+
+    CONSTRAINT "game_resets_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "game_balances" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "game" TEXT NOT NULL,
+    "balance" INTEGER NOT NULL DEFAULT 100,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "game_balances_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "olympiad_problems" (
+    "id" TEXT NOT NULL,
+    "externalId" TEXT,
+    "subjectId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "answer" TEXT NOT NULL,
+    "answerType" TEXT NOT NULL DEFAULT 'TEXT',
+    "options" TEXT,
+    "solution" TEXT NOT NULL,
+    "hints" TEXT NOT NULL DEFAULT '[]',
+    "level" TEXT NOT NULL,
+    "difficulty" INTEGER NOT NULL DEFAULT 3,
+    "topic" TEXT,
+    "grade" TEXT,
+    "year" INTEGER,
+    "points" INTEGER NOT NULL DEFAULT 10,
+    "tags" TEXT NOT NULL DEFAULT '[]',
+    "source" TEXT,
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "olympiad_problems_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "olympiad_attempts" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "problemId" TEXT NOT NULL,
+    "isCorrect" BOOLEAN NOT NULL DEFAULT false,
+    "revealed" BOOLEAN NOT NULL DEFAULT false,
+    "pointsEarned" INTEGER NOT NULL DEFAULT 0,
+    "xpGranted" BOOLEAN NOT NULL DEFAULT false,
+    "tries" INTEGER NOT NULL DEFAULT 1,
+    "lastAnswer" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "olympiad_attempts_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "olympiad_theory" (
+    "id" TEXT NOT NULL,
+    "externalId" TEXT,
+    "subjectId" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "level" TEXT NOT NULL DEFAULT 'REGION',
+    "topic" TEXT,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    "tags" TEXT NOT NULL DEFAULT '[]',
+    "status" TEXT NOT NULL DEFAULT 'ACTIVE',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "olympiad_theory_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "verification_codes" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "codeHash" TEXT NOT NULL,
+    "purpose" TEXT NOT NULL DEFAULT 'EMAIL_VERIFY',
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "consumedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "verification_codes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "audit_logs" (
+    "id" TEXT NOT NULL,
+    "actorId" TEXT,
+    "actorEmail" TEXT,
+    "action" TEXT NOT NULL,
+    "entity" TEXT NOT NULL,
+    "entityId" TEXT,
+    "summary" TEXT,
+    "oldValue" TEXT,
+    "newValue" TEXT,
+    "ip" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "audit_logs_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -361,6 +521,48 @@ CREATE INDEX "analytics_events_type_createdAt_idx" ON "analytics_events"("type",
 
 -- CreateIndex
 CREATE INDEX "analytics_events_userId_createdAt_idx" ON "analytics_events"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "contact_messages_status_createdAt_idx" ON "contact_messages"("status", "createdAt");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "game_resets_userId_game_date_key" ON "game_resets"("userId", "game", "date");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "game_balances_userId_game_key" ON "game_balances"("userId", "game");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "olympiad_problems_externalId_key" ON "olympiad_problems"("externalId");
+
+-- CreateIndex
+CREATE INDEX "olympiad_problems_subjectId_level_status_idx" ON "olympiad_problems"("subjectId", "level", "status");
+
+-- CreateIndex
+CREATE INDEX "olympiad_problems_year_idx" ON "olympiad_problems"("year");
+
+-- CreateIndex
+CREATE INDEX "olympiad_attempts_userId_idx" ON "olympiad_attempts"("userId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "olympiad_attempts_userId_problemId_key" ON "olympiad_attempts"("userId", "problemId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "olympiad_theory_externalId_key" ON "olympiad_theory"("externalId");
+
+-- CreateIndex
+CREATE INDEX "olympiad_theory_subjectId_status_idx" ON "olympiad_theory"("subjectId", "status");
+
+-- CreateIndex
+CREATE INDEX "verification_codes_userId_idx" ON "verification_codes"("userId");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_createdAt_idx" ON "audit_logs"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_entity_createdAt_idx" ON "audit_logs"("entity", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "audit_logs_actorId_createdAt_idx" ON "audit_logs"("actorId", "createdAt");
 
 -- AddForeignKey
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -414,6 +616,9 @@ ALTER TABLE "exam_questions" ADD CONSTRAINT "exam_questions_questionId_fkey" FOR
 ALTER TABLE "exam_configs" ADD CONSTRAINT "exam_configs_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "subjects"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "exams" ADD CONSTRAINT "exams_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "subjects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "comments" ADD CONSTRAINT "comments_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -442,4 +647,25 @@ ALTER TABLE "subscriptions" ADD CONSTRAINT "subscriptions_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "game_resets" ADD CONSTRAINT "game_resets_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "game_balances" ADD CONSTRAINT "game_balances_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "olympiad_problems" ADD CONSTRAINT "olympiad_problems_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "subjects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "olympiad_attempts" ADD CONSTRAINT "olympiad_attempts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "olympiad_attempts" ADD CONSTRAINT "olympiad_attempts_problemId_fkey" FOREIGN KEY ("problemId") REFERENCES "olympiad_problems"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "olympiad_theory" ADD CONSTRAINT "olympiad_theory_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "subjects"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "verification_codes" ADD CONSTRAINT "verification_codes_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 

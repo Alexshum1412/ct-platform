@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { createNotification } from '@/lib/notify';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,6 +102,12 @@ export async function GET(req: NextRequest) {
       });
 
       newlyUnlocked.push(def.name);
+      await createNotification(userId, {
+        type: 'ACHIEVEMENT',
+        title: `Новое достижение: ${def.name}`,
+        message: def.description,
+        actionUrl: '/achievements',
+      });
     }
 
     // Return all achievements with unlock status

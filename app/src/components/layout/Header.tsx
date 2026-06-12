@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAppStore } from '@/store/useAppStore';
 import { subjects } from '@/data/subjects';
+import { NotificationBell } from '@/components/NotificationBell';
 
 /**
  * Получить количество онлайн-пользователей с API
@@ -172,6 +173,9 @@ export function Header() {
               <span className="font-medium">{onlineUsers}</span>
               <span className="text-muted-foreground">онлайн</span>
             </div>
+
+            {/* Notifications */}
+            <NotificationBell />
 
             {/* Theme Toggle */}
             <Button
