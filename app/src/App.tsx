@@ -139,10 +139,15 @@ const queryClient = new QueryClient({
  */
 function PageLoader() {
   return (
-    <div className="min-h-[50vh] flex items-center justify-center">
+    <div className="min-h-[50vh] flex items-center justify-center" role="status" aria-label="Загрузка страницы">
       <div className="flex flex-col items-center gap-4">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-muted-foreground">Загрузка...</p>
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary to-violet-600 opacity-20 animate-ping" />
+          <div className="relative w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/30 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-white/80 border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+        <p className="text-sm text-muted-foreground">Загружаем…</p>
       </div>
     </div>
   );
@@ -245,17 +250,24 @@ function App() {
                 404 - СТРАНИЦА НЕ НАЙДЕНА 
               */}
               <Route path="*" element={
-                <div className="min-h-screen flex items-center justify-center">
-                  <div className="text-center">
-                    <h1 className="text-4xl font-bold mb-4">404</h1>
-                    <p className="text-muted-foreground mb-4">Страница не найдена</p>
-                    {/* 
-                      ССЫЛКА: Вернуться на главную страницу
-                      URL: /
-                    */}
-                    <Link to="/" className="text-primary hover:underline">
-                      Вернуться на главную
-                    </Link>
+                <div className="min-h-[70vh] flex items-center justify-center px-4">
+                  <div className="text-center max-w-md">
+                    <p className="text-[7rem] leading-none font-extrabold text-gradient-animated select-none" aria-hidden>404</p>
+                    <h1 className="text-xl font-bold mb-2">Такой страницы нет</h1>
+                    <p className="text-muted-foreground mb-6">
+                      Возможно, ссылка устарела или в адресе опечатка. Зато задания на месте — выбирайте, куда дальше.
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      <Link to="/" className="inline-flex items-center h-10 px-5 rounded-lg bg-primary text-primary-foreground font-semibold shadow-md hover:bg-primary/90 transition-colors">
+                        На главную
+                      </Link>
+                      <Link to="/theory" className="inline-flex items-center h-10 px-5 rounded-lg border bg-background font-semibold hover:bg-muted transition-colors">
+                        Теория
+                      </Link>
+                      <Link to="/olympiad" className="inline-flex items-center h-10 px-5 rounded-lg border bg-background font-semibold hover:bg-muted transition-colors">
+                        Олимпиады
+                      </Link>
+                    </div>
                   </div>
                 </div>
               } />

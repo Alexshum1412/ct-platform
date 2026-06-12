@@ -9,6 +9,7 @@ import { AuthGateModal } from '@/components/AuthGateModal';
 import { ScrollToTopButton } from '@/components/ScrollToTopButton';
 import { PremiumReminder } from '@/components/PremiumReminder';
 import { VerifyEmailBanner } from '@/components/VerifyEmailBanner';
+import { WelcomeOnboarding } from '@/components/WelcomeOnboarding';
 import { useAppStore } from '@/store/useAppStore';
 
 interface LayoutProps {
@@ -50,6 +51,8 @@ export function Layout({ children }: LayoutProps) {
       <PremiumReminder />
       {/* Registration wall — shown when a guest tries a members-only action */}
       <AuthGateModal />
+      {/* Трёхшаговое знакомство для нового гостя (один раз, в фокус-режиме не нужно) */}
+      {!focusMode && <WelcomeOnboarding />}
       {/* Mobile bottom navigation (self-hides on desktop & in Focus mode) */}
       <MobileTabBar />
     </div>
