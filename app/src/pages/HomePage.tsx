@@ -35,10 +35,11 @@ export function HomePage() {
       <div ref={subjectsRef} id="subjects-section">
         <SubjectsSection onSubjectClick={handleSubjectClick} />
       </div>
+      {/* Premium сразу после каталога предметов — главная точка монетизации */}
+      <PremiumSection />
       <FeaturesSection />
       <OlympiadSection />
       <HowItWorksSection />
-      <PremiumSection />
       <CTASection onStartLearning={scrollToSubjects} />
       <FooterSection />
     </div>

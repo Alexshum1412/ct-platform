@@ -1,13 +1,12 @@
-import { BookOpen, Github, Mail, MessageCircle } from 'lucide-react';
+import { BookOpen, Mail, MessageCircle, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
- * Ссылки в футере
- * 
- * ССЫЛКИ:
- * - /terms - Условия использования
- * - /privacy - Политика конфиденциальности
- * - /subject/:slug - Страницы предметов
+ * Футер главной страницы. Все внутренние ссылки — SPA <Link> (без перезагрузки),
+ * каждая ведёт на реально работающую страницу:
+ * - «Теория» — на хаб /theory (НЕ /theory/:slug — тот без темы пустоват);
+ * - иконки: контакт-форма, mailto поддержки, олимпиады.
+ * Спрятанные ссылки на демо-игры (рулетка/блэкджек) сохранены.
  */
 const footerLinks = {
   subjects: [
@@ -18,15 +17,17 @@ const footerLinks = {
     { label: 'Биология', href: '/subject/biology' },
   ],
   resources: [
-    { label: 'Теория', href: '/theory/math' },
+    { label: 'Теория', href: '/theory' },
     { label: 'Практика', href: '/practice/math' },
-    { label: 'Лидерборд', href: '/leaderboard' },
+    { label: 'Олимпиады', href: '/olympiad' },
+    { label: 'Рейтинг', href: '/leaderboard' },
     { label: 'Достижения', href: '/achievements' },
     // Спрятанная после «Достижения» ссылка на демо-мини-игру «Блэкджэк».
     { label: 'Блэкджэк', href: '/blackjack' },
   ],
   about: [
     { label: 'Контакты', href: '/contact' },
+    { label: 'Premium', href: '/payment' },
     { label: 'Избранное', href: '/favorites' },
     { label: 'Политика конфиденциальности', href: '/privacy' },
     // Спрятанная между политикой и условиями ссылка на демо-мини-игру «Рулетка».
@@ -34,6 +35,24 @@ const footerLinks = {
     { label: 'Условия использования', href: '/terms' },
   ],
 };
+
+const HIDDEN_GAME_LINKS: Record<string, { title: string; cls: string }> = {
+  '/blackjack': { title: 'Мини-игра на виртуальные бриллианты', cls: 'text-muted-foreground/40 hover:text-muted-foreground transition-colors text-sm' },
+  '/roulette': { title: 'Мини-игра на виртуальные монеты', cls: 'text-muted-foreground/35 hover:text-muted-foreground transition-colors text-sm' },
+};
+
+function FooterLink({ href, label }: { href: string; label: string }) {
+  const hidden = HIDDEN_GAME_LINKS[href];
+  return (
+    <Link
+      to={href}
+      title={hidden?.title}
+      className={hidden?.cls ?? 'text-muted-foreground hover:text-foreground transition-colors'}
+    >
+      {label}
+    </Link>
+  );
+}
 
 export function FooterSection() {
   return (
@@ -49,103 +68,66 @@ export function FooterSection() {
               <span className="text-xl font-bold">CT-Platform</span>
             </div>
             <p className="text-muted-foreground mb-6 max-w-sm">
-              Современная платформа для подготовки к централизованному 
+              Современная платформа для подготовки к централизованному
               тестированию и экзаменам в Республике Беларусь.
             </p>
             <div className="flex items-center gap-4">
-              <a
-                href="#"
+              <Link
+                to="/contact"
+                title="Написать нам"
+                aria-label="Форма обратной связи"
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               >
                 <MessageCircle className="w-5 h-5" />
-              </a>
+              </Link>
               <a
-                href="#"
+                href="mailto:support@ct-platform.by"
+                title="support@ct-platform.by"
+                aria-label="Email поддержки"
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               >
                 <Mail className="w-5 h-5" />
               </a>
-              <a
-                href="#"
+              <Link
+                to="/olympiad"
+                title="Олимпиадная подготовка"
+                aria-label="Олимпиадная подготовка"
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center hover:bg-primary hover:text-white transition-colors"
               >
-                <Github className="w-5 h-5" />
-              </a>
+                <Trophy className="w-5 h-5" />
+              </Link>
             </div>
           </div>
-          
+
           {/* Links */}
           <div>
             <h4 className="font-semibold mb-4">Предметы</h4>
             <ul className="space-y-3">
               {footerLinks.subjects.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
+                <li key={link.label}><FooterLink {...link} /></li>
               ))}
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">Ресурсы</h4>
             <ul className="space-y-3">
               {footerLinks.resources.map((link) => (
-                <li key={link.label}>
-                  {link.href === '/blackjack' ? (
-                    // Намеренно неприметная ссылка на демо-игру
-                    <Link
-                      to="/blackjack"
-                      title="Мини-игра на виртуальные бриллианты"
-                      className="text-muted-foreground/40 hover:text-muted-foreground transition-colors text-sm"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={link.href}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  )}
-                </li>
+                <li key={link.label}><FooterLink {...link} /></li>
               ))}
             </ul>
           </div>
-          
+
           <div>
             <h4 className="font-semibold mb-4">О нас</h4>
             <ul className="space-y-3">
               {footerLinks.about.map((link) => (
-                <li key={link.label}>
-                  {link.href === '/roulette' ? (
-                    // Намеренно очень неприметная ссылка (приглушённый цвет) на демо-игру
-                    <Link
-                      to="/roulette"
-                      title="Мини-игра на виртуальные монеты"
-                      className="text-muted-foreground/35 hover:text-muted-foreground transition-colors text-sm"
-                    >
-                      {link.label}
-                    </Link>
-                  ) : (
-                    <a
-                      href={link.href}
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {link.label}
-                    </a>
-                  )}
-                </li>
+                <li key={link.label}><FooterLink {...link} /></li>
               ))}
             </ul>
           </div>
         </div>
-        
+
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-sm text-muted-foreground">
