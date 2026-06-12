@@ -75,16 +75,32 @@ export function PracticePage() {
   useEffect(() => {
     if (!subject) return;
     setIsLoading(true);
-    // Fetch all questions for proper filtering (not paginated)
+    let cancelled = false;
+    // Первая страница рендерится сразу; остальной банк дотягивается в фоне,
+    // чтобы фильтры и счётчики видели ВСЕ задания предмета (банк может быть 2000+).
+    const PAGE = 500;
+    const MAX_TOTAL = 5000;
     void Promise.all([
-      fetchQuestionsBySubjectId(subject.id, { limit: 500 }),
+      fetchQuestionsBySubjectId(subject.id, { limit: PAGE }),
       fetchTopicsBySubjectId(subject.id),
     ])
-      .then(([questionsData, topicsData]) => {
+      .then(async ([questionsData, topicsData]) => {
+        if (cancelled) return;
         setAllQuestions(questionsData);
         setTopics(topicsData);
+        setIsLoading(false);
+        let acc = questionsData;
+        while (!cancelled && acc.length >= PAGE && acc.length < MAX_TOTAL) {
+          const batch = await fetchQuestionsBySubjectId(subject.id, { limit: PAGE, offset: acc.length });
+          if (cancelled || batch.length === 0) break;
+          const seen = new Set(acc.map(q => q.id));
+          acc = [...acc, ...batch.filter(q => !seen.has(q.id))];
+          setAllQuestions(acc);
+          if (batch.length < PAGE) break;
+        }
       })
-      .finally(() => setIsLoading(false));
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, [subject]);
 
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
