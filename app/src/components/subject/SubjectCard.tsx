@@ -27,19 +27,27 @@ export function SubjectCard({ subject, index, onClick }: SubjectCardProps) {
       className="group relative"
     >
       <div
-        className="relative overflow-hidden rounded-2xl bg-card border border-border p-6 lg:p-7 shadow-sm transition-all duration-300 hover:shadow-lg hover:border-primary/20 cursor-pointer h-full"
+        className="relative overflow-hidden rounded-2xl bg-card border border-border p-6 lg:p-7 shadow-sm transition-all duration-300 hover:shadow-xl hover:border-primary/25 cursor-pointer h-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick?.(); } }}
       >
+        {/* Цветовая полоса предмета — выезжает при наведении */}
+        <div
+          className="absolute top-0 left-0 right-0 h-1 origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
+          style={{ background: subject.color }}
+        />
         {/* Gradient background on hover */}
-        <div 
+        <div
           className="absolute inset-0 opacity-0 group-hover:opacity-5 transition-opacity duration-300"
           style={{ background: subject.color }}
         />
-        
+
         {/* Icon and Title */}
         <div className="flex items-start gap-4 mb-4">
-          <div 
-            className="flex items-center justify-center w-14 h-14 rounded-xl text-white shadow-md transition-transform duration-300 group-hover:scale-105"
+          <div
+            className="flex items-center justify-center w-14 h-14 rounded-xl text-white shadow-md transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-3"
             style={{ background: subject.color }}
           >
             <Icon className="w-7 h-7" />

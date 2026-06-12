@@ -5,7 +5,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Eye, Filter, Search, Trophy } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Filter, Search, Trophy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,7 +136,8 @@ export function OlympiadProblemsPage() {
           <div className="flex flex-wrap items-center gap-2">
             {token && (
               <Button size="sm" variant="ghost" onClick={() => setHideSolved(v => !v)}>
-                {hideSolved ? '👁 Показывать решённые' : '🙈 Скрывать решённые'}
+                {hideSolved ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {hideSolved ? 'Показывать решённые' : 'Скрывать решённые'}
               </Button>
             )}
             {filtersActive && (

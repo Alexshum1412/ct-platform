@@ -3,16 +3,74 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
+// Начало текущего периода рейтинга.
+// week — с понедельника 00:00 UTC (сбрасывается каждый понедельник);
+// season — учебные сезоны по 3 месяца (сен–ноя, дек–фев, мар–май, июн–авг).
+function periodStart(period: string): Date | null {
+  const now = new Date();
+  if (period === 'week') {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const day = d.getUTCDay(); // 0=вс
+    d.setUTCDate(d.getUTCDate() - ((day + 6) % 7));
+    return d;
+  }
+  if (period === 'season') {
+    const m = now.getUTCMonth(); // 0..11
+    const seasonStartMonth = m >= 8 ? 8 : m >= 5 ? 5 : m >= 2 ? 2 : 11;
+    const year = seasonStartMonth === 11 && m < 2 ? now.getUTCFullYear() - 1 : now.getUTCFullYear();
+    return new Date(Date.UTC(year, seasonStartMonth, 1));
+  }
+  return null;
+}
+
 // GET /api/leaderboard - Get leaderboard
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const type = searchParams.get('type') || 'global';
     const subjectId = searchParams.get('subjectId');
+    const period = searchParams.get('period') || 'all';
     // NaN-безопасно + потолок: ?limit=100000 раньше выгружал всех пользователей.
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '10', 10) || 10));
 
     let leaderboard: any[] = [];
+
+    // Периодический рейтинг (неделя/сезон): очки = верные ответы за окно.
+    // Считается из UserProgress по createdAt — накрутка повторами невозможна
+    // (повторное решение задачи не записывает прогресс).
+    const since = type === 'global' ? periodStart(period) : null;
+    if (type === 'global' && since) {
+      const grouped = await prisma.userProgress.groupBy({
+        by: ['userId'],
+        where: { isCorrect: true, createdAt: { gte: since } },
+        _count: { _all: true },
+        orderBy: { _count: { userId: 'desc' } },
+        take: limit,
+      });
+      const users = await prisma.user.findMany({
+        where: { id: { in: grouped.map(g => g.userId) } },
+        select: { id: true, name: true, image: true, xp: true, level: true, streakDays: true, city: true },
+      });
+      const userMap = new Map(users.map(u => [u.id, u]));
+      leaderboard = grouped
+        .map(g => ({ userId: g.userId, score: g._count._all }))
+        .sort((a, b) => b.score - a.score)
+        .map((row, index) => {
+          const u = userMap.get(row.userId);
+          return {
+            rank: index + 1,
+            userId: row.userId,
+            name: u?.name ?? 'Пользователь',
+            avatar: u?.image ?? null,
+            xp: row.score, // в периодическом рейтинге xp = очки за период
+            solved: row.score,
+            accuracy: 0,
+            city: u?.city ?? undefined,
+            streak: u?.streakDays ?? 0,
+          };
+        });
+      return NextResponse.json({ leaderboard, period, periodStart: since.toISOString() });
+    }
 
     switch (type) {
       case 'global':

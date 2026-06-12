@@ -99,7 +99,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-violet-600 shadow-md shadow-primary/30 flex items-center justify-center">
               <BookOpen className="w-5 h-5 text-white" />
             </div>
             <span className="font-bold text-xl tracking-tight hidden sm:block">CT-Platform</span>

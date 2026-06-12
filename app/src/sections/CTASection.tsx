@@ -17,12 +17,22 @@ export function CTASection({ onStartLearning }: CTASectionProps) {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary/80 p-8 md:p-16 text-center"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary via-indigo-600 to-violet-600 p-8 md:p-16 text-center shadow-2xl shadow-primary/25"
         >
           {/* Background decoration */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-48 h-48 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute -top-16 -left-10 w-72 h-72 bg-white/15 rounded-full blur-3xl" />
+            <div className="absolute -bottom-20 -right-10 w-96 h-96 bg-cyan-300/20 rounded-full blur-3xl" />
+            <div
+              className="absolute inset-0 opacity-[0.13]"
+              style={{
+                backgroundImage:
+                  'linear-gradient(rgba(255,255,255,.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.5) 1px, transparent 1px)',
+                backgroundSize: '40px 40px',
+                maskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+                WebkitMaskImage: 'radial-gradient(ellipse at center, black 30%, transparent 75%)',
+              }}
+            />
           </div>
           
           <div className="relative z-10">
@@ -50,7 +60,7 @@ export function CTASection({ onStartLearning }: CTASectionProps) {
               <Button
                 size="lg"
                 onClick={onStartLearning}
-                className="bg-white text-primary hover:bg-white/90 gap-2 text-lg px-8"
+                className="btn-shine bg-white text-primary hover:bg-white/90 gap-2 text-lg px-8 shadow-xl"
               >
                 Начать бесплатно
                 <ArrowRight className="w-5 h-5" />

@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppStore } from '@/store/useAppStore';
 
 // =====================================================
@@ -92,9 +92,9 @@ const filters = [
  * 
  * ССЫЛКА: GET /api/leaderboard/global?limit=10
  */
-async function fetchGlobalLeaderboard(): Promise<LeaderboardUser[]> {
+async function fetchGlobalLeaderboard(period: string = 'all'): Promise<LeaderboardUser[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard?type=global&limit=10`);
+    const response = await fetch(`${API_BASE_URL}/leaderboard?type=global&limit=10&period=${period}`);
     if (!response.ok) throw new Error('Failed to fetch leaderboard');
     const data = await response.json();
     return data.leaderboard ?? [];
@@ -191,6 +191,8 @@ export function LeaderboardPage() {
   
   // Состояние фильтра
   const [activeFilter, setActiveFilter] = useState<typeof filters[number]['id']>('global');
+  // Период общего рейтинга: вся история / неделя (сброс в понедельник) / сезон (3 месяца)
+  const [period, setPeriod] = useState<'all' | 'week' | 'season'>('all');
   
   // Данные лидербордов
   const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardUser[]>([]);
@@ -213,22 +215,22 @@ export function LeaderboardPage() {
         cities,
         position
       ] = await Promise.all([
-        fetchGlobalLeaderboard(),
+        fetchGlobalLeaderboard(period),
         fetchSubjectLeaderboard(),
         fetchCityLeaderboard(),
         isAuthenticated ? fetchUserPosition() : Promise.resolve(null),
       ]);
-      
+
       setGlobalLeaderboard(global);
       setSubjectLeaderboard(subjects);
       setCityLeaderboard(cities);
       setUserPosition(position);
-      
+
       setIsLoading(false);
     };
-    
+
     loadData();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, period]);
 
   // ===================================================
   // РЕНДЕР
@@ -280,12 +282,38 @@ export function LeaderboardPage() {
         {/* ================================================= */}
         {/* ОБЩИЙ ЛИДЕРБОРД                                 */}
         {/* ================================================= */}
+        {/* Период общего рейтинга */}
+        {activeFilter === 'global' && (
+          <div className="flex flex-col items-center gap-1.5 mb-6 -mt-2">
+            <div className="inline-flex rounded-full border bg-muted/40 p-1">
+              {([['all', 'Вся история'], ['week', 'Неделя'], ['season', 'Сезон']] as const).map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setPeriod(id)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
+                    period === id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {period !== 'all' && (
+              <p className="text-xs text-muted-foreground">
+                {period === 'week'
+                  ? 'Очки за неделю = верные ответы с понедельника. Сбрасывается каждый понедельник.'
+                  : 'Сезонный рейтинг: верные ответы за текущий 3-месячный сезон.'}
+              </p>
+            )}
+          </div>
+        )}
+
         {activeFilter === 'global' && !isLoading && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Trophy className="w-5 h-5" />
-                Топ-10 учеников
+                {period === 'week' ? 'Топ недели' : period === 'season' ? 'Топ сезона' : 'Топ-10 учеников'}
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
@@ -310,8 +338,9 @@ export function LeaderboardPage() {
 
                       {/* Аватар */}
                       <Avatar className="w-12 h-12">
+                        {user.avatar && <AvatarImage src={user.avatar} className="object-cover" />}
                         <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {user.avatar || user.name.split(' ').map(n => n[0]).join('')}
+                          {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </AvatarFallback>
                       </Avatar>
 

@@ -176,6 +176,102 @@
   .animate-pulse-slow {
     animation: pulse 2s ease-in-out infinite;
   }
+
+  /* ======================================================================
+     PREMIUM SURFACE UTILITIES — «дорогой» визуальный язык
+     ====================================================================== */
+
+  /* Стеклянная карточка (glassmorphism): для плавающих элементов hero/панелей */
+  .glass {
+    background: hsl(var(--card) / 0.66);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid hsl(var(--border) / 0.55);
+    box-shadow: 0 8px 32px hsl(222 47% 11% / 0.08), inset 0 1px 0 hsl(0 0% 100% / 0.45);
+  }
+  .dark .glass {
+    box-shadow: 0 8px 32px hsl(222 47% 4% / 0.5), inset 0 1px 0 hsl(0 0% 100% / 0.06);
+  }
+
+  /* Анимированный градиентный текст для акцентных слов заголовков */
+  .text-gradient-animated {
+    background: linear-gradient(
+      100deg,
+      hsl(var(--primary)),
+      hsl(263 70% 58%),
+      hsl(189 94% 45%),
+      hsl(var(--primary))
+    );
+    background-size: 220% auto;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    animation: gradientShift 7s ease-in-out infinite;
+  }
+
+  /* «Аврора» — мягкие движущиеся пятна для фона hero-секций */
+  .aurora-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(80px);
+    opacity: 0.55;
+    pointer-events: none;
+    will-change: transform;
+    animation: blobFloat 16s ease-in-out infinite;
+  }
+
+  /* Тонкая сетка-миллиметровка на фоне (едва заметная, придаёт глубину) */
+  .bg-grid-faint {
+    background-image:
+      linear-gradient(hsl(var(--foreground) / 0.045) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--foreground) / 0.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 78%);
+    -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 35%, black 35%, transparent 78%);
+  }
+
+  /* Бегущий блик по кнопке (включается на hover) */
+  .btn-shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shine::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 38%, hsl(0 0% 100% / 0.32) 50%, transparent 62%);
+    transform: translateX(-130%);
+    transition: transform 0.7s ease;
+    pointer-events: none;
+  }
+  .btn-shine:hover::after {
+    transform: translateX(130%);
+  }
+
+  /* Карточка с «подъёмом» и подсветкой рамки — единый hover-язык каталогов */
+  .card-lift {
+    transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 32px -8px hsl(222 47% 11% / 0.16);
+    border-color: hsl(var(--primary) / 0.45);
+  }
+  .dark .card-lift:hover {
+    box-shadow: 0 12px 32px -8px hsl(222 47% 4% / 0.6);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes blobFloat {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(4%, -6%) scale(1.08); }
+  66% { transform: translate(-5%, 4%) scale(0.94); }
 }
 
 @keyframes fadeIn {

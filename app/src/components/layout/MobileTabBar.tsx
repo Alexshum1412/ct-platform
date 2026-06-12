@@ -1,9 +1,10 @@
 /**
  * Bottom tab navigation for mobile (hidden on lg+). Always-available primary
- * navigation: Главная / Теория / Практика / Профиль, with a clear active state.
+ * navigation with a spring-animated active indicator (framer-motion layoutId).
  * Hidden in Focus mode. The desktop header is untouched.
  */
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { Home, BookOpen, Target, Trophy, User } from 'lucide-react';
 import { useAppStore } from '@/store/useAppStore';
 
@@ -26,7 +27,7 @@ export function MobileTabBar() {
 
   return (
     <nav
-      className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background/95 backdrop-blur-md border-t border-border"
+      className="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-background/90 backdrop-blur-xl border-t border-border/70 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Основная навигация"
     >
@@ -47,13 +48,28 @@ export function MobileTabBar() {
               to={t.to}
               onClick={handleClick}
               aria-current={t.active ? 'page' : undefined}
-              className={`relative flex flex-col items-center justify-center gap-1 py-2 min-h-[3.5rem] text-[11px] font-medium transition-colors ${
-                t.active ? 'text-primary bg-primary/[0.07]' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              className={`relative flex flex-col items-center justify-center gap-1 py-2 min-h-[3.5rem] text-[11px] font-medium transition-colors duration-200 ${
+                t.active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {t.active && <span className="absolute top-0 h-0.5 w-10 rounded-full bg-primary" />}
-              <Icon className="w-[1.35rem] h-[1.35rem]" />
-              {t.label}
+              {t.active && (
+                <motion.span
+                  layoutId="mobile-tab-indicator"
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  className="absolute inset-x-2 top-1 bottom-1 rounded-xl bg-primary/[0.09]"
+                  aria-hidden
+                />
+              )}
+              {t.active && (
+                <motion.span
+                  layoutId="mobile-tab-dash"
+                  transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+                  className="absolute top-0 h-0.5 w-10 rounded-full bg-primary"
+                  aria-hidden
+                />
+              )}
+              <Icon className={`relative w-[1.35rem] h-[1.35rem] transition-transform duration-200 ${t.active ? 'scale-110' : ''}`} />
+              <span className="relative">{t.label}</span>
             </Link>
           );
         })}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper, Eye, EyeOff } from 'lucide-react';
 import { QuestionSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -700,7 +700,8 @@ export function PracticePage() {
                     title="Скрывать уже решённые задания, чтобы продолжать с новых"
                   >
                     <span className="text-sm font-medium flex items-center gap-1.5">
-                      {hideSolved ? '🙈 Скрывать решённые' : '👁 Показывать решённые'}
+                      {hideSolved ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {hideSolved ? 'Скрывать решённые' : 'Показывать решённые'}
                     </span>
                     {hideSolved && hiddenSolvedCount > 0 && <span className="text-xs">скрыто {hiddenSolvedCount}</span>}
                   </button>
