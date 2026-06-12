@@ -3,7 +3,7 @@
  * рендер текста задач/разборов (абзацы + KaTeX через MathFormula).
  * Константы уровней — в ./levels.ts (react-refresh требует разделения).
  */
-import { MathFormula } from '@/components/ui/MathFormula';
+import { RichText } from '@/components/ui/RichText';
 import type { OlympiadLevel } from '@/lib/api/client';
 import { LEVEL_META } from './levels';
 
@@ -17,14 +17,7 @@ export function LevelBadge({ level, short = false }: { level: OlympiadLevel; sho
   );
 }
 
-/** Текст задачи/разбора: абзацы разделены пустой строкой, формулы — в $...$. */
+/** Текст задачи/разбора/статьи: markdown-подмножество + KaTeX через RichText. */
 export function OlympiadContent({ text, className = '' }: { text: string; className?: string }) {
-  const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-  return (
-    <div className={`space-y-3 ${className}`}>
-      {paragraphs.map((p, i) => (
-        <MathFormula key={i} formula={p} className="leading-relaxed" />
-      ))}
-    </div>
-  );
+  return <RichText content={text} className={className} />;
 }

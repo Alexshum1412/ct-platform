@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MathFormula } from '@/components/ui/MathFormula';
+import { RichText } from '@/components/ui/RichText';
 import { apiClient } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 import { subjects as staticSubjects } from '@/data/subjects';
@@ -351,9 +352,7 @@ export function TheoryHubPage() {
                                   <div className="text-sm sm:text-base"><span className="font-semibold text-primary">Кратко: </span><MathFormula formula={t.summary} inline /></div>
                                 </div>
                               )}
-                              <div className="prose dark:prose-invert max-w-none leading-relaxed">
-                                <MathFormula formula={t.content} className="text-base sm:text-lg leading-relaxed" />
-                              </div>
+                              <RichText content={t.content} className="text-base" />
                               {t.commonMistakes && t.commonMistakes.length > 0 && (
                                 <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-950/20 p-3">
                                   <p className="font-semibold flex items-center gap-1.5 text-red-700 dark:text-red-400 mb-1.5 text-sm"><AlertTriangle className="w-4 h-4" />Типичные ошибки</p>

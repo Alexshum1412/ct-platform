@@ -1,15 +1,20 @@
 import { useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HeroSection } from '@/sections/HeroSection';
+import { ScenariosSection } from '@/sections/ScenariosSection';
 import { SubjectsSection } from '@/sections/SubjectsSection';
-import { FeaturesSection } from '@/sections/FeaturesSection';
 import { OlympiadSection } from '@/sections/OlympiadSection';
-import { HowItWorksSection } from '@/sections/HowItWorksSection';
 import { PremiumSection } from '@/sections/PremiumSection';
 import { CTASection } from '@/sections/CTASection';
 import { FooterSection } from '@/sections/FooterSection';
 import type { Subject } from '@/types';
 
+/**
+ * Главная. Порядок секций — путь пользователя:
+ * Hero (обещание) → Сценарии (что умеет платформа) → Предметы (каталог) →
+ * Premium (монетизация после каталога) → Олимпиады (отдельный трек) →
+ * CTA → Footer. Generic-секции Features/HowItWorks заменены ScenariosSection.
+ */
 export function HomePage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -32,14 +37,12 @@ export function HomePage() {
   return (
     <div className="min-h-screen">
       <HeroSection onStartLearning={scrollToSubjects} />
+      <ScenariosSection />
       <div ref={subjectsRef} id="subjects-section">
         <SubjectsSection onSubjectClick={handleSubjectClick} />
       </div>
-      {/* Premium сразу после каталога предметов — главная точка монетизации */}
       <PremiumSection />
-      <FeaturesSection />
       <OlympiadSection />
-      <HowItWorksSection />
       <CTASection onStartLearning={scrollToSubjects} />
       <FooterSection />
     </div>

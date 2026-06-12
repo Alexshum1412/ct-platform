@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getSubjectBySlug, fetchTopicsBySubjectId, fetchTheoryByTopicId, fetchSubtopicsByTopicId } from '@/data/subjects';
 import { MathFormula } from '@/components/ui/MathFormula';
+import { RichText } from '@/components/ui/RichText';
 import { TheoryArticleSkeleton, CardRowsSkeleton } from '@/components/Skeletons';
 import type { Theory, Formula, Example, Topic } from '@/types';
 
@@ -149,10 +150,8 @@ function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subj
           </div>
         )}
 
-        {/* Content with KaTeX rendering */}
-        <div className="prose dark:prose-invert max-w-none leading-relaxed">
-          <MathFormula formula={theory.content} className="text-base sm:text-lg leading-relaxed" />
-        </div>
+        {/* Content: markdown (заголовки/списки/цитаты) + KaTeX */}
+        <RichText content={theory.content} className="text-base sm:text-[1.06rem]" />
 
         {/* Formulas */}
         {theory.formulas && theory.formulas.length > 0 && (

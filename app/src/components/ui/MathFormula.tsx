@@ -52,15 +52,18 @@ function containsLatexDelimiters(text: string): boolean {
 /**
  * Экранирует HTML и сохраняет переносы строк. Пробелы НЕ трогаем —
  * они отображаются как есть (в отличие от math-режима KaTeX, который их съедает).
- * После экранирования поддерживается лёгкий markdown: **жирный** → <strong>
- * (контент теории пишется с **выделениями**, которые иначе видны звёздочками).
+ * После экранирования поддерживается лёгкий inline-markdown, реально живущий
+ * в контенте: **жирный**, `код`, _курсив_ (блочную структуру — заголовки,
+ * списки, цитаты — разбирает RichText поверх этого компонента).
  */
 function escapeText(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/`([^`\n]+)`/g, '<code class="rounded bg-muted px-1.5 py-0.5 text-[0.9em] font-mono">$1</code>')
     .replace(/\*\*([^*\n][^*]*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/(?<![\w_])_([^_\n]+?)_(?![\w_])/g, '<em>$1</em>')
     .replace(/\n/g, '<br />');
 }
 
