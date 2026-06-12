@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { HeroSection } from '@/sections/HeroSection';
 import { SubjectsSection } from '@/sections/SubjectsSection';
 import { FeaturesSection } from '@/sections/FeaturesSection';
+import { OlympiadSection } from '@/sections/OlympiadSection';
 import { HowItWorksSection } from '@/sections/HowItWorksSection';
 import { PremiumSection } from '@/sections/PremiumSection';
 import { CTASection } from '@/sections/CTASection';
@@ -35,6 +36,7 @@ export function HomePage() {
         <SubjectsSection onSubjectClick={handleSubjectClick} />
       </div>
       <FeaturesSection />
+      <OlympiadSection />
       <HowItWorksSection />
       <PremiumSection />
       <CTASection onStartLearning={scrollToSubjects} />

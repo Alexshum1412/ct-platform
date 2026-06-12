@@ -51,8 +51,11 @@ export function ContactPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
-      <div className="bg-gradient-to-br from-primary/10 via-background to-background border-b border-border">
-        <div className="container py-16 max-w-4xl text-center">
+      <div className="relative overflow-hidden border-b border-border">
+        <div className="absolute -top-24 left-1/4 w-96 h-96 rounded-full bg-primary/15 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-24 right-1/4 w-80 h-80 rounded-full bg-violet-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute inset-0 bg-grid-faint pointer-events-none" />
+        <div className="relative container py-16 max-w-4xl text-center">
           <Badge className="mb-4">Поддержка</Badge>
           <h1 className="text-4xl font-bold mb-4">Свяжитесь с нами</h1>
           <p className="text-muted-foreground text-lg max-w-2xl mx-auto">

@@ -154,10 +154,13 @@ export function TheoryHubPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero header */}
-      <div className="border-b border-border bg-gradient-to-br from-primary/5 via-background to-background">
-        <div className="container py-8 lg:py-10">
+      <div className="relative overflow-hidden border-b border-border">
+        <div className="absolute -top-24 -right-20 w-96 h-96 rounded-full bg-primary/15 blur-[80px] pointer-events-none" />
+        <div className="absolute -bottom-32 left-1/4 w-80 h-80 rounded-full bg-violet-500/10 blur-[80px] pointer-events-none" />
+        <div className="absolute inset-0 bg-grid-faint pointer-events-none" />
+        <div className="relative container py-8 lg:py-10">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-violet-600 shadow-lg shadow-primary/25 text-white flex items-center justify-center">
               <GraduationCap className="w-7 h-7" />
             </div>
             <div>

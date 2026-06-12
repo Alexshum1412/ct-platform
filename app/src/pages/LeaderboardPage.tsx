@@ -28,6 +28,7 @@ import {
   Flame
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PageHeader } from '@/components/PageHeader';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppStore } from '@/store/useAppStore';
@@ -240,19 +241,12 @@ export function LeaderboardPage() {
     <div className="min-h-screen bg-background">
       <div className="container py-8">
         {/* Заголовок */}
-        <div className="text-center mb-8">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-primary to-primary/60 mb-4"
-          >
-            <Trophy className="w-10 h-10 text-white" />
-          </motion.div>
-          <h1 className="text-3xl font-bold mb-2">Лидерборд</h1>
-          <p className="text-muted-foreground">
-            Соревнуйтесь с другими учениками и достигайте новых высот
-          </p>
-        </div>
+        <PageHeader
+          icon={Trophy}
+          title="Лидерборд"
+          subtitle="Соревнуйтесь с другими учениками: общий, недельный и сезонный рейтинги, предметы и города"
+          accent="from-amber-500 to-orange-500"
+        />
 
         {/* Фильтры */}
         <div className="flex flex-wrap justify-center gap-2 mb-8">

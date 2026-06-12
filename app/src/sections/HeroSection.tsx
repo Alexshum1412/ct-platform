@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import { GraduationCap, BookOpen, Target, ArrowRight, Users, Zap, Trophy, CheckCircle2 } from 'lucide-react';
+import { GraduationCap, BookOpen, Target, ArrowRight, Users, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client';
 
@@ -63,7 +63,6 @@ export function HeroSection({ onStartLearning }: HeroSectionProps) {
   }, []);
 
   const questions = useCountUp(stats?.totalQuestions ?? null);
-  const solved = useCountUp(stats?.totalSolved ?? null);
   const users = useCountUp(stats?.totalUsers ?? null, 1000);
   const today = useCountUp(stats?.todaySolved ?? null, 1000);
 
@@ -145,28 +144,6 @@ export function HeroSection({ onStartLearning }: HeroSectionProps) {
           </motion.div>
         </div>
 
-        {/* Плавающие карточки — асимметричные акценты (только широкие экраны) */}
-        <motion.div
-          initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.55 }}
-          className="hidden xl:block absolute left-2 top-36 -rotate-3"
-          aria-hidden
-        >
-          <div className="glass rounded-2xl px-5 py-4 max-w-[15rem]">
-            <p className="flex items-center gap-2 font-bold text-sm"><Trophy className="w-4 h-4 text-amber-500" />Олимпиады</p>
-            <p className="text-xs text-muted-foreground mt-1">4 уровня этапов, разборы и отдельный рейтинг</p>
-          </div>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.68 }}
-          className="hidden xl:block absolute right-2 bottom-40 rotate-2"
-          aria-hidden
-        >
-          <div className="glass rounded-2xl px-5 py-4 max-w-[15rem]">
-            <p className="flex items-center gap-2 font-bold text-sm"><CheckCircle2 className="w-4 h-4 text-emerald-500" />Всего решено</p>
-            <p className="text-2xl font-extrabold tabular-nums mt-0.5">{fmt(solved)}</p>
-            <p className="text-xs text-muted-foreground">ответов на платформе</p>
-          </div>
-        </motion.div>
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/PageHeader';
 import { useAppStore } from '@/store/useAppStore';
 import { apiClient } from '@/lib/api/client';
 
@@ -78,12 +79,12 @@ export function AchievementsPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-5xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-            <Trophy className="w-8 h-8 text-amber-500" />Достижения
-          </h1>
-          <p className="text-muted-foreground">Награды за упорство и прогресс в подготовке к ЦТ</p>
-        </div>
+        <PageHeader
+          icon={Trophy}
+          title="Достижения"
+          subtitle="Награды за упорство и прогресс — от первых решённых заданий до республиканских олимпиад"
+          accent="from-amber-500 to-orange-500"
+        />
 
         <div className="grid grid-cols-3 gap-4 mb-8">
           {[
