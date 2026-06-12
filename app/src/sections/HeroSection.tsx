@@ -1,16 +1,12 @@
 /**
- * Hero главной — асимметричная премиум-подача: слева сильный заголовок с
- * тёмно-синим градиентом и CTA, справа (xl+) «витрина продукта» — стеклянный
- * мокап карточки задания с плавающими чипами. Ниже — live-метрики платформы.
- * Аврора + сетка в фоне, всё уважает prefers-reduced-motion.
+ * Hero главной страницы — премиум-подача: аврора-фон с мягкими движущимися
+ * пятнами, тонкая сетка, анимированный градиент в заголовке, count-up метрики
+ * и плавающие стеклянные карточки (desktop). Уважает prefers-reduced-motion.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
-import {
-  GraduationCap, BookOpen, Target, ArrowRight, Users, Zap,
-  CheckCircle2, Flame, Trophy,
-} from 'lucide-react';
+import { GraduationCap, BookOpen, Target, ArrowRight, Users, Zap, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { apiClient } from '@/lib/api/client';
 
@@ -58,7 +54,6 @@ const fmt = (n: number | null) => (n == null ? '—' : n.toLocaleString('ru-RU')
 
 export function HeroSection({ onStartLearning }: HeroSectionProps) {
   const navigate = useNavigate();
-  const prefersReduced = useReducedMotion();
   const [stats, setStats] = useState<PlatformStats | null>(null);
 
   useEffect(() => {
@@ -71,171 +66,84 @@ export function HeroSection({ onStartLearning }: HeroSectionProps) {
   const users = useCountUp(stats?.totalUsers ?? null, 1000);
   const today = useCountUp(stats?.todaySolved ?? null, 1000);
 
-  const float = prefersReduced
-    ? {}
-    : { animate: { y: [0, -8, 0] }, transition: { duration: 5, repeat: Infinity, ease: 'easeInOut' as const } };
-  const floatSlow = prefersReduced
-    ? {}
-    : { animate: { y: [0, 7, 0] }, transition: { duration: 6.5, repeat: Infinity, ease: 'easeInOut' as const, delay: 0.8 } };
-
   return (
-    <section className="relative overflow-hidden pt-14 pb-16 lg:pt-24 lg:pb-24">
-      {/* ФОН: глубокая тёмно-синяя аврора + сетка */}
+    <section className="relative overflow-hidden pt-16 pb-20 lg:pt-24 lg:pb-28">
+      {/* ФОН: аврора + сетка */}
       <div className="absolute inset-0 -z-10">
-        <div className="aurora-blob w-[36rem] h-[36rem] -top-44 -left-32 bg-primary/30" />
-        <div className="aurora-blob w-[30rem] h-[30rem] top-16 -right-28 bg-blue-700/25" style={{ animationDelay: '-6s' }} />
-        <div className="aurora-blob w-[22rem] h-[22rem] bottom-0 left-1/3 bg-violet-500/15" style={{ animationDelay: '-11s' }} />
+        <div className="aurora-blob w-[34rem] h-[34rem] -top-40 -left-32 bg-primary/30" />
+        <div className="aurora-blob w-[28rem] h-[28rem] top-10 -right-24 bg-violet-500/25" style={{ animationDelay: '-6s' }} />
+        <div className="aurora-blob w-[22rem] h-[22rem] bottom-0 left-1/3 bg-cyan-400/20" style={{ animationDelay: '-11s' }} />
         <div className="absolute inset-0 bg-grid-faint" />
       </div>
 
       <div className="relative container">
-        <div className="grid xl:grid-cols-[1.1fr_0.9fr] gap-12 xl:gap-8 items-center">
-          {/* ===== Левая колонка: текст + CTA ===== */}
-          <div className="text-center xl:text-left max-w-2xl mx-auto xl:mx-0">
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <span className="glass inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-7">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-                </span>
-                ЦТ и ЦЭ 2027 · программа РИКЗ · Беларусь
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <span className="glass inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold mb-8">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-70" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-            </motion.div>
+              Подготовка к ЦТ и ЦЭ 2027 · Беларусь
+            </span>
+          </motion.div>
 
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.08 }}
-              className="text-[2.7rem] leading-[1.05] md:text-6xl xl:text-[4.2rem] font-extrabold tracking-tight mb-6"
-            >
-              Сдай ЦТ на{' '}
-              <span className="text-gradient-animated">максимум</span>
-              <span className="block mt-2 text-[1.6rem] md:text-4xl xl:text-[2.4rem] text-muted-foreground font-bold">
-                без репетиторов и переплат
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.16 }}
-              className="text-lg md:text-xl text-muted-foreground mb-9 max-w-xl mx-auto xl:mx-0"
-            >
-              2000+ заданий с разборами, вся теория, пробные варианты в формате
-              реального экзамена и олимпиадный трек — в одной платформе.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.24 }}
-              className="flex flex-col sm:flex-row items-center xl:justify-start justify-center gap-4"
-            >
-              <Button size="lg" onClick={onStartLearning} className="btn-shine gap-2 text-lg px-8 shadow-xl shadow-primary/30">
-                <BookOpen className="w-5 h-5" />
-                Начать бесплатно
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-              <Button variant="outline" size="lg" className="glass gap-2 text-lg px-8 border-border/60" onClick={() => navigate('/exam/math')}>
-                <Target className="w-5 h-5" />
-                Пробный вариант
-              </Button>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
-              className="mt-5 text-xs text-muted-foreground flex items-center xl:justify-start justify-center gap-4 flex-wrap"
-            >
-              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Бесплатный старт</span>
-              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Без карты</span>
-              <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Тестовый балл как на ЦТ</span>
-            </motion.p>
-          </div>
-
-          {/* ===== Правая колонка (xl+): витрина продукта ===== */}
-          <motion.div
-            initial={{ opacity: 0, x: 32 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.3 }}
-            className="relative hidden xl:block select-none"
-            aria-hidden="true"
+          <motion.h1
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.08 }}
+            className="text-[2.6rem] leading-[1.08] md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6"
           >
-            {/* Свечение позади мокапа */}
-            <div className="absolute inset-8 rounded-[2.5rem] bg-primary/20 blur-[60px]" />
+            Сдай ЦТ на{' '}
+            <span className="text-gradient-animated">максимум</span>
+            <br className="hidden sm:block" />
+            <span className="text-3xl md:text-5xl lg:text-[3.4rem] text-muted-foreground font-bold">
+              {' '}без репетиторов
+            </span>
+          </motion.h1>
 
-            {/* Мокап карточки задания */}
-            <motion.div {...float} className="relative glass rounded-3xl border border-border/70 shadow-2xl shadow-primary/10 p-6 max-w-md mx-auto">
-              <div className="flex items-center justify-between mb-4">
-                <span className="inline-flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                  <span className="w-6 h-6 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-                    <GraduationCap className="w-3.5 h-3.5" />
-                  </span>
-                  Математика · Часть А
-                </span>
-                <span className="text-xs font-mono text-muted-foreground">#A-014</span>
-              </div>
-              <p className="font-semibold mb-4 leading-snug">
-                Найдите значение выражения 2³ · 2⁵ : 2⁶
-              </p>
-              <div className="space-y-2 mb-4">
-                {[
-                  { id: 'А', text: '2', ok: false },
-                  { id: 'Б', text: '4', ok: true },
-                  { id: 'В', text: '8', ok: false },
-                ].map(o => (
-                  <div
-                    key={o.id}
-                    className={`flex items-center gap-3 rounded-xl border-2 px-3.5 py-2.5 text-sm ${
-                      o.ok
-                        ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20'
-                        : 'border-border bg-background/60'
-                    }`}
-                  >
-                    <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${o.ok ? 'bg-emerald-500 text-white' : 'bg-muted'}`}>
-                      {o.id}
-                    </span>
-                    {o.text}
-                    {o.ok && <CheckCircle2 className="w-4 h-4 text-emerald-500 ml-auto" />}
-                  </div>
-                ))}
-              </div>
-              <div className="rounded-xl bg-primary/[0.07] border border-primary/15 px-3.5 py-2.5 text-xs text-muted-foreground leading-relaxed">
-                <span className="font-semibold text-primary">Разбор: </span>
-                2³⁺⁵⁻⁶ = 2² = 4. Свойства степеней — раздел 1 теории.
-              </div>
-            </motion.div>
+          <motion.p
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.16 }}
+            className="text-lg md:text-xl text-muted-foreground mb-10 max-w-2xl mx-auto"
+          >
+            Задания строго по программе РИКЗ с разборами и теорией, пробные экзамены
+            в формате реального ЦТ/ЦЭ и олимпиадная подготовка — в одном месте.
+          </motion.p>
 
-            {/* Плавающие чипы */}
-            <motion.div
-              {...floatSlow}
-              className="absolute -right-2 top-6 glass rounded-2xl border border-border/70 shadow-xl px-4 py-3 flex items-center gap-2.5"
-            >
-              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                <Flame className="w-5 h-5 text-white" />
-              </span>
-              <div>
-                <p className="text-sm font-bold leading-none">Серия 12 🔥</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">+10 XP за ответ</p>
-              </div>
-            </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.55, delay: 0.24 }}
+            className="flex flex-col sm:flex-row items-center justify-center gap-4"
+          >
+            <Button size="lg" onClick={onStartLearning} className="btn-shine gap-2 text-lg px-8 shadow-xl shadow-primary/25">
+              <BookOpen className="w-5 h-5" />
+              Начать бесплатно
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <Button variant="outline" size="lg" className="glass gap-2 text-lg px-8 border-border/60" onClick={() => navigate('/exam/math')}>
+              <Target className="w-5 h-5" />
+              Пробный экзамен
+            </Button>
+          </motion.div>
 
-            <motion.div
-              {...float}
-              className="absolute -left-4 bottom-10 glass rounded-2xl border border-border/70 shadow-xl px-4 py-3 flex items-center gap-2.5"
-            >
-              <span className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-blue-700 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-white" />
-              </span>
-              <div>
-                <p className="text-sm font-bold leading-none">Тестовый балл 87</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">пробный вариант ЦТ</p>
-              </div>
-            </motion.div>
+          <motion.p
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}
+            className="mt-5 text-xs text-muted-foreground flex items-center justify-center gap-4 flex-wrap"
+          >
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Бесплатный старт</span>
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Без карты</span>
+            <span className="inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />Тестовый балл как на ЦТ</span>
+          </motion.p>
+
+          {/* МЕТРИКИ: стеклянные карточки с count-up */}
+          <motion.div
+            initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.34 }}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-14"
+          >
+            <Stat icon={BookOpen} value={fmt(questions)} label="Заданий" sub="по программе РИКЗ" />
+            <Stat icon={GraduationCap} value={stats ? String(stats.totalSubjects) : '—'} label="Предметов" sub="ЦТ/ЦЭ Беларуси" />
+            <Stat icon={Users} value={fmt(users)} label="Учеников" sub="уже готовятся" />
+            <Stat icon={Zap} value={fmt(today)} label="Решено сегодня" sub="обновляется live" highlight />
           </motion.div>
         </div>
 
-        {/* ===== МЕТРИКИ ===== */}
-        <motion.div
-          initial={{ opacity: 0, y: 22 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.4 }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mt-14 lg:mt-20 max-w-4xl mx-auto"
-        >
-          <Stat icon={BookOpen} value={fmt(questions)} label="Заданий" sub="по программе РИКЗ" />
-          <Stat icon={GraduationCap} value={stats ? String(stats.totalSubjects) : '—'} label="Предметов" sub="ЦТ/ЦЭ Беларуси" />
-          <Stat icon={Users} value={fmt(users)} label="Учеников" sub="уже готовятся" />
-          <Stat icon={Zap} value={fmt(today)} label="Решено сегодня" sub="обновляется live" highlight />
-        </motion.div>
       </div>
     </section>
   );
