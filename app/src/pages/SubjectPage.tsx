@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, BookOpen, Target, Clock,
+  ArrowLeft, BookOpen, Target, Clock, Trophy,
   ChevronRight, GraduationCap, Play, Book, ChevronDown, ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -354,7 +354,27 @@ export function SubjectPage() {
                 </CardContent>
               </Card>
             )}
-            
+
+            {/* Олимпиада по предмету */}
+            <motion.button
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => navigate(`/olympiad/tasks?subject=${subject.slug}`)}
+              className="group relative w-full overflow-hidden rounded-2xl p-5 text-left text-white shadow-md transition-shadow hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-gradient-to-br from-amber-500 to-orange-600"
+            >
+              <div className="absolute -top-10 -right-8 w-32 h-32 rounded-full bg-white/15 blur-2xl pointer-events-none" />
+              <div className="relative flex items-center gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                  <Trophy className="w-5 h-5" />
+                </div>
+                <ArrowRight className="w-5 h-5 ml-auto opacity-80 transition-transform group-hover:translate-x-1" />
+              </div>
+              <p className="relative text-base font-bold">Олимпиада по предмету</p>
+              <p className="relative text-sm text-white/85 mt-0.5">
+                Задачи всех этапов с разборами — от школьного до республиканского.
+              </p>
+            </motion.button>
+
             {/* Блок «Недавние задания» удалён — лишний, отвлекал от навигации */}
           </div>
         </div>

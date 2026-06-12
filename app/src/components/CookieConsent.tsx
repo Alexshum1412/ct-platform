@@ -62,15 +62,17 @@ export function CookieConsentBanner() {
   return (
     <AnimatePresence>
       {isVisible && (
+        /* bottom-16 на мобиле — баннер живёт НАД нижней таб-навигацией (h-16),
+           иначе кнопка «Принять» уезжает под неё и недоступна. */
         <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed bottom-0 left-0 right-0 z-50 p-4 md:p-6"
+          className="fixed bottom-16 lg:bottom-0 left-0 right-0 z-[60] p-3 md:p-6"
         >
           <div className="max-w-4xl mx-auto">
-            <div className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl overflow-hidden">
+            <div className="bg-background/95 backdrop-blur-lg border border-border rounded-2xl shadow-2xl overflow-hidden max-h-[calc(100dvh-6rem)] overflow-y-auto">
               <div className="p-4 md:p-6 border-b border-border">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center shrink-0">

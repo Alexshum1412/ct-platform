@@ -81,6 +81,8 @@ export async function POST(req: NextRequest) {
         xp: user.xp,
         level: user.level,
         streakDays: user.streakDays,
+        image: user.image,
+        createdAt: user.createdAt,
       },
     });
   } catch (error) {

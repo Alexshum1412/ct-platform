@@ -107,6 +107,10 @@
     letter-spacing: -0.01em;
     text-rendering: optimizeLegibility;
     accent-color: hsl(var(--primary)); /* checkboxes/radios/range use brand colour */
+    /* Любой случайно «широкий» элемент (длинная формула, нескроллящаяся таблица)
+       раньше создавал горизонтальный скролл всей страницы на мобильных — контент
+       «уезжал» вправо. clip отрезает выход за вьюпорт, не ломая position: sticky. */
+    overflow-x: clip;
   }
 
   /* Headings get tighter tracking + leading and a distinctive display weight */

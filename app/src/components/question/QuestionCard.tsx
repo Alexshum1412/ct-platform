@@ -385,7 +385,7 @@ export const QuestionCard = memo(function QuestionCard({
         }
       }}
     >
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3 flex-wrap">
             <Badge variant="outline" className="font-mono">
@@ -465,7 +465,7 @@ export const QuestionCard = memo(function QuestionCard({
           */}
           <MathFormula
             formula={question.content}
-            className="text-lg sm:text-xl leading-relaxed font-medium"
+            className="text-base sm:text-lg leading-relaxed font-medium"
           />
         </div>
 
@@ -476,7 +476,7 @@ export const QuestionCard = memo(function QuestionCard({
               src={question.imageUrl.startsWith('http') ? question.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${question.imageUrl}`}
               alt="Иллюстрация к заданию"
               loading="lazy"
-              className="w-full max-h-96 object-contain"
+              className="w-full max-h-72 object-contain"
             />
           </div>
         )}
@@ -514,7 +514,7 @@ export const QuestionCard = memo(function QuestionCard({
         )}
       </CardHeader>
       
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-4">
         {/* Уже решено ранее — повторное решение недоступно (только просмотр) */}
         {reviewMode && (
           <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/50 p-4">
@@ -616,7 +616,7 @@ export const QuestionCard = memo(function QuestionCard({
             value={selectedAnswer}
             onValueChange={setSelectedAnswer}
             disabled={locked}
-            className="space-y-3"
+            className="space-y-2"
           >
             {question.options.map((option) => {
               const isSelected = selectedAnswer === option.id;
@@ -627,7 +627,7 @@ export const QuestionCard = memo(function QuestionCard({
               return (
                 <div
                   key={option.id}
-                  className={`flex items-center space-x-3 p-4 sm:p-5 rounded-xl border-2 transition-all duration-200 ${
+                  className={`flex items-center space-x-3 p-3 sm:p-3.5 rounded-xl border-2 transition-all duration-200 ${
                     showCorrect
                       ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                       : showWrong
@@ -646,11 +646,12 @@ export const QuestionCard = memo(function QuestionCard({
                     htmlFor={option.id}
                     className="flex-1 flex items-center gap-3 cursor-pointer"
                   >
-                    <span className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted font-semibold text-sm shrink-0">
+                    <span className="flex items-center justify-center w-8 h-8 rounded-lg bg-muted font-semibold text-sm shrink-0">
                       {option.id.toUpperCase()}
                     </span>
-                    {/* Вариант ответа с поддержкой формул KaTeX */}
-                    <span className="flex-1 text-base">
+                    {/* Вариант ответа с поддержкой формул KaTeX; min-w-0 + overflow:
+                        длинная формула скроллится внутри строки, а не распирает страницу */}
+                    <span className="flex-1 min-w-0 text-[0.95rem] overflow-x-auto">
                       <MathFormula formula={option.text} inline />
                     </span>
                     {showCorrect && (

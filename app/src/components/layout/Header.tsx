@@ -127,7 +127,7 @@ export function Header() {
             >
               Главная
             </Link>
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button className="px-4 py-2 rounded-lg text-sm font-semibold text-foreground hover:bg-muted transition-colors flex items-center gap-1">
                   Предметы
@@ -195,7 +195,7 @@ export function Header() {
 
             {/* User Menu */}
             {isAuthenticated && user ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted transition-colors">
                     <Avatar className="w-8 h-8">
@@ -304,9 +304,9 @@ export function Header() {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
-            className="lg:hidden border-t border-border bg-background"
+            className="lg:hidden border-t border-border bg-background max-h-[calc(100dvh-4rem)] overflow-y-auto"
           >
-            <nav className="container py-4 space-y-2">
+            <nav className="container py-4 pb-24 space-y-2">
               {[
                 { to: '/', label: 'Главная' },
                 { to: '/theory', label: 'Теория' },

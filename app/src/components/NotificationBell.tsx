@@ -64,7 +64,9 @@ export function NotificationBell() {
   if (!isAuthenticated) return null;
 
   return (
-    <DropdownMenu open={open} onOpenChange={handleOpenChange}>
+    // modal={false}: модальный режим Radix блокирует скролл страницы и прячет
+    // скроллбар — из-за этого вся шапка «дёргалась» влево при открытии.
+    <DropdownMenu open={open} onOpenChange={handleOpenChange} modal={false}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" className="relative shrink-0" aria-label="Уведомления">
           <Bell className="w-5 h-5" />

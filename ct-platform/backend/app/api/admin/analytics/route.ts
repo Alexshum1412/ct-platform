@@ -54,33 +54,76 @@ export async function GET(req: NextRequest) {
       select: { id: true, content: true, externalId: true },
     });
 
-    // Daily activity for last 7 days
-    const last7Days: Array<{ date: string; solved: number; users: number }> = [];
-    for (let i = 6; i >= 0; i--) {
+    // Daily activity for last 14 days (решения, активные пользователи, регистрации)
+    const last14Days: Array<{ date: string; solved: number; users: number; registrations: number }> = [];
+    for (let i = 13; i >= 0; i--) {
       const day = new Date(now);
       day.setDate(day.getDate() - i); day.setHours(0, 0, 0, 0);
       const nextDay = new Date(day); nextDay.setDate(nextDay.getDate() + 1);
 
-      const [solved, uniqueUsers] = await Promise.all([
+      const [solved, uniqueUsers, registrations] = await Promise.all([
         prisma.userProgress.count({ where: { createdAt: { gte: day, lt: nextDay } } }),
         prisma.userProgress.findMany({
           where: { createdAt: { gte: day, lt: nextDay } },
           select: { userId: true }, distinct: ['userId'],
         }).then(r => r.length),
+        prisma.user.count({ where: { createdAt: { gte: day, lt: nextDay } } }),
       ]);
 
-      last7Days.push({
+      last14Days.push({
         date: day.toISOString().split('T')[0],
-        solved, users: uniqueUsers,
+        solved, users: uniqueUsers, registrations,
       });
     }
 
+    // Дополнительные метрики: точность, контент, олимпиада, топ предметов
+    const [
+      correctTotal, theoryCount, olympiadProblems, olympiadTheoryCount, examEntities,
+      olympiadAttemptsTotal, olympiadSolvedTotal, contactNew,
+    ] = await Promise.all([
+      prisma.userProgress.count({ where: { isCorrect: true } }),
+      prisma.theory.count(),
+      prisma.olympiadProblem.count({ where: { status: 'ACTIVE' } }),
+      prisma.olympiadTheory.count({ where: { status: 'ACTIVE' } }),
+      prisma.exam.count({ where: { isActive: true } }),
+      prisma.olympiadAttempt.count(),
+      prisma.olympiadAttempt.count({ where: { isCorrect: true } }),
+      prisma.contactMessage.count({ where: { status: 'NEW' } }),
+    ]);
+
+    const olympiadParticipants = await prisma.olympiadAttempt.findMany({
+      select: { userId: true }, distinct: ['userId'],
+    }).then(r => r.length);
+
+    // Топ предметов по решениям (через денормализованный timesSolved вопросов)
+    const subjectAgg = await prisma.question.groupBy({
+      by: ['subjectId'],
+      where: { status: 'ACTIVE' },
+      _sum: { timesSolved: true },
+      _count: { id: true },
+    });
+    const subjectNames = await prisma.subject.findMany({ select: { id: true, name: true, color: true } });
+    const nameById = new Map(subjectNames.map(s => [s.id, s]));
+    const topSubjects = subjectAgg
+      .map(s => ({
+        subjectId: s.subjectId,
+        name: nameById.get(s.subjectId)?.name ?? s.subjectId,
+        color: nameById.get(s.subjectId)?.color ?? null,
+        questions: s._count.id,
+        solved: s._sum.timesSolved ?? 0,
+      }))
+      .sort((a, b) => b.solved - a.solved)
+      .slice(0, 8);
+
     return NextResponse.json({
       users: { total: totalUsers, premium: premiumUsers, free: freeUsers, newToday: newUsersToday, newWeek: newUsersWeek, newMonth: newUsersMonth, activeWeek: activeUsersWeek },
-      questions: { total: totalQuestions, totalSolved, solvedToday, solvedWeek },
-      exams: { total: examsTotal, today: examsToday },
+      questions: { total: totalQuestions, totalSolved, solvedToday, solvedWeek, accuracy: totalSolved > 0 ? Math.round((correctTotal / totalSolved) * 100) : 0 },
+      exams: { total: examsTotal, today: examsToday, entities: examEntities },
       reports: { total: totalReports, pending: pendingReports, top: topReports.map(t => ({ questionId: t.questionId, count: t._count.id, content: reportedQuestions.find(q => q.id === t.questionId)?.content?.substring(0, 100) ?? '', externalId: reportedQuestions.find(q => q.id === t.questionId)?.externalId ?? '' })) },
-      activity: last7Days,
+      content: { theory: theoryCount, olympiadProblems, olympiadTheory: olympiadTheoryCount, contactNew },
+      olympiad: { attempts: olympiadAttemptsTotal, solved: olympiadSolvedTotal, participants: olympiadParticipants },
+      topSubjects,
+      activity: last14Days,
     });
   } catch (error) {
     console.error('Admin analytics error:', error);

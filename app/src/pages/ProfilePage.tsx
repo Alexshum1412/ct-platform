@@ -294,7 +294,10 @@ export function ProfilePage() {
                     <div className="flex flex-wrap justify-center gap-1.5 mb-4">
                       {user.city && <Badge variant="secondary" className="text-xs gap-1"><MapPin className="w-3 h-3" />{user.city}</Badge>}
                       {user.school && <Badge variant="secondary" className="text-xs gap-1"><School className="w-3 h-3" />{user.school}</Badge>}
-                      <Badge variant="outline" className="text-xs gap-1"><Calendar className="w-3 h-3" />С {new Date(user.createdAt).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</Badge>
+                      {/* createdAt может отсутствовать в старых сессиях (логин до фикса) — не рисуем Invalid Date */}
+                      {user.createdAt && !Number.isNaN(new Date(user.createdAt).getTime()) && (
+                        <Badge variant="outline" className="text-xs gap-1"><Calendar className="w-3 h-3" />С {new Date(user.createdAt).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</Badge>
+                      )}
                     </div>
                     <Button variant="outline" size="sm" className="w-full gap-2" onClick={startEdit}>
                       <Edit2 className="w-3 h-3" />Редактировать
@@ -517,7 +520,7 @@ export function ProfilePage() {
 
         {/* Tabs */}
         <Tabs defaultValue="achievements">
-          <TabsList className="mb-6 w-full sm:w-auto">
+          <TabsList className="mb-6 h-auto flex-wrap justify-start gap-1 w-full sm:w-auto">
             <TabsTrigger value="achievements" className="gap-2">
               <Trophy className="w-4 h-4" />Достижения
               {unlockedCount > 0 && <Badge variant="secondary" className="text-xs">{unlockedCount}</Badge>}

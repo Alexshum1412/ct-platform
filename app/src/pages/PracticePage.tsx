@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Filter, RotateCcw, Crown, ChevronRight, ChevronDown, List, FileText, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Inbox, Flame, FilterX, PartyPopper, Eye, EyeOff } from 'lucide-react';
 import { QuestionSkeleton } from '@/components/Skeletons';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -53,6 +53,8 @@ export function PracticePage() {
   // продолжает с нерешённых и не «вспоминает», где остановился. Учёт — по предмету
   // (на странице практики всегда задания одного предмета).
   const [hideSolved, setHideSolved] = useState<boolean>(() => localStorage.getItem('practice-hide-solved') !== '0');
+  // Сетка-навигатор по заданиям свёрнута по умолчанию (при 500+ заданиях она огромная)
+  const [navOpen, setNavOpen] = useState(false);
   // Снимок решённых ID для скрытия. Обновляется при загрузке/смене фильтров, НЕ во
   // время сессии — иначе только что отвеченная карточка исчезала бы до показа разбора.
   const [skipSet, setSkipSet] = useState<Set<string>>(new Set());
@@ -662,7 +664,7 @@ export function PracticePage() {
               initial={{ opacity: 0, x: -12 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.25, ease: 'easeOut' }}
-              className={`space-y-6 ${practiceSidebarCollapsed ? 'lg:hidden' : 'lg:col-span-1'}`}
+              className={`space-y-6 order-2 lg:order-none ${practiceSidebarCollapsed ? 'lg:hidden' : 'lg:col-span-1'}`}
             >
               <Card>
                 <CardHeader>
@@ -814,59 +816,73 @@ export function PracticePage() {
                 </CardContent>
               </Card>
 
-              {/* Question Navigator */}
+              {/* Question Navigator — свёрнут по умолчанию: при сотнях заданий
+                  сетка квадратиков иначе занимает несколько экранов */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Навигация</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-2">
-                    {filteredQuestions.map((q, i) => {
-                      const isAnswered = answeredQuestions.has(q.id);
-                      const isCorrect = correctAnswers.has(q.id);
-                      const isCurrent = i === currentQuestionIndex;
+                <button
+                  type="button"
+                  onClick={() => setNavOpen(v => !v)}
+                  className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-muted/40 transition-colors"
+                  aria-expanded={navOpen}
+                >
+                  <span className="text-base font-semibold flex items-center gap-2">
+                    Навигация
+                    <span className="text-xs font-normal text-muted-foreground">
+                      {currentQuestionIndex + 1} / {filteredQuestions.length}
+                    </span>
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${navOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {navOpen && (
+                  <CardContent className="pt-0">
+                    <div className="grid grid-cols-5 gap-2 max-h-72 overflow-y-auto pr-1">
+                      {filteredQuestions.map((q, i) => {
+                        const isAnswered = answeredQuestions.has(q.id);
+                        const isCorrect = correctAnswers.has(q.id);
+                        const isCurrent = i === currentQuestionIndex;
 
-                      return (
-                        <button
-                          key={q.id}
-                          onClick={() => setCurrentQuestionIndex(i)}
-                          className={`aspect-square rounded-lg text-sm font-medium transition-all ${
-                            isCurrent
-                              ? 'bg-primary text-white'
-                              : isAnswered
-                              ? isCorrect
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                              : 'bg-muted hover:bg-muted/80'
-                          }`}
-                        >
-                          {i + 1}
-                        </button>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <button
+                            key={q.id}
+                            onClick={() => setCurrentQuestionIndex(i)}
+                            className={`aspect-square rounded-lg text-sm font-medium transition-all ${
+                              isCurrent
+                                ? 'bg-primary text-white'
+                                : isAnswered
+                                ? isCorrect
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-muted hover:bg-muted/80'
+                            }`}
+                          >
+                            {i + 1}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                  <div className="flex items-center gap-4 mt-4 text-sm">
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30" />
-                      <span className="text-muted-foreground">Верно</span>
+                    <div className="flex items-center gap-4 mt-4 text-sm">
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-green-100 dark:bg-green-900/30" />
+                        <span className="text-muted-foreground">Верно</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-900/30" />
+                        <span className="text-muted-foreground">Неверно</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded bg-muted" />
+                        <span className="text-muted-foreground">Не решено</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-red-100 dark:bg-red-900/30" />
-                      <span className="text-muted-foreground">Неверно</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <div className="w-3 h-3 rounded bg-muted" />
-                      <span className="text-muted-foreground">Не решено</span>
-                    </div>
-                  </div>
-                </CardContent>
+                  </CardContent>
+                )}
               </Card>
             </motion.aside>
           )}
 
-          {/* Main Content — full width when the panel is collapsed */}
-          <div className={practiceSidebarCollapsed ? 'w-full max-w-4xl mx-auto' : 'lg:col-span-3'}>
+          {/* Main Content — на мобиле идёт ПЕРВЫМ (задание сразу, фильтры ниже) */}
+          <div className={`order-1 lg:order-none ${practiceSidebarCollapsed ? 'w-full max-w-4xl mx-auto' : 'lg:col-span-3'}`}>
             {/* Error-retrain banner (from exam results) */}
             {idsParam && (
               <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-amber-300 dark:border-amber-700/60 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">

@@ -58,10 +58,13 @@ interface ReportRow {
 
 interface Analytics {
   users: { total: number; premium: number; free: number; newToday: number; newWeek: number; newMonth: number; activeWeek: number };
-  questions: { total: number; totalSolved: number; solvedToday: number; solvedWeek: number };
-  exams: { total: number; today: number };
+  questions: { total: number; totalSolved: number; solvedToday: number; solvedWeek: number; accuracy?: number };
+  exams: { total: number; today: number; entities?: number };
   reports: { total: number; pending: number; top: Array<{ questionId: string; count: number; content: string; externalId: string }> };
-  activity: Array<{ date: string; solved: number; users: number }>;
+  content?: { theory: number; olympiadProblems: number; olympiadTheory: number; contactNew: number };
+  olympiad?: { attempts: number; solved: number; participants: number };
+  topSubjects?: Array<{ subjectId: string; name: string; color: string | null; questions: number; solved: number }>;
+  activity: Array<{ date: string; solved: number; users: number; registrations?: number }>;
 }
 
 interface ContactMessageRow {
@@ -1036,34 +1039,123 @@ export function AdminPage() {
                       <p className="text-xs text-muted-foreground mb-2">пройдено</p>
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between"><span className="text-muted-foreground">Сегодня</span><span className="font-medium text-green-600">+{analytics.exams.today}</span></div>
+                        {analytics.exams.entities !== undefined && (
+                          <div className="flex justify-between"><span className="text-muted-foreground">Активных экзаменов</span><span className="font-medium">{analytics.exams.entities}</span></div>
+                        )}
+                        {analytics.questions.accuracy !== undefined && (
+                          <div className="flex justify-between"><span className="text-muted-foreground">Точность платформы</span><span className="font-medium text-green-600">{analytics.questions.accuracy}%</span></div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
                 </div>
 
-                {/* Activity chart */}
+                {/* Контент и олимпиада */}
+                {(analytics.content || analytics.olympiad) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {analytics.content && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm flex items-center gap-2"><FolderTree className="w-4 h-4" />Контент</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                            <div className="flex justify-between"><span className="text-muted-foreground">Статей теории</span><span className="font-medium">{analytics.content.theory}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Олимп. задач</span><span className="font-medium">{analytics.content.olympiadProblems}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Теория PRO</span><span className="font-medium">{analytics.content.olympiadTheory}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Новых сообщений</span><span className={`font-medium ${analytics.content.contactNew > 0 ? 'text-amber-600' : ''}`}>{analytics.content.contactNew}</span></div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {analytics.olympiad && (
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm flex items-center gap-2"><Trophy className="w-4 h-4" />Олимпиадный раздел</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                            <div className="flex justify-between"><span className="text-muted-foreground">Попыток</span><span className="font-medium">{analytics.olympiad.attempts}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Решено</span><span className="font-medium text-green-600">{analytics.olympiad.solved}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Участников</span><span className="font-medium">{analytics.olympiad.participants}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Решаемость</span><span className="font-medium">{analytics.olympiad.attempts > 0 ? Math.round((analytics.olympiad.solved / analytics.olympiad.attempts) * 100) : 0}%</span></div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Activity chart — решения за 14 дней */}
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4" />Активность за 7 дней</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-2"><TrendingUp className="w-4 h-4" />Решения за {analytics.activity.length} дней</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-7 gap-2 items-end h-32">
+                    <div className={`grid gap-1.5 items-end h-32 ${analytics.activity.length > 7 ? 'grid-cols-14' : 'grid-cols-7'}`} style={{ gridTemplateColumns: `repeat(${analytics.activity.length}, minmax(0, 1fr))` }}>
                       {analytics.activity.map((d, i) => {
                         const maxSolved = Math.max(...analytics.activity.map(a => a.solved), 1);
                         const h = (d.solved / maxSolved) * 100;
                         return (
-                          <div key={i} className="text-center flex flex-col items-center gap-1">
-                            <span className="text-xs font-medium">{d.solved}</span>
-                            <div className="w-full bg-primary/20 rounded-t" style={{ height: `${Math.max(h, 4)}%` }}>
-                              <div className="w-full bg-primary rounded-t h-full" />
-                            </div>
-                            <span className="text-xs text-muted-foreground">{new Date(d.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</span>
+                          <div key={i} className="text-center flex flex-col items-center gap-1 h-full justify-end" title={`${d.date}: ${d.solved} решений, ${d.users} активных`}>
+                            <span className="text-[10px] font-medium tabular-nums">{d.solved}</span>
+                            <div className="w-full bg-primary rounded-t" style={{ height: `${Math.max(h, 3)}%` }} />
+                            <span className="text-[10px] text-muted-foreground">{new Date(d.date).getDate()}</span>
                           </div>
                         );
                       })}
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Регистрации за период */}
+                {analytics.activity.some(d => d.registrations !== undefined) && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><Users className="w-4 h-4" />Регистрации по дням</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-1.5 items-end h-24" style={{ gridTemplateColumns: `repeat(${analytics.activity.length}, minmax(0, 1fr))` }}>
+                        {analytics.activity.map((d, i) => {
+                          const maxReg = Math.max(...analytics.activity.map(a => a.registrations ?? 0), 1);
+                          const h = ((d.registrations ?? 0) / maxReg) * 100;
+                          return (
+                            <div key={i} className="text-center flex flex-col items-center gap-1 h-full justify-end" title={`${d.date}: +${d.registrations ?? 0}`}>
+                              <span className="text-[10px] font-medium tabular-nums">{d.registrations ?? 0}</span>
+                              <div className="w-full bg-emerald-500 rounded-t" style={{ height: `${Math.max(h, 3)}%` }} />
+                              <span className="text-[10px] text-muted-foreground">{new Date(d.date).getDate()}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Топ предметов по решениям */}
+                {analytics.topSubjects && analytics.topSubjects.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm flex items-center gap-2"><BarChart3 className="w-4 h-4" />Популярность предметов</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2.5">
+                      {analytics.topSubjects.map(s => {
+                        const max = Math.max(...analytics.topSubjects!.map(x => x.solved), 1);
+                        return (
+                          <div key={s.subjectId}>
+                            <div className="flex items-center justify-between text-sm mb-1">
+                              <span className="font-medium">{s.name}</span>
+                              <span className="text-muted-foreground text-xs tabular-nums">{s.solved.toLocaleString()} решений · {s.questions} заданий</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${Math.max((s.solved / max) * 100, 2)}%`, background: s.color ?? 'hsl(var(--primary))' }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Reports */}
                 <Card>

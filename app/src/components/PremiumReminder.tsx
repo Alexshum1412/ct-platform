@@ -16,6 +16,15 @@ import { useAppStore } from '@/store/useAppStore';
 const FIRST_DELAY_MS = 25_000;       // первый показ — через 25 c
 const REPEAT_EVERY_MS = 150_000;     // затем каждые 2.5 минуты
 const VISIBLE_MS = 16_000;           // держится на экране 16 c
+// Явное закрытие крестиком глушит напоминание на сутки — иначе оно
+// возвращалось каждые 2,5 минуты и ощущалось «незакрываемым».
+const SNOOZE_KEY = 'ct-premium-reminder-snooze-until';
+const SNOOZE_MS = 24 * 60 * 60 * 1000;
+
+const isSnoozed = () => {
+  const until = Number(localStorage.getItem(SNOOZE_KEY) ?? 0);
+  return Number.isFinite(until) && Date.now() < until;
+};
 
 const messages = [
   'Бесплатный план ограничен. С Premium — задания без лимитов и уровни IV–V.',
@@ -39,6 +48,7 @@ export function PremiumReminder() {
     if (!isFree) { setOpen(false); return; }
 
     const show = () => {
+      if (isSnoozed()) return;
       setMsgIndex((i) => (i + 1) % messages.length);
       setOpen(true);
       if (hideTimer.current) window.clearTimeout(hideTimer.current);
@@ -69,11 +79,15 @@ export function PremiumReminder() {
           <div className="relative overflow-hidden rounded-2xl border border-amber-300/60 dark:border-amber-500/30 bg-background shadow-xl">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-400/10 via-transparent to-orange-500/10 pointer-events-none" />
             <button
-              onClick={() => setOpen(false)}
-              className="absolute top-2.5 right-2.5 p-1 rounded-full hover:bg-muted transition-colors"
-              aria-label="Скрыть"
+              onClick={() => {
+                localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_MS));
+                setOpen(false);
+              }}
+              className="absolute top-1.5 right-1.5 p-2 rounded-full hover:bg-muted transition-colors"
+              aria-label="Скрыть на сутки"
+              title="Скрыть на сутки"
             >
-              <X className="w-4 h-4 text-muted-foreground" />
+              <X className="w-5 h-5 text-muted-foreground" />
             </button>
             <div className="relative p-4 pr-9">
               <div className="flex items-center gap-2 mb-1.5">

@@ -52,12 +52,15 @@ function containsLatexDelimiters(text: string): boolean {
 /**
  * Экранирует HTML и сохраняет переносы строк. Пробелы НЕ трогаем —
  * они отображаются как есть (в отличие от math-режима KaTeX, который их съедает).
+ * После экранирования поддерживается лёгкий markdown: **жирный** → <strong>
+ * (контент теории пишется с **выделениями**, которые иначе видны звёздочками).
  */
 function escapeText(s: string): string {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
+    .replace(/\*\*([^*\n][^*]*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />');
 }
 
