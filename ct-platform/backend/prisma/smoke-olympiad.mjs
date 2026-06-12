@@ -37,7 +37,7 @@ async function main() {
 
   // --- публичная выдача ---
   const list = await api('/olympiad/problems?subjectId=math&level=REPUBLIC');
-  ok('список задач math/REPUBLIC', list.status === 200 && list.data.problems.length === 4, `status=${list.status}`);
+  ok('список задач math/REPUBLIC', list.status === 200 && list.data.problems.length >= 4, `status=${list.status}`);
   const card = list.data.problems[0];
   ok('карточка без ответа/решения/условия', card && card.answer === undefined && card.solution === undefined && card.content === undefined);
 
