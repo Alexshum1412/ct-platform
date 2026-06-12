@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { Trophy, BookOpen, Archive, Compass, ChevronRight, Medal, Target } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { PageHeader } from '@/components/PageHeader';
 import { useAppStore } from '@/store/useAppStore';
 import { olympiadApi, olympiadOverviewApi, type OlympiadOverview, type OlympiadProgress } from '@/lib/api/client';
 import { LEVEL_META, LEVEL_ORDER } from '@/components/olympiad/levels';
@@ -39,27 +40,20 @@ export function OlympiadHubPage() {
 
   return (
     <div className="container py-8 space-y-8">
-      {/* Hero */}
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <div className="rounded-2xl border bg-gradient-to-br from-amber-500/10 via-background to-violet-500/10 p-6 md:p-10">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-500/15 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-            </div>
-            <h1 className="text-2xl md:text-4xl font-extrabold">Олимпиадная подготовка</h1>
+      <PageHeader
+        icon={Trophy}
+        title="Олимпиадная подготовка"
+        subtitle="Задачи всех этапов республиканской олимпиады — от школьного до заключительного. Пошаговые разборы, теория повышенного уровня, отдельный рейтинг и достижения."
+        accent="from-amber-500 to-orange-600"
+        className="mb-0"
+      >
+        {progress && (
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
+            <span className="inline-flex items-center gap-1.5"><Target className="w-4 h-4 text-primary" /> Решено: {progress.solved} из {progress.totalProblems}</span>
+            <span className="inline-flex items-center gap-1.5"><Medal className="w-4 h-4 text-amber-500" /> Очки: {progress.points}</span>
           </div>
-          <p className="text-muted-foreground max-w-2xl md:text-lg">
-            Задачи всех этапов республиканской олимпиады — от школьного до заключительного.
-            Пошаговые разборы, теория повышенного уровня, отдельный рейтинг и достижения.
-          </p>
-          {progress && (
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
-              <span className="inline-flex items-center gap-1.5"><Target className="w-4 h-4 text-primary" /> Решено: {progress.solved} из {progress.totalProblems}</span>
-              <span className="inline-flex items-center gap-1.5"><Medal className="w-4 h-4 text-amber-500" /> Очки: {progress.points}</span>
-            </div>
-          )}
-        </div>
-      </motion.div>
+        )}
+      </PageHeader>
 
       {/* Уровни этапов */}
       <section>

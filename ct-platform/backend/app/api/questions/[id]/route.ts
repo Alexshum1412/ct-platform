@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { formatQuestion } from '@/lib/utils';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (body.hints !== undefined) data.hints = body.hints == null ? null : (typeof body.hints === 'string' ? body.hints : JSON.stringify(body.hints));
 
     // Перенос в другой предмет должен переносить и денормализованный счётчик.
-    const prev = await prisma.question.findUnique({ where: { id: params.id }, select: { subjectId: true } });
+    const prev = await prisma.question.findUnique({ where: { id: params.id } });
     if (!prev) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
 
     const movingTo = typeof data.subjectId === 'string' && data.subjectId !== prev.subjectId ? data.subjectId : null;
@@ -52,6 +53,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
           ]
         : []),
     ]);
+    await logAudit(req, {
+      action: 'UPDATE', entity: 'question', entityId: question.id,
+      summary: `Изменено задание ${question.externalId ?? question.id}`,
+      oldValue: { ...prev, content: prev.content.slice(0, 300) },
+      newValue: { ...question, content: question.content.slice(0, 300) },
+    });
     return NextResponse.json(formatQuestion(question));
   } catch (error) {
     console.error('Update question error:', error);
@@ -68,7 +75,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
     // POST инкрементирует subject.questionsCount — удаление должно декрементировать
     // (раньше счётчик навсегда «уплывал» вверх после каждого удаления).
-    const existing = await prisma.question.findUnique({ where: { id: params.id }, select: { subjectId: true } });
+    const existing = await prisma.question.findUnique({ where: { id: params.id } });
     if (!existing) return NextResponse.json({ error: 'Задание не найдено' }, { status: 404 });
 
     await prisma.$transaction([
@@ -79,6 +86,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       }),
     ]);
 
+    await logAudit(req, {
+      action: 'DELETE', entity: 'question', entityId: params.id,
+      summary: `Удалено задание ${existing.externalId ?? params.id}`,
+      oldValue: { ...existing, content: existing.content.slice(0, 300) },
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete question error:', error);

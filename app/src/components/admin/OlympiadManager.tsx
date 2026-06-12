@@ -65,6 +65,13 @@ export function OlympiadManager({ token: tokenProp }: { token: string | null }) 
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ kind: 'problems' | 'theory'; id: string; title: string } | null>(null);
 
+  // Массовые операции над задачами
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkLevel, setBulkLevel] = useState('');
+  const [bulkDifficulty, setBulkDifficulty] = useState('');
+
   const PAGE = 20;
 
   useEffect(() => {
@@ -175,6 +182,35 @@ export function OlympiadManager({ token: tokenProp }: { token: string | null }) 
 
   const subjectName = (id: string) => subjects.find(s => s.id === id)?.name ?? '—';
 
+  const toggleSelected = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const allVisibleSelected = problems.length > 0 && problems.every(p => selectedIds.has(p.id));
+  const toggleAllVisible = () => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allVisibleSelected) problems.forEach(p => next.delete(p.id));
+      else problems.forEach(p => next.add(p.id));
+      return next;
+    });
+  };
+
+  const runBulk = async (op: 'delete' | 'update', data?: Record<string, unknown>) => {
+    if (selectedIds.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    const r = await adminOlympiadApi.bulkProblems(Array.from(selectedIds), op, data, token);
+    setBulkBusy(false);
+    if (r.error) { flash(`Ошибка: ${r.error}`); return; }
+    setSelectedIds(new Set());
+    setBulkLevel(''); setBulkDifficulty('');
+    flash(op === 'delete' ? `Удалено задач: ${r.data?.count ?? 0}` : `Изменено задач: ${r.data?.count ?? 0}`);
+    load();
+  };
+
   return (
     <div className="space-y-4">
       {/* Подвкладки */}
@@ -205,14 +241,69 @@ export function OlympiadManager({ token: tokenProp }: { token: string | null }) 
 
       {notice && <p className="text-sm font-medium text-primary">{notice}</p>}
 
+      {/* Панель массовых операций */}
+      {tab === 'problems' && selectedIds.size > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 flex flex-wrap items-center gap-2">
+          <Badge className="text-xs">{selectedIds.size} выбрано</Badge>
+          <select value={bulkLevel} onChange={e => setBulkLevel(e.target.value)} disabled={bulkBusy}
+            className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+            <option value="">Этап…</option>
+            {LEVEL_ORDER.map(l => <option key={l} value={l}>{LEVEL_META[l].label}</option>)}
+          </select>
+          {bulkLevel && (
+            <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void runBulk('update', { level: bulkLevel })}>
+              Применить
+            </Button>
+          )}
+          <select value={bulkDifficulty} onChange={e => setBulkDifficulty(e.target.value)} disabled={bulkBusy}
+            className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+            <option value="">Сложность…</option>
+            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>Уровень {n}</option>)}
+          </select>
+          {bulkDifficulty && (
+            <Button size="sm" variant="secondary" disabled={bulkBusy} onClick={() => void runBulk('update', { difficulty: Number(bulkDifficulty) })}>
+              Применить
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => void runBulk('update', { status: 'HIDDEN' })}>
+              Скрыть
+            </Button>
+            <Button size="sm" variant="outline" disabled={bulkBusy} onClick={() => void runBulk('update', { status: 'ACTIVE' })}>
+              Показать
+            </Button>
+            <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" />Удалить
+            </Button>
+            <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedIds(new Set())}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Список */}
       {loading ? (
         <p className="text-sm text-muted-foreground py-6 text-center">Загрузка…</p>
       ) : tab === 'problems' ? (
         <div className="space-y-2">
           {problems.length === 0 && <p className="text-sm text-muted-foreground py-6 text-center">Задач не найдено</p>}
+          {problems.length > 0 && (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none px-1">
+              <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
+                className="w-4 h-4 rounded border-input accent-primary" />
+              Выбрать видимые
+            </label>
+          )}
           {problems.map(p => (
-            <div key={p.id} className="flex items-center gap-3 rounded-lg border p-3">
+            <div key={p.id} className={`flex items-center gap-3 rounded-lg border p-3 ${selectedIds.has(p.id) ? 'border-primary/40 bg-primary/5' : ''}`}>
+              <input
+                type="checkbox"
+                checked={selectedIds.has(p.id)}
+                onChange={() => toggleSelected(p.id)}
+                className="w-4 h-4 shrink-0 rounded border-input accent-primary"
+                aria-label="Выбрать задачу"
+              />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
                   <Badge variant="outline">{LEVEL_META[p.level]?.short ?? p.level}</Badge>
@@ -345,6 +436,27 @@ export function OlympiadManager({ token: tokenProp }: { token: string | null }) 
           <AlertDialogFooter>
             <AlertDialogCancel>Отмена</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>Удалить</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Подтверждение массового удаления */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить выбранные задачи?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Будет безвозвратно удалено задач: {selectedIds.size}, вместе с попытками пользователей. Действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { setBulkDeleteOpen(false); void runBulk('delete'); }}
+            >
+              Удалить {selectedIds.size}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

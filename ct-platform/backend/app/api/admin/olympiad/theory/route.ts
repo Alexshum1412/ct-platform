@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseTags, stringifyTags } from '@/lib/utils';
 import { isOlympiadLevel } from '@/lib/olympiad';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,7 @@ export async function POST(req: NextRequest) {
         status: 'ACTIVE',
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'olympiadTheory', entityId: article.id, summary: `Создана статья теории PRO «${article.title}»`, newValue: { ...article, content: article.content.slice(0, 300) } });
     return NextResponse.json(article, { status: 201 });
   } catch (error) {
     console.error('Admin olympiad theory create error:', error);

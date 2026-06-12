@@ -4,7 +4,8 @@
  */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Medal, Trophy } from 'lucide-react';
+import { Medal, Trophy } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -36,16 +37,14 @@ export function OlympiadLeaderboardPage() {
 
   return (
     <div className="container py-8 space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm"><Link to="/olympiad"><ArrowLeft className="w-4 h-4 mr-1" />Олимпиады</Link></Button>
-        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-amber-500" /> Рейтинг олимпиадников
-        </h1>
-      </div>
-      <p className="text-sm text-muted-foreground -mt-2">
-        Отдельный от общего рейтинга. Очки даются один раз за каждую решённую задачу: школьный этап — 10, районный — 20, областной — 35, республиканский — 50.
-        {totalParticipants > 0 && <> Участников: {totalParticipants}.</>}
-      </p>
+      <PageHeader
+        icon={Trophy}
+        title="Рейтинг олимпиадников"
+        subtitle={`Отдельный от общего рейтинга. Очки даются один раз за задачу: школьный — 10, районный — 20, областной — 35, республиканский — 50.${totalParticipants > 0 ? ` Участников: ${totalParticipants}.` : ''}`}
+        accent="from-amber-500 to-orange-600"
+        back={{ to: '/olympiad', label: 'Олимпиады' }}
+        className="mb-0"
+      />
 
       {me && (
         <Card className="border-primary/40 bg-primary/5">

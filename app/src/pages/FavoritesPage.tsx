@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, ArrowLeft, Filter, BookOpen, Trash2 } from 'lucide-react';
+import { Star, Filter, BookOpen, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MathFormula } from '@/components/ui/MathFormula';
+import { PageHeader } from '@/components/PageHeader';
 import { useAppStore } from '@/store/useAppStore';
 import { apiClient } from '@/lib/api/client';
 import type { Question } from '@/types';
@@ -64,22 +65,13 @@ export function FavoritesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="container py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-400 fill-amber-400" />
-              Избранные задания
-            </h1>
-            <p className="text-sm text-muted-foreground">{questions.length} заданий</p>
-          </div>
-        </div>
-      </header>
-
       <main className="container py-8 max-w-3xl">
+        <PageHeader
+          icon={Star}
+          title="Избранные задания"
+          subtitle={isLoading ? 'Загружаем подборку…' : `${questions.length} заданий в вашей коллекции — возвращайтесь к ним в любой момент.`}
+          accent="from-amber-400 to-amber-600"
+        />
         {isLoading ? (
           <div className="space-y-4">{[1,2,3].map(i => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
         ) : questions.length === 0 ? (

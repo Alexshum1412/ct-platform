@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stringifyTags } from '@/lib/utils';
 import { formatProblemFull, isOlympiadLevel, LEVEL_POINTS, type OlympiadLevel } from '@/lib/olympiad';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
         status: 'ACTIVE',
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'olympiadProblem', entityId: problem.id, summary: `Создана олимпиадная задача «${problem.title}»`, newValue: { ...problem, content: problem.content.slice(0, 300), solution: problem.solution.slice(0, 300) } });
     return NextResponse.json(formatProblemFull(problem), { status: 201 });
   } catch (error) {
     console.error('Admin olympiad create error:', error);

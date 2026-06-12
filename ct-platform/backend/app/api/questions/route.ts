@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { createQuestionSchema } from '@/lib/validation';
 import { questionLimiter, checkRateLimit } from '@/lib/rate-limit';
 import { formatQuestion, stringifyTags } from '@/lib/utils';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -99,6 +100,11 @@ export async function POST(req: NextRequest) {
       data: { questionsCount: { increment: 1 } },
     });
 
+    await logAudit(req, {
+      action: 'CREATE', entity: 'question', entityId: question.id,
+      summary: `Создано задание ${question.externalId ?? question.id}`,
+      newValue: { ...question, content: question.content.slice(0, 300) },
+    });
     return NextResponse.json({ message: 'Задание создано', question: formatQuestion(question) }, { status: 201 });
   } catch (error) {
     console.error('Create question error:', error);

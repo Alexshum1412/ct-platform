@@ -3,9 +3,10 @@
  * республиканской олимпиады РБ + общий план работы в разделе.
  */
 import { Link } from 'react-router-dom';
-import { ArrowLeft, BookOpen, CalendarDays, Compass, Lightbulb, Target } from 'lucide-react';
+import { BookOpen, CalendarDays, Compass, Lightbulb, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { PageHeader } from '@/components/PageHeader';
 import { LEVEL_META, LEVEL_ORDER } from '@/components/olympiad/levels';
 import type { OlympiadLevel } from '@/lib/api/client';
 
@@ -59,12 +60,14 @@ const GUIDE: Record<OlympiadLevel, { when: string; what: string; plan: string[];
 export function OlympiadGuidePage() {
   return (
     <div className="container py-8 space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm"><Link to="/olympiad"><ArrowLeft className="w-4 h-4 mr-1" />Олимпиады</Link></Button>
-        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
-          <Compass className="w-6 h-6 text-primary" /> Как готовиться к олимпиадам
-        </h1>
-      </div>
+      <PageHeader
+        icon={Compass}
+        title="Как готовиться к олимпиадам"
+        subtitle="План подготовки к каждому этапу республиканской олимпиады: сроки, методика и советы."
+        accent="from-amber-500 to-orange-600"
+        back={{ to: '/olympiad', label: 'Олимпиады' }}
+        className="mb-0"
+      />
 
       <Card>
         <CardContent className="p-5 text-sm md:text-base text-muted-foreground space-y-2">

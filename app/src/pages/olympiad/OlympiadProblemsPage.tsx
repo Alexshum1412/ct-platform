@@ -5,7 +5,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Filter, Search, Trophy } from 'lucide-react';
+import { CheckCircle2, Eye, EyeOff, Filter, Search, Trophy } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,13 +89,14 @@ export function OlympiadProblemsPage() {
 
   return (
     <div className="container py-8 space-y-6">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm"><Link to="/olympiad"><ArrowLeft className="w-4 h-4 mr-1" />Олимпиады</Link></Button>
-        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-amber-500" /> Задачи
-        </h1>
-        <span className="text-sm text-muted-foreground">{total} в подборке</span>
-      </div>
+      <PageHeader
+        icon={Trophy}
+        title="Олимпиадные задачи"
+        subtitle={`${total} задач в подборке — фильтруйте по этапу, предмету, теме и году.`}
+        accent="from-amber-500 to-orange-600"
+        back={{ to: '/olympiad', label: 'Олимпиады' }}
+        className="mb-0"
+      />
 
       {/* Фильтры */}
       <Card>

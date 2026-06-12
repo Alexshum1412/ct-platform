@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, BookOpen, GraduationCap, Search } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,12 +44,14 @@ export function OlympiadTheoryPage() {
 
   return (
     <div className="container py-8 space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm"><Link to="/olympiad"><ArrowLeft className="w-4 h-4 mr-1" />Олимпиады</Link></Button>
-        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
-          <GraduationCap className="w-6 h-6 text-primary" /> Теория повышенного уровня
-        </h1>
-      </div>
+      <PageHeader
+        icon={GraduationCap}
+        title="Теория повышенного уровня"
+        subtitle="Статьи об олимпиадных методах и приёмах — база для районного этапа и выше."
+        accent="from-amber-500 to-orange-600"
+        back={{ to: '/olympiad', label: 'Олимпиады' }}
+        className="mb-0"
+      />
 
       <div className="grid sm:grid-cols-2 gap-2">
         <select value={subject} onChange={e => setSubject(e.target.value)}

@@ -4,8 +4,9 @@ import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
   Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, X, CheckCircle, Camera,
-  Medal, History, XCircle, ChevronRight,
+  Medal, History, XCircle, ChevronRight, UserRound,
 } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -221,6 +222,12 @@ export function ProfilePage() {
             </Card>
           </div>
         )}
+
+        <PageHeader
+          icon={UserRound}
+          title="Личный кабинет"
+          subtitle="Профиль, статистика, история практики и подписка — всё в одном месте."
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
           {/* Left: User Card */}

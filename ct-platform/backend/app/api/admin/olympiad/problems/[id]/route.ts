@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stringifyTags } from '@/lib/utils';
 import { formatProblemFull, isOlympiadLevel } from '@/lib/olympiad';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,7 +37,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ error: 'Нет полей для обновления' }, { status: 400 });
     }
 
+    const before = await prisma.olympiadProblem.findUnique({ where: { id: params.id } });
     const problem = await prisma.olympiadProblem.update({ where: { id: params.id }, data });
+    await logAudit(req, {
+      action: 'UPDATE', entity: 'olympiadProblem', entityId: problem.id,
+      summary: `Изменена олимпиадная задача «${problem.title}»`,
+      oldValue: before ? { ...before, content: before.content.slice(0, 300), solution: before.solution.slice(0, 300) } : null,
+      newValue: { ...problem, content: problem.content.slice(0, 300), solution: problem.solution.slice(0, 300) },
+    });
     return NextResponse.json(formatProblemFull(problem));
   } catch (error) {
     console.error('Admin olympiad update error:', error);
@@ -45,9 +53,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/admin/olympiad/problems/:id — удалить задачу (вместе с попытками, cascade).
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const before = await prisma.olympiadProblem.findUnique({ where: { id: params.id } });
     await prisma.olympiadProblem.delete({ where: { id: params.id } });
+    await logAudit(req, {
+      action: 'DELETE', entity: 'olympiadProblem', entityId: params.id,
+      summary: `Удалена олимпиадная задача «${before?.title ?? params.id}»`,
+      oldValue: before ? { ...before, content: before.content.slice(0, 300), solution: before.solution.slice(0, 300) } : null,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Admin olympiad delete error:', error);

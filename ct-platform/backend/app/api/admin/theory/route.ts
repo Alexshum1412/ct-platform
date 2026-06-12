@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
         status: 'ACTIVE',
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'theory', entityId: theory.id, summary: `Создана статья теории «${theory.title}»`, newValue: { ...theory, content: theory.content.slice(0, 300) } });
     return NextResponse.json(theory, { status: 201 });
   } catch (error) {
     console.error('Create theory error:', error);

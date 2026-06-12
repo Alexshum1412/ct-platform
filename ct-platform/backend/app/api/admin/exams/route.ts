@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
         createdBy: req.headers.get('x-user-id'),
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'exam', entityId: exam.id, summary: `Создан экзамен «${exam.title}»`, newValue: exam });
     return NextResponse.json(exam, { status: 201 });
   } catch (error) {
     console.error('Admin create exam error:', error);

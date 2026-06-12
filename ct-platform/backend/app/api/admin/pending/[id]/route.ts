@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +24,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       select: { id: true, status: true },
     });
 
+    await logAudit(req, {
+      action: action === 'approve' ? 'APPROVE' : 'REJECT',
+      entity: 'question', entityId: question.id,
+      summary: `${action === 'approve' ? 'Одобрено' : 'Отклонено'} задание на модерации`,
+      newValue: { status: question.status },
+    });
     return NextResponse.json({ success: true, question });
   } catch (error) {
     console.error('Admin pending action error:', error);

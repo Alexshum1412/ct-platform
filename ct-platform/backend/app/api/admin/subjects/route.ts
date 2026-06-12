@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,7 @@ export async function POST(req: NextRequest) {
         isActive: b.isActive ?? true,
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'subject', entityId: subject.id, summary: `Создан предмет «${subject.name}»`, newValue: subject });
     return NextResponse.json(subject, { status: 201 });
   } catch (error: unknown) {
     if ((error as { code?: string }).code === 'P2002') {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { stringifyTags } from '@/lib/utils';
 import { isOlympiadLevel } from '@/lib/olympiad';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: 'Нет полей для обновления' }, { status: 400 });
     }
+    const before = await prisma.olympiadTheory.findUnique({ where: { id: params.id } });
     const article = await prisma.olympiadTheory.update({ where: { id: params.id }, data });
+    await logAudit(req, {
+      action: 'UPDATE', entity: 'olympiadTheory', entityId: article.id,
+      summary: `Изменена статья теории PRO «${article.title}»`,
+      oldValue: before ? { ...before, content: before.content.slice(0, 300) } : null,
+      newValue: { ...article, content: article.content.slice(0, 300) },
+    });
     return NextResponse.json(article);
   } catch (error) {
     console.error('Admin olympiad theory update error:', error);
@@ -31,9 +39,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 }
 
 // DELETE /api/admin/olympiad/theory/:id — удалить статью.
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const before = await prisma.olympiadTheory.findUnique({ where: { id: params.id } });
     await prisma.olympiadTheory.delete({ where: { id: params.id } });
+    await logAudit(req, {
+      action: 'DELETE', entity: 'olympiadTheory', entityId: params.id,
+      summary: `Удалена статья теории PRO «${before?.title ?? params.id}»`,
+      oldValue: before ? { ...before, content: before.content.slice(0, 300) } : null,
+    });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Admin olympiad theory delete error:', error);

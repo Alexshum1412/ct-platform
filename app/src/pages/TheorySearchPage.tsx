@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, BookOpen, Search, Tag } from 'lucide-react';
+import { BookOpen, Search, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MathFormula } from '@/components/ui/MathFormula';
+import { PageHeader } from '@/components/PageHeader';
 import { apiClient } from '@/lib/api/client';
 import type { Theory } from '@/types';
 
@@ -28,20 +29,14 @@ export function TheorySearchPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 bg-background/90 backdrop-blur-md border-b">
-        <div className="container py-4 flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div className="flex items-center gap-2">
-            <Search className="w-5 h-5 text-muted-foreground" />
-            <h1 className="text-xl font-bold">Теория по тегу</h1>
-            {tag && <Badge variant="secondary" className="gap-1"><Tag className="w-3 h-3" />{tag}</Badge>}
-          </div>
-        </div>
-      </header>
-
       <main className="container py-8 max-w-3xl">
+        <PageHeader
+          icon={Search}
+          title="Теория по тегу"
+          subtitle="Все теоретические статьи, отмеченные выбранным тегом."
+          back={{ to: '/theory', label: 'Теория' }}
+          actions={tag ? <Badge variant="secondary" className="gap-1"><Tag className="w-3 h-3" />{tag}</Badge> : undefined}
+        />
         {isLoading ? (
           <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-28 rounded-xl" />)}</div>
         ) : results.length === 0 ? (

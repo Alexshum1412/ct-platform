@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,7 +11,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     if (b.name !== undefined) data.name = b.name;
     if (b.description !== undefined) data.description = b.description;
     if (b.order !== undefined) data.order = Number(b.order);
+    const before = await prisma.subtopic.findUnique({ where: { id: params.id } });
     const subtopic = await prisma.subtopic.update({ where: { id: params.id }, data });
+    await logAudit(req, { action: 'UPDATE', entity: 'subtopic', entityId: subtopic.id, summary: `Изменена подтема «${subtopic.name}»`, oldValue: before, newValue: subtopic });
     return NextResponse.json(subtopic);
   } catch (error) {
     console.error('Update subtopic error:', error);
@@ -18,13 +21,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const before = await prisma.subtopic.findUnique({ where: { id: params.id } });
     await prisma.$transaction([
       prisma.theory.deleteMany({ where: { subtopicId: params.id } }),
       prisma.question.updateMany({ where: { subtopicId: params.id }, data: { subtopicId: null } }),
       prisma.subtopic.delete({ where: { id: params.id } }),
     ]);
+    await logAudit(req, { action: 'DELETE', entity: 'subtopic', entityId: params.id, summary: `Удалена подтема «${before?.name ?? params.id}»`, oldValue: before });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Delete subtopic error:', error);

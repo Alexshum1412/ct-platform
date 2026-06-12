@@ -667,3 +667,25 @@ model VerificationCode {
   @@index([userId])
   @@map("verification_codes")
 }
+
+// Журнал действий администратора: кто, когда, над чем и что изменил.
+// oldValue/newValue — усечённые JSON-снимки (см. lib/audit.ts).
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  actorEmail String?
+  action     String   // CREATE | UPDATE | DELETE | BULK_UPDATE | BULK_DELETE | APPROVE | REJECT
+  entity     String   // subject | topic | subtopic | theory | exam | question | olympiadProblem | olympiadTheory | contactMessage | report
+  entityId   String?
+  summary    String?
+  oldValue   String?
+  newValue   String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}

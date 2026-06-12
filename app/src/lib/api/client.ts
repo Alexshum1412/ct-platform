@@ -367,6 +367,8 @@ export const adminOlympiadApi = {
     apiClient(`/admin/olympiad/problems/${id}`, { method: 'PATCH', body: data, token }),
   deleteProblem: (id: string, token: string) =>
     apiClient(`/admin/olympiad/problems/${id}`, { method: 'DELETE', token }),
+  bulkProblems: (ids: string[], op: 'delete' | 'update', data: Record<string, unknown> | undefined, token: string) =>
+    apiClient<{ success: boolean; count: number }>('/admin/olympiad/problems/bulk', { method: 'POST', body: { ids, op, data }, token }),
   getTheory: (params: { subjectId?: string; q?: string }, token: string) => {
     const qp = new URLSearchParams();
     if (params.subjectId) qp.append('subjectId', params.subjectId);
@@ -381,6 +383,43 @@ export const adminOlympiadApi = {
     apiClient(`/admin/olympiad/theory/${id}`, { method: 'PATCH', body: data, token }),
   deleteTheory: (id: string, token: string) =>
     apiClient(`/admin/olympiad/theory/${id}`, { method: 'DELETE', token }),
+};
+
+export interface AuditLogRow {
+  id: string;
+  actorId: string | null;
+  actorEmail: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  summary: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  ip: string | null;
+  userAgent: string | null;
+  createdAt: string;
+}
+
+export interface AuditLogQuery {
+  entity?: string; action?: string; actor?: string; q?: string;
+  from?: string; to?: string; limit?: number; offset?: number;
+}
+
+const auditQueryString = (params: AuditLogQuery): string => {
+  const qp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== '') qp.append(k, String(v));
+  }
+  return qp.toString();
+};
+
+export const adminAuditApi = {
+  list: (params: AuditLogQuery, token: string) =>
+    apiClient<{ logs: AuditLogRow[]; total: number; limit: number; offset: number; facets: { entities: string[]; actions: string[] } }>(
+      `/admin/audit?${auditQueryString(params)}`, { token },
+    ),
+  exportCsvUrl: (params: AuditLogQuery) =>
+    `${API_BASE_URL}/admin/audit?${auditQueryString({ ...params, limit: 5000 })}&format=csv`,
 };
 
 export interface OlympiadOverview {

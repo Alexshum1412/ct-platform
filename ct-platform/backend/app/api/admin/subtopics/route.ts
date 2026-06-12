@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { logAudit } from '@/lib/audit';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +17,7 @@ export async function POST(req: NextRequest) {
         order: Number(b.order) || 0,
       },
     });
+    await logAudit(req, { action: 'CREATE', entity: 'subtopic', entityId: subtopic.id, summary: `Создана подтема «${subtopic.name}»`, newValue: subtopic });
     return NextResponse.json(subtopic, { status: 201 });
   } catch (error) {
     console.error('Create subtopic error:', error);

@@ -4,13 +4,17 @@ import { motion } from 'framer-motion';
 import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
   CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
-  TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList, Trophy,
+  TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList, Trophy, History,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAppStore } from '@/store/useAppStore';
@@ -18,8 +22,10 @@ import { subjects } from '@/data/subjects';
 import { apiClient, API_BASE_URL } from '@/lib/api/client';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { AdminContentManager } from '@/components/admin/AdminContentManager';
+import { PageHeader } from '@/components/PageHeader';
 import { ExamBuilder } from '@/components/admin/ExamBuilder';
 import { OlympiadManager } from '@/components/admin/OlympiadManager';
+import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
 import type { Question } from '@/types';
 
 interface AdminStats {
@@ -118,6 +124,14 @@ export function AdminPage() {
   const [newQuestion, setNewQuestion] = useState<NewQuestionForm>(emptyForm);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Массовые операции над заданиями
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDifficulty, setBulkDifficulty] = useState('');
+  const [bulkPart, setBulkPart] = useState('');
+  const [bulkSubject, setBulkSubject] = useState('');
 
   // Real subject/topic/subtopic for dropdowns (from API)
   const [apiSubjects, setApiSubjects] = useState<Array<{ id: string; name: string; slug: string }>>([]);
@@ -289,6 +303,46 @@ export function AdminPage() {
     } catch {/*ignore*/}
   };
 
+  const toggleQuestionSelected = (id: string) => {
+    setSelectedQuestionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const visibleQuestions = filteredQuestions.slice(0, 50);
+  const allVisibleSelected = visibleQuestions.length > 0 && visibleQuestions.every(q => selectedQuestionIds.has(q.id));
+  const toggleAllVisible = () => {
+    setSelectedQuestionIds(prev => {
+      const next = new Set(prev);
+      if (allVisibleSelected) visibleQuestions.forEach(q => next.delete(q.id));
+      else visibleQuestions.forEach(q => next.add(q.id));
+      return next;
+    });
+  };
+
+  const runQuestionsBulk = async (op: 'delete' | 'update', data?: Record<string, unknown>) => {
+    if (selectedQuestionIds.size === 0 || bulkBusy) return;
+    setBulkBusy(true);
+    try {
+      const r = await fetch(`${API_BASE_URL}/admin/questions/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids: Array.from(selectedQuestionIds), op, data }),
+      });
+      if (r.ok) {
+        setSelectedQuestionIds(new Set());
+        setBulkDifficulty(''); setBulkPart(''); setBulkSubject('');
+        void loadData();
+      } else {
+        const body = await r.json().catch(() => null);
+        alert(body?.error ?? 'Ошибка массовой операции');
+      }
+    } catch {/*ignore*/}
+    setBulkBusy(false);
+  };
+
   const handleModerate = async (id: string, action: 'approve' | 'reject') => {
     try {
       const r = await fetch(`${API_BASE_URL}/admin/pending/${id}?action=${action}`, {
@@ -362,21 +416,17 @@ export function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">Админ-панель</h1>
-              <p className="text-sm text-muted-foreground">Управление контентом и пользователями</p>
-            </div>
-          </div>
-          <Badge variant="secondary" className="gap-1">
-            <CheckCircle className="w-3 h-3" />Администратор
-          </Badge>
-        </div>
+        <PageHeader
+          icon={Shield}
+          title="Админ-панель"
+          subtitle="Управление контентом, пользователями и сообщениями платформы."
+          accent="from-slate-700 to-slate-900"
+          actions={
+            <Badge variant="secondary" className="gap-1">
+              <CheckCircle className="w-3 h-3" />Администратор
+            </Badge>
+          }
+        />
 
         {error && (
           <Alert variant="destructive" className="mb-6">
@@ -416,7 +466,7 @@ export function AdminPage() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 h-auto flex-wrap justify-start gap-1">
             <TabsTrigger value="content" className="gap-2"><FolderTree className="w-4 h-4" />Контент</TabsTrigger>
             <TabsTrigger value="exams" className="gap-2"><ClipboardList className="w-4 h-4" />Экзамены</TabsTrigger>
             <TabsTrigger value="questions" className="gap-2"><BookOpen className="w-4 h-4" />Задания</TabsTrigger>
@@ -434,6 +484,7 @@ export function AdminPage() {
             <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
             <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
             <TabsTrigger value="messages" className="gap-2"><Mail className="w-4 h-4" />Сообщения</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-2"><History className="w-4 h-4" />Журнал</TabsTrigger>
           </TabsList>
 
           {/* Content management — subjects / topics / subtopics / theory / exams CRUD */}
@@ -515,19 +566,86 @@ export function AdminPage() {
                   </select>
                 </div>
 
+                {/* Панель массовых операций */}
+                {selectedQuestionIds.size > 0 && (
+                  <div className="sticky top-16 z-20 mb-4 rounded-xl border border-primary/30 bg-primary/5 backdrop-blur-sm p-3 flex flex-wrap items-center gap-2">
+                    <Badge className="text-xs">{selectedQuestionIds.size} выбрано</Badge>
+                    <select value={bulkDifficulty} onChange={e => setBulkDifficulty(e.target.value)} disabled={bulkBusy}
+                      className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+                      <option value="">Сложность…</option>
+                      {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>Уровень {n}</option>)}
+                    </select>
+                    {bulkDifficulty && (
+                      <Button size="sm" variant="secondary" disabled={bulkBusy}
+                        onClick={() => void runQuestionsBulk('update', { difficulty: Number(bulkDifficulty) })}>
+                        Применить
+                      </Button>
+                    )}
+                    <select value={bulkPart} onChange={e => setBulkPart(e.target.value)} disabled={bulkBusy}
+                      className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+                      <option value="">Часть…</option>
+                      <option value="A">Часть А</option>
+                      <option value="B">Часть Б</option>
+                    </select>
+                    {bulkPart && (
+                      <Button size="sm" variant="secondary" disabled={bulkBusy}
+                        onClick={() => void runQuestionsBulk('update', { part: bulkPart })}>
+                        Применить
+                      </Button>
+                    )}
+                    <select value={bulkSubject} onChange={e => setBulkSubject(e.target.value)} disabled={bulkBusy}
+                      className="h-9 rounded-lg border border-input bg-background px-2 text-sm">
+                      <option value="">Переместить в…</option>
+                      {apiSubjects.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                    {bulkSubject && (
+                      <Button size="sm" variant="secondary" disabled={bulkBusy}
+                        onClick={() => void runQuestionsBulk('update', { subjectId: bulkSubject })}>
+                        Переместить
+                      </Button>
+                    )}
+                    <div className="ml-auto flex items-center gap-2">
+                      <Button size="sm" variant="outline" disabled={bulkBusy}
+                        onClick={() => void runQuestionsBulk('update', { status: 'HIDDEN' })}>
+                        Скрыть
+                      </Button>
+                      <Button size="sm" variant="destructive" disabled={bulkBusy} onClick={() => setBulkDeleteOpen(true)}>
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />Удалить
+                      </Button>
+                      <Button size="sm" variant="ghost" disabled={bulkBusy} onClick={() => setSelectedQuestionIds(new Set())}>
+                        Отмена
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
                 {isLoading ? (
                   <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}</div>
                 ) : filteredQuestions.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">Задания не найдены под фильтры</div>
                 ) : (
                   <>
-                    <div className="text-xs text-muted-foreground mb-3">
-                      Показано {filteredQuestions.length} из {questions.length} заданий
+                    <div className="flex items-center gap-3 mb-3">
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+                        <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible}
+                          className="w-4 h-4 rounded border-input accent-primary" />
+                        Выбрать видимые
+                      </label>
+                      <span className="text-xs text-muted-foreground">
+                        Показано {filteredQuestions.length} из {questions.length} заданий
+                      </span>
                     </div>
                     <div className="divide-y divide-border">
-                      {filteredQuestions.slice(0, 50).map((question, i) => (
+                      {visibleQuestions.map((question, i) => (
                         <motion.div key={question.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.02 }}
-                          className="flex items-center justify-between py-3">
+                          className={`flex items-center justify-between py-3 ${selectedQuestionIds.has(question.id) ? 'bg-primary/5 -mx-2 px-2 rounded-lg' : ''}`}>
+                          <input
+                            type="checkbox"
+                            checked={selectedQuestionIds.has(question.id)}
+                            onChange={() => toggleQuestionSelected(question.id)}
+                            className="w-4 h-4 mr-3 shrink-0 rounded border-input accent-primary"
+                            aria-label="Выбрать задание"
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1 flex-wrap">
                               <Badge variant="outline" className="text-xs">#{question.externalId ?? question.id.slice(-6)}</Badge>
@@ -985,7 +1103,40 @@ export function AdminPage() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          {/* Audit log — журнал действий администратора */}
+          <TabsContent value="audit">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2"><History className="w-5 h-5" />Журнал действий</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AuditLogViewer token={token} />
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
+
+        {/* Подтверждение массового удаления */}
+        <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Удалить выбранные задания?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Будет безвозвратно удалено заданий: {selectedQuestionIds.size}. Связанный прогресс пользователей по ним станет недоступен. Действие нельзя отменить.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Отмена</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => { setBulkDeleteOpen(false); void runQuestionsBulk('delete'); }}
+              >
+                Удалить {selectedQuestionIds.size}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Add Question Dialog */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>

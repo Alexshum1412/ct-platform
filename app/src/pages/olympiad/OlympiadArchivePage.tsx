@@ -3,10 +3,10 @@
  * предметам. Клик ведёт в каталог с предзаполненными фильтрами.
  */
 import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Archive, ArrowLeft, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Archive, ChevronRight } from 'lucide-react';
+import { PageHeader } from '@/components/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { olympiadApi, subjectsApi, type OlympiadArchiveYear } from '@/lib/api/client';
 import { LevelBadge } from '@/components/olympiad/shared';
@@ -41,12 +41,14 @@ export function OlympiadArchivePage() {
 
   return (
     <div className="container py-8 space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3 flex-wrap">
-        <Button asChild variant="ghost" size="sm"><Link to="/olympiad"><ArrowLeft className="w-4 h-4 mr-1" />Олимпиады</Link></Button>
-        <h1 className="text-2xl md:text-3xl font-extrabold flex items-center gap-2">
-          <Archive className="w-6 h-6 text-primary" /> Архив по годам и этапам
-        </h1>
-      </div>
+      <PageHeader
+        icon={Archive}
+        title="Архив по годам и этапам"
+        subtitle="Задачи прошлых сезонов: выбирайте год, этап и предмет — и переходите к решению."
+        accent="from-amber-500 to-orange-600"
+        back={{ to: '/olympiad', label: 'Олимпиады' }}
+        className="mb-0"
+      />
 
       <select value={subject} onChange={e => setSubject(e.target.value)}
         className="h-10 rounded-lg border border-input bg-background px-3 text-sm w-full sm:w-72">
