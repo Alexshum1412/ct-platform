@@ -17,3 +17,4 @@ ct-platform/backend/prisma/_*
 data/ct-questions-*.json
 data/md-questions-*.json
 data/md-physics-*.json
+data/md-mathviz-*.json
