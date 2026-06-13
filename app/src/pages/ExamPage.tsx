@@ -445,6 +445,14 @@ export function ExamPage() {
                               {q && (
                                 <div className="text-base font-medium mb-3">
                                   <MathFormula formula={q.content} />
+                                  {q.imageUrl && (
+                                    <img
+                                      src={/^(https?:|data:)/.test(q.imageUrl) ? q.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${q.imageUrl}`}
+                                      alt="Иллюстрация к заданию"
+                                      loading="lazy"
+                                      className="mt-2 w-full max-h-56 object-contain rounded-lg border border-border bg-muted/30"
+                                    />
+                                  )}
                                 </div>
                               )}
                               <div className="space-y-2">
@@ -518,6 +526,16 @@ export function ExamPage() {
               <div className="mt-2">
                 <MathFormula formula={currentQuestion.content} className="text-xl sm:text-2xl font-medium leading-relaxed" />
               </div>
+              {currentQuestion.imageUrl && (
+                <div className="mt-4 rounded-xl overflow-hidden border border-border bg-muted/30">
+                  <img
+                    src={/^(https?:|data:)/.test(currentQuestion.imageUrl) ? currentQuestion.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${currentQuestion.imageUrl}`}
+                    alt="Иллюстрация к заданию"
+                    loading="lazy"
+                    className="w-full max-h-72 object-contain"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Options */}
