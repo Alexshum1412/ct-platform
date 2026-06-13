@@ -16,3 +16,4 @@ ct-platform/backend/prisma/_*
 # bulky per-run generated question dumps (source of truth is the DB); variants kept
 data/ct-questions-*.json
 data/md-questions-*.json
+data/md-physics-*.json

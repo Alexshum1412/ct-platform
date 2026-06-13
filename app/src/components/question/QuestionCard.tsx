@@ -473,7 +473,7 @@ export const QuestionCard = memo(function QuestionCard({
         {question.imageUrl && (
           <div className="mt-4 rounded-xl overflow-hidden border border-border bg-muted/30">
             <img
-              src={question.imageUrl.startsWith('http') ? question.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${question.imageUrl}`}
+              src={/^(https?:|data:)/.test(question.imageUrl) ? question.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${question.imageUrl}`}
               alt="Иллюстрация к заданию"
               loading="lazy"
               className="w-full max-h-72 object-contain"
@@ -485,7 +485,7 @@ export const QuestionCard = memo(function QuestionCard({
             {question.images.map((img, i) => (
               <div key={i} className="rounded-lg overflow-hidden border border-border bg-muted/30">
                 <img
-                  src={img.startsWith('http') ? img : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${img}`}
+                  src={/^(https?:|data:)/.test(img) ? img : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${img}`}
                   alt={`Изображение ${i + 1}`}
                   loading="lazy"
                   className="w-full max-h-64 object-contain"
