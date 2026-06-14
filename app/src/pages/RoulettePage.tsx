@@ -3,8 +3,8 @@
  *
  * ВАЖНО: это исключительно виртуальная мини-игра. Никаких реальных денег,
  * никакой связи с платёжной системой и никакой настоящей валюты. Баланс —
- * условные золотые монеты, которые при перезагрузке страницы сбрасываются до 100
- * (баланс хранится только в состоянии компонента и НЕ сохраняется нигде).
+ * условные золотые монеты; он сохраняется между сессиями (GameBalance на сервере),
+ * а рекорд (peak) формирует рейтинг «Зал славы». Сброс баланса — 1 раз/день (free).
  *
  * Реализовано полностью на клиенте: ставки (число / цвет / чёт-нечёт / диапазон /
  * дюжина / колонка), вращение колеса, определение выигрыша, расчёт выплат,
@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
 import { GameGate } from '@/components/GameGate';
+import { GameLeaderboard } from '@/components/game/GameLeaderboard';
 import { isMuted, toggleMuted, primeAudio, playSpin, playWin, playLose } from '@/lib/sound';
 
 // Европейское колесо (один зеро). Порядок карманов по часовой стрелке.
@@ -583,6 +584,9 @@ function RouletteGame() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Зал славы — рейтинг по рекорду баланса */}
+            <GameLeaderboard game="roulette" currency="монет" accent="from-amber-500/30" />
           </div>
 
           {/* Правая колонка: игровое поле + правила/шансы */}

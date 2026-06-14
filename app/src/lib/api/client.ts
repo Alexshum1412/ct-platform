@@ -232,12 +232,21 @@ export const gamesApi = {
     apiClient<{ allowed: boolean; balance: number; isPremium: boolean; remaining: number | null; nextResetAt: string | null }>(
       '/games/reset', { method: 'POST', body: { game }, token },
     ),
-  // Постоянный баланс (сохраняется между сессиями)
+  // Постоянный баланс (сохраняется между сессиями) + рекорд (peak)
   getBalance: (game: 'roulette' | 'blackjack', token: string) =>
-    apiClient<{ balance: number; reset: GameResetStatus }>(`/games/balance?game=${game}`, { token }),
+    apiClient<{ balance: number; peak: number; reset: GameResetStatus }>(`/games/balance?game=${game}`, { token }),
   saveBalance: (game: 'roulette' | 'blackjack', balance: number, token: string) =>
-    apiClient<{ balance: number }>('/games/balance', { method: 'PUT', body: { game, balance }, token }),
+    apiClient<{ balance: number; peak: number }>('/games/balance', { method: 'PUT', body: { game, balance }, token }),
+  leaderboard: (game: 'roulette' | 'blackjack', token?: string | null) =>
+    apiClient<GameLeaderboard>(`/games/leaderboard?game=${game}`, token ? { token } : {}),
 };
+export interface GameLeaderboardRow { rank: number; userId: string; name: string; avatar: string | null; peak: number; balance: number }
+export interface GameLeaderboard {
+  game: string;
+  startBalance: number;
+  leaderboard: GameLeaderboardRow[];
+  me: { rank: number | null; peak: number; balance: number; total: number } | null;
+}
 
 // Subscription / Premium API
 export const subscriptionApi = {

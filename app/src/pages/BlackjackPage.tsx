@@ -2,10 +2,10 @@
  * «Блэкджек» — секретная демо-мини-игра (ссылка в подвале после «Достижения»).
  *
  * ВАЖНО: только виртуальная валюта — БРИЛЛИАНТЫ 💎 (отдельная от рулетки).
- * Никаких реальных денег и платежей. Баланс при обновлении страницы
- * сбрасывается до 100. Кнопка «Сбросить баланс» работает только при нулевом
- * балансе; дневной лимит сброса проверяется на backend (Free — 1/день,
- * Premium — без ограничений), как и в рулетке.
+ * Никаких реальных денег и платежей. Баланс сохраняется между сессиями
+ * (GameBalance на сервере), рекорд (peak) формирует рейтинг «Зал славы».
+ * Кнопка «Сбросить баланс» работает только при нулевом балансе; дневной лимит
+ * сброса проверяется на backend (Free — 1/день, Premium — без ограничений).
  *
  * Полноценная логика: раздача, hit / stand / double, подсчёт очков (туз 1/11),
  * блэкджек 3:2, правила, таблица шансов и подсказки, история последних рук.
@@ -22,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
 import { GameGate } from '@/components/GameGate';
+import { GameLeaderboard } from '@/components/game/GameLeaderboard';
 
 const START_BALANCE = 100;
 const CHIPS = [1, 5, 10, 25];
@@ -440,6 +441,9 @@ function BlackjackGame() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Зал славы — рейтинг по рекорду бриллиантов */}
+            <GameLeaderboard game="blackjack" currency="💎" accent="from-cyan-500/30" />
           </div>
 
           {/* Правая колонка: стол + действия + скрываемая помощь */}

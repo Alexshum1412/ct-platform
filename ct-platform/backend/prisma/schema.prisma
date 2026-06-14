@@ -610,6 +610,7 @@ model GameBalance {
   userId    String
   game      String
   balance   Int      @default(100)
+  peak      Int      @default(100) // рекорд (макс. достигнутый баланс) — для рейтинга, не сбрасывается
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
 
