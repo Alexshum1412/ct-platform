@@ -47,6 +47,12 @@ model User {
   verificationCodes VerificationCode[]
   olympiadAttempts  OlympiadAttempt[]
 
+  // Рефералы
+  referredByCode    String?            // код, по которому пользователь пришёл (фиксируется один раз)
+  referralDiscount  Int       @default(0) // % скидки на первую покупку (15 если пришёл по коду)
+  ownedReferralCodes ReferralCode[]    @relation("RefCodeOwner")
+  referralReceived   Referral?         @relation("RefUser")
+
   xp            Int       @default(0)
   level         Int       @default(1)
   streakDays    Int       @default(0)
@@ -453,6 +459,7 @@ model Subscription {
   autoRenew     Boolean  @default(true)
 
   paymentId     String?
+  amount        Float?   // фактически уплаченная сумма (с учётом реферальной скидки), BYN
 
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -460,6 +467,52 @@ model Subscription {
   updatedAt     DateTime @updatedAt
 
   @@map("subscriptions")
+}
+
+// ==================== REFERRAL MODELS ====================
+
+model ReferralCode {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  type        String   @default("USER")  // USER (личный) | BLOGGER (партнёрский)
+  ownerId     String?                     // владелец-пользователь (для USER-кодов)
+  label       String?                     // имя блогера / название кампании
+  discountPct Int      @default(15)       // скидка приглашённому, %
+  active      Boolean  @default(true)
+  clicks      Int      @default(0)        // переходы по ссылке
+  signups     Int      @default(0)        // регистраций по коду
+  conversions Int      @default(0)        // оплат среди приглашённых
+  revenue     Float    @default(0)        // суммарная выручка приглашённых, BYN
+
+  owner       User?      @relation("RefCodeOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  referrals   Referral[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([type])
+  @@map("referral_codes")
+}
+
+model Referral {
+  id          String   @id @default(cuid())
+  codeId      String
+  code        String                       // денормализованный код (для истории, если код удалят)
+  userId      String?  @unique             // приглашённый пользователь (1 реферал на пользователя)
+  status      String   @default("SIGNED_UP") // SIGNED_UP | CONVERTED
+  discountPct Int      @default(15)
+  amount      Float?                        // выручка при конверсии (после скидки), BYN
+
+  refCode     ReferralCode @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  user        User?        @relation("RefUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime @default(now())
+  convertedAt DateTime?
+
+  @@index([codeId])
+  @@index([status])
+  @@map("referrals")
 }
 
 // ==================== NOTIFICATION MODELS ====================

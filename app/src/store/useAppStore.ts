@@ -28,7 +28,7 @@ interface AppState {
   
   // Auth actions
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  register: (name: string, email: string, password: string) => Promise<{ success: boolean; error?: string; devCode?: string; needsVerification?: boolean }>;
+  register: (name: string, email: string, password: string, referralCode?: string) => Promise<{ success: boolean; error?: string; devCode?: string; needsVerification?: boolean }>;
   logout: () => void;
   
   // Navigation
@@ -169,8 +169,8 @@ export const useAppStore = create<AppState>()(
         return { success: false, error: 'Ошибка авторизации' };
       },
       
-      register: async (name, email, password) => {
-        const result = await authApi.register({ name, email, password });
+      register: async (name, email, password, referralCode) => {
+        const result = await authApi.register({ name, email, password, referralCode });
 
         if (result.error) {
           return { success: false, error: result.error };
@@ -528,6 +528,30 @@ export const useAppStore = create<AppState>()(
     }
   )
 );
+
+// Глобальное восстановление при недействительном/просроченном токене.
+// Любой авторизованный запрос, получивший 401, шлёт 'auth:unauthorized' (см. apiClient).
+// Мы вычищаем сессию и предлагаем войти заново — иначе пользователь застревал бы на
+// ошибках «Недействительный токен» / «Не удалось сохранить ответ» без выхода.
+if (typeof window !== 'undefined' && !(window as unknown as { __ctAuthListener?: boolean }).__ctAuthListener) {
+  (window as unknown as { __ctAuthListener?: boolean }).__ctAuthListener = true;
+  let lastReset = 0;
+  window.addEventListener('auth:unauthorized', () => {
+    const now = Date.now();
+    if (now - lastReset < 3000) return; // гасим всплеск параллельных 401
+    lastReset = now;
+    const s = useAppStore.getState();
+    if (!s.token && !s.user) return; // уже не авторизованы
+    s.logout();
+    s.addNotification({
+      type: 'error',
+      title: 'Сессия истекла',
+      message: 'Войдите снова, чтобы продолжить.',
+      duration: 6000,
+    });
+    s.openAuthGate('Сессия истекла. Войдите снова, чтобы продолжить.');
+  });
+}
 
 // Practice store for active practice session
 interface PracticeState {

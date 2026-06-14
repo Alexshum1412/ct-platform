@@ -15,9 +15,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAppStore } from '@/store/useAppStore';
-import { subscriptionApi } from '@/lib/api/client';
+import { subscriptionApi, referralApi } from '@/lib/api/client';
 
 type Plan = 'monthly' | 'yearly';
+
+const round2 = (n: number) => Math.round(n * 100) / 100;
 
 const PLAN_INFO: Record<Plan, { title: string; price: number; per: string; note?: string }> = {
   monthly: { title: 'Месяц', price: 15, per: 'в месяц' },
@@ -47,11 +49,16 @@ export function PaymentPage() {
 
   const isPremium = !!user && user.plan !== 'FREE';
   const [sub, setSub] = useState<{ startDate: string; endDate: string } | null>(null);
+  // Реферальная скидка на первую покупку (с сервера, не доверяем клиенту при оплате).
+  const [discountPct, setDiscountPct] = useState(0);
 
   useEffect(() => {
     if (!token) return;
     void subscriptionApi.get(token).then((r) => {
       if (r.data?.subscription) setSub({ startDate: r.data.subscription.startDate, endDate: r.data.subscription.endDate });
+    });
+    void referralApi.me(token).then((r) => {
+      if (r.data?.myDiscount) setDiscountPct(r.data.myDiscount);
     });
   }, [token]);
 
@@ -159,6 +166,8 @@ export function PaymentPage() {
 
   // ---- Оформление ----
   const price = PLAN_INFO[plan].price;
+  const finalPrice = discountPct > 0 ? round2(price * (1 - discountPct / 100)) : price;
+  const saved = round2(price - finalPrice);
   return (
     <Shell>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -237,6 +246,19 @@ export function PaymentPage() {
             </CardContent>
           </Card>
 
+          {discountPct > 0 && (
+            <div className="rounded-xl border border-green-300 dark:border-green-800 bg-green-50 dark:bg-green-950/20 p-4">
+              <div className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-400 mb-2">
+                <Sparkles className="w-4 h-4" />Реферальная скидка −{discountPct}%
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-muted-foreground line-through text-sm">{price} BYN</span>
+                <span className="text-2xl font-bold">{finalPrice} BYN</span>
+                <span className="text-sm text-green-600 dark:text-green-400">экономия {saved} BYN</span>
+              </div>
+            </div>
+          )}
+
           {error && (
             <div className="rounded-lg bg-red-500/10 text-red-600 dark:text-red-400 text-sm px-4 py-2.5">{error}</div>
           )}
@@ -247,7 +269,7 @@ export function PaymentPage() {
             onClick={handlePay}
             disabled={processing}
           >
-            {processing ? 'Обработка…' : <><Lock className="w-4 h-4" />Оплатить {price} BYN</>}
+            {processing ? 'Обработка…' : <><Lock className="w-4 h-4" />Оплатить {finalPrice} BYN</>}
           </Button>
           <p className="text-xs text-center text-muted-foreground flex items-center justify-center gap-1.5">
             <ShieldCheck className="w-3.5 h-3.5" />Безопасное оформление · отмена в любой момент

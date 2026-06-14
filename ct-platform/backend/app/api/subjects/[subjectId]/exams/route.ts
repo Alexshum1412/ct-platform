@@ -29,6 +29,9 @@ export async function GET(_: Request, { params }: { params: { subjectId: string 
           durationMinutes: e.durationMinutes,
           passingScore: e.passingScore,
           questionCount: count,
+          createdAt: e.createdAt.toISOString(),
+          createdBy: e.createdBy,
+          order: e.order,
         };
       })
     );

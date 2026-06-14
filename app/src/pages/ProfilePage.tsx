@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
   Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, CheckCircle, Camera,
-  Medal, History, XCircle, ChevronRight, UserRound,
+  Medal, History, XCircle, ChevronRight, UserRound, Gift,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import {
@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AvatarUpload } from '@/components/profile/AvatarUpload';
+import { ReferralCard } from '@/components/profile/ReferralCard';
 import { useAppStore } from '@/store/useAppStore';
 import {
   userApi, apiClient, olympiadApi, subscriptionApi, practiceHistoryApi,
@@ -531,6 +532,9 @@ export function ProfilePage() {
             <TabsTrigger value="practice" className="gap-2">
               <History className="w-4 h-4" />Практика
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="gap-2">
+              <Gift className="w-4 h-4" />Рефералы
+            </TabsTrigger>
             <TabsTrigger value="settings" className="gap-2">
               <Edit2 className="w-4 h-4" />Настройки
             </TabsTrigger>
@@ -682,6 +686,12 @@ export function ProfilePage() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="referrals">
+            <div className="max-w-2xl">
+              <ReferralCard />
+            </div>
           </TabsContent>
 
           <TabsContent value="settings">

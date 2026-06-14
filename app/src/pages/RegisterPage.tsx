@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BookOpen, Eye, EyeOff, Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { BookOpen, Eye, EyeOff, Lock, Mail, User, ArrowRight, Gift, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAppStore } from '@/store/useAppStore';
+import { referralApi } from '@/lib/api/client';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { register, addNotification } = useAppStore();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,6 +22,41 @@ export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Реферальный код: префилл из ?ref=, живая проверка, показ скидки.
+  const [referralCode, setReferralCode] = useState('');
+  const [refStatus, setRefStatus] = useState<'idle' | 'checking' | 'valid' | 'invalid'>('idle');
+  const [refDiscount, setRefDiscount] = useState(0);
+  const [refLabel, setRefLabel] = useState<string | null>(null);
+
+  // Префилл кода из ссылки (?ref=CODE) + регистрируем переход для статистики.
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref.toUpperCase());
+      void referralApi.track(ref);
+    }
+  }, [searchParams]);
+
+  // Дебаунс-проверка кода.
+  useEffect(() => {
+    const code = referralCode.trim();
+    if (!code) { setRefStatus('idle'); setRefDiscount(0); setRefLabel(null); return; }
+    setRefStatus('checking');
+    const t = setTimeout(async () => {
+      const res = await referralApi.validate(code);
+      if (res.data?.valid) {
+        setRefStatus('valid');
+        setRefDiscount(res.data.discountPct ?? 0);
+        setRefLabel(res.data.label ?? null);
+      } else {
+        setRefStatus('invalid');
+        setRefDiscount(0);
+        setRefLabel(null);
+      }
+    }, 450);
+    return () => clearTimeout(t);
+  }, [referralCode]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -62,7 +99,7 @@ export function RegisterPage() {
 
     setIsLoading(true);
 
-    const result = await register(name, email, password);
+    const result = await register(name, email, password, refStatus === 'valid' ? referralCode.trim() : undefined);
 
     if (result.success) {
       addNotification({
@@ -227,6 +264,38 @@ export function RegisterPage() {
                 </div>
                 {errors.confirmPassword && (
                   <p className="text-sm text-red-500 mt-1">{errors.confirmPassword}</p>
+                )}
+              </div>
+
+              {/* Referral code */}
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">
+                  Реферальный код <span className="text-muted-foreground font-normal">— необязательно</span>
+                </label>
+                <div className="relative">
+                  <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    placeholder="Код друга или блогера"
+                    className={`w-full pl-10 pr-10 py-2.5 rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all uppercase ${
+                      refStatus === 'invalid' ? 'border-red-500' : refStatus === 'valid' ? 'border-green-500' : 'border-border'
+                    }`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {refStatus === 'checking' && <Loader2 className="w-5 h-5 text-muted-foreground animate-spin" />}
+                    {refStatus === 'valid' && <Check className="w-5 h-5 text-green-500" />}
+                  </span>
+                </div>
+                {refStatus === 'valid' && refDiscount > 0 && (
+                  <p className="text-sm text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                    <Gift className="w-4 h-4" />
+                    Скидка {refDiscount}% на первую покупку Premium{refLabel ? ` · ${refLabel}` : ''}
+                  </p>
+                )}
+                {refStatus === 'invalid' && (
+                  <p className="text-sm text-muted-foreground mt-1">Код не найден — можно зарегистрироваться без него.</p>
                 )}
               </div>
 

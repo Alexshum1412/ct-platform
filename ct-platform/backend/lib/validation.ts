@@ -9,6 +9,7 @@ export const registerSchema = z.object({
     .regex(/[a-z]/, 'Пароль должен содержать строчную букву')
     .regex(/[A-Z]/, 'Пароль должен содержать заглавную букву')
     .regex(/\d/, 'Пароль должен содержать цифру'),
+  referralCode: z.string().trim().max(40).optional(),
 });
 
 export const loginSchema = z.object({

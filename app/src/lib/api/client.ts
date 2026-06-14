@@ -57,6 +57,21 @@ export async function apiClient<T>(
     const data = text ? JSON.parse(text) : null;
 
     if (!response.ok) {
+      // Просроченный/недействительный токен на авторизованном запросе: чистим сессию
+      // и просим войти заново, вместо того чтобы оставить UI висеть на
+      // «Недействительный токен» / «Не удалось сохранить ответ». Срабатывает ТОЛЬКО
+      // когда токен реально отправлялся (иначе 401 — это просто гость).
+      if (response.status === 401 && token) {
+        try { localStorage.removeItem('token'); } catch { /* ignore */ }
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized', { detail: { error: data?.error } }));
+        }
+        return {
+          error: 'Сессия истекла. Войдите снова, чтобы продолжить.',
+          code: 'TOKEN_INVALID',
+          status: 401,
+        };
+      }
       return {
         error: data?.error || 'Произошла ошибка',
         message: data?.message,
@@ -77,7 +92,7 @@ export async function apiClient<T>(
 
 // Auth API
 export const authApi = {
-  register: (data: { name: string; email: string; password: string }) =>
+  register: (data: { name: string; email: string; password: string; referralCode?: string }) =>
     apiClient('/auth/register', { method: 'POST', body: data }),
 
   login: (data: { email: string; password: string }) =>
@@ -240,6 +255,30 @@ export const subscriptionApi = {
     apiClient<{ success: boolean; plan: string; purchasedAt: string; subscription: { startDate: string; endDate: string } }>(
       '/subscription', { method: 'POST', body: { plan }, token },
     ),
+};
+
+// Referral API
+export interface ReferralMe {
+  code: string;
+  discountPct: number;
+  stats: { clicks: number; signups: number; conversions: number; revenue: number };
+  myDiscount: number;
+  referredByCode: string | null;
+  referrals: { id: string; status: string; amount: number | null; createdAt: string; convertedAt: string | null; name: string }[];
+}
+export interface ReferralValidation {
+  valid: boolean;
+  code?: string;
+  discountPct?: number;
+  type?: string;
+  label?: string | null;
+}
+export const referralApi = {
+  me: (token: string) => apiClient<ReferralMe>('/referrals/me', { token }),
+  validate: (code: string) =>
+    apiClient<ReferralValidation>('/referrals/validate', { method: 'POST', body: { code } }),
+  track: (code: string) =>
+    apiClient<{ ok: boolean }>('/referrals/track', { method: 'POST', body: { code } }),
 };
 
 // Exam API
@@ -451,4 +490,54 @@ export const practiceHistoryApi = {
     apiClient<{ total: number; limit: number; offset: number; items: PracticeHistoryItem[] }>(
       `/users/progress?limit=${limit}&offset=${offset}`, { token },
     ),
+};
+
+// ===================== Admin: рефералы =====================
+export interface AdminReferralCode {
+  id: string; code: string; type: string; label: string | null; discountPct: number;
+  active: boolean; clicks: number; signups: number; conversions: number; revenue: number;
+  owner: { id: string; name: string | null; email: string } | null; createdAt: string;
+}
+export interface AdminReferralList {
+  total: number; items: AdminReferralCode[];
+  facets: { type: Record<string, number> };
+  totals: { clicks: number; signups: number; conversions: number; revenue: number };
+}
+export interface AdminReferralQuery {
+  q?: string; type?: string; active?: string; sort?: string; limit?: number; offset?: number;
+}
+function refQueryString(p: AdminReferralQuery): string {
+  const sp = new URLSearchParams();
+  if (p.q) sp.set('q', p.q);
+  if (p.type) sp.set('type', p.type);
+  if (p.active) sp.set('active', p.active);
+  if (p.sort) sp.set('sort', p.sort);
+  if (p.limit != null) sp.set('limit', String(p.limit));
+  if (p.offset != null) sp.set('offset', String(p.offset));
+  return sp.toString();
+}
+export const adminReferralApi = {
+  list: (params: AdminReferralQuery, token: string) =>
+    apiClient<AdminReferralList>(`/admin/referrals?${refQueryString(params)}`, { token }),
+  detail: (id: string, token: string) =>
+    apiClient<{ code: AdminReferralCode; referrals: { id: string; status: string; amount: number | null; createdAt: string; convertedAt: string | null; user: { id: string; name: string | null; email: string; plan: string } | null }[] }>(
+      `/admin/referrals/${id}`, { token }),
+  create: (data: { code?: string; label?: string; type?: string; discountPct?: number; active?: boolean }, token: string) =>
+    apiClient<AdminReferralCode>('/admin/referrals', { method: 'POST', body: data, token }),
+  update: (id: string, data: { label?: string | null; discountPct?: number; active?: boolean }, token: string) =>
+    apiClient<AdminReferralCode>(`/admin/referrals/${id}`, { method: 'PATCH', body: data, token }),
+  remove: (id: string, token: string) =>
+    apiClient<{ success: boolean }>(`/admin/referrals/${id}`, { method: 'DELETE', token }),
+};
+
+// ===================== Admin: финансы и онлайн =====================
+export interface AdminFinance {
+  online: { now: number; activeToday: number; activeWeek: number };
+  users: { total: number; premium: number; free: number; newToday: number; newWeek: number; newMonth: number; conversionRate: number };
+  revenue: { total: number; today: number; week: number; month: number; payments: number; activeSubscriptions: number; byPlan: Record<string, number>; arpu: number };
+  referrals: { codes: number; bloggerCodes: number; clicks: number; signups: number; conversions: number; revenue: number; signupShare: number };
+  series: { date: string; revenue: number; payments: number; registrations: number }[];
+}
+export const adminFinanceApi = {
+  get: (token: string) => apiClient<AdminFinance>('/admin/finance', { token }),
 };

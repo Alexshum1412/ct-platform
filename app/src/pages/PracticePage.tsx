@@ -14,6 +14,7 @@ import { getSubjectBySlug, fetchQuestionsBySubjectId, fetchTopicsBySubjectId, fe
 import { questionsApi, dailyApi, userApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
 import { normalizeAnswer } from '@/lib/utils';
+import { smartShuffle } from '@/lib/shuffle';
 import type { Question, Topic, DailyLimit } from '@/types';
 
 export function PracticePage() {
@@ -106,7 +107,7 @@ export function PracticePage() {
   const [selectedTopic, setSelectedTopic] = useState<string>('all');
   const [selectedSubtopic, setSelectedSubtopic] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'default' | 'newest' | 'difficulty-asc' | 'difficulty-desc'>('default');
+  const [sortBy, setSortBy] = useState<'mixed' | 'default' | 'newest' | 'difficulty-asc' | 'difficulty-desc'>('mixed');
   const [selectedPart, setSelectedPart] = useState<string>('all');
   const [selectedSection, setSelectedSection] = useState<string>('all');
   const [subtopics, setSubtopics] = useState<Array<{ id: string; name: string }>>([]);
@@ -172,6 +173,8 @@ export function PracticePage() {
       const db = new Date((b as { createdAt?: string }).createdAt || 0).getTime();
       return db - da;
     });
+    // «Вперемешку» — разносим похожие задания (одна подтема/часть), чтобы они не шли подряд.
+    else if (sortBy === 'mixed') f = smartShuffle(f);
     return f;
   }, [allQuestions, idsParam, selectedTopic, selectedSubtopic, selectedDifficulty, selectedPart, selectedSection, onlyFavorites, favorites, sortBy]);
 
@@ -314,14 +317,14 @@ export function PracticePage() {
     setSelectedTopic('all');
     setSelectedSubtopic('all');
     setSelectedDifficulty('all');
-    setSortBy('default');
+    setSortBy('mixed');
     setOnlyFavorites(false);
   };
 
   // Активен ли хоть один фильтр (для подсветки кнопки «Сбросить фильтры»).
   const filtersActive =
     selectedPart !== 'all' || selectedSection !== 'all' || selectedTopic !== 'all' ||
-    selectedSubtopic !== 'all' || selectedDifficulty !== 'all' || sortBy !== 'default' || onlyFavorites;
+    selectedSubtopic !== 'all' || selectedDifficulty !== 'all' || sortBy !== 'mixed' || onlyFavorites;
 
   const togglePracticeMode = (mode: 'single' | 'feed') => {
     setPracticeMode(mode);
@@ -803,6 +806,7 @@ export function PracticePage() {
                       onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
                       className="w-full px-3 py-2.5 rounded-lg border border-border bg-background text-sm"
                     >
+                      <option value="mixed">Вперемешку (рекомендуется)</option>
                       <option value="default">По умолчанию</option>
                       <option value="newest">Сначала новые</option>
                       <option value="difficulty-asc">Сложность ↑ (от лёгких)</option>

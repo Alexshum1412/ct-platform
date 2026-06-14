@@ -401,6 +401,9 @@ export interface ExamSummary {
   durationMinutes: number;
   passingScore: number;
   questionCount: number;
+  createdAt?: string;
+  createdBy?: string | null;
+  order?: number;
 }
 
 export interface ExamDetail {

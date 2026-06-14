@@ -5,6 +5,7 @@ import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
   CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
   TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList, Trophy, History,
+  Wallet, Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -26,6 +27,8 @@ import { PageHeader } from '@/components/PageHeader';
 import { ExamBuilder } from '@/components/admin/ExamBuilder';
 import { OlympiadManager } from '@/components/admin/OlympiadManager';
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
+import { ReferralManager } from '@/components/admin/ReferralManager';
+import { FinanceDashboard } from '@/components/admin/FinanceDashboard';
 import type { Question } from '@/types';
 
 interface AdminStats {
@@ -498,6 +501,8 @@ export function AdminPage() {
               <>
                 <TabsTrigger value="users" className="gap-2"><Users className="w-4 h-4" />Пользователи</TabsTrigger>
                 <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
+                <TabsTrigger value="finance" className="gap-2"><Wallet className="w-4 h-4" />Финансы</TabsTrigger>
+                <TabsTrigger value="referrals" className="gap-2"><Gift className="w-4 h-4" />Рефералы</TabsTrigger>
               </>
             )}
             <TabsTrigger value="messages" className="gap-2"><Mail className="w-4 h-4" />Сообщения</TabsTrigger>
@@ -1185,6 +1190,18 @@ export function AdminPage() {
               </div>
             )}
           </TabsContent>
+
+          {!isModerator && (
+            <TabsContent value="finance">
+              <FinanceDashboard token={token} />
+            </TabsContent>
+          )}
+
+          {!isModerator && (
+            <TabsContent value="referrals">
+              <ReferralManager token={token} />
+            </TabsContent>
+          )}
 
           <TabsContent value="messages">
             <Card>

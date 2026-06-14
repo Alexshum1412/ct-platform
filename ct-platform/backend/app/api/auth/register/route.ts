@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth';
 import { registerSchema } from '@/lib/validation';
 import { issueVerificationCode } from '@/lib/verification';
+import { attributeSignup } from '@/lib/referral';
 import { authLimiter, checkRateLimit } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password } = result.data;
+    const { name, email, password, referralCode } = result.data;
 
     // Антиспам: регистрация создаёт пользователя и шлёт письмо — без лимита это
     // вектор для забивания БД и рассылки писем (login/forgot уже ограничены).
@@ -68,12 +69,23 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Привязка к реферальному коду (не критична — ошибки не валят регистрацию).
+    let referralDiscount = 0;
+    if (referralCode) {
+      try {
+        const ref = await attributeSignup(referralCode, user.id);
+        if (ref) referralDiscount = ref.discountPct;
+      } catch (e) {
+        console.error('Referral attribution failed:', e);
+      }
+    }
+
     // Выдаём 6-значный код подтверждения и отправляем письмо.
     // devCode возвращается ТОЛЬКО если SMTP не настроен (для разработки).
     const { devCode } = await issueVerificationCode(user.id, user.email, user.name);
 
     return NextResponse.json(
-      { message: 'Регистрация успешна. Подтвердите email кодом из письма.', user, needsVerification: true, devCode },
+      { message: 'Регистрация успешна. Подтвердите email кодом из письма.', user, needsVerification: true, devCode, referralDiscount },
       { status: 201 }
     );
   } catch (error) {

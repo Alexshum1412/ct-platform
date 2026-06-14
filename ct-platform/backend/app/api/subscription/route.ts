@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { getEffectivePlan } from '@/lib/plan';
+import { applyDiscount, recordReferralConversion } from '@/lib/referral';
 
 export const dynamic = 'force-dynamic';
 
@@ -74,6 +75,15 @@ export async function POST(req: NextRequest) {
     const now = new Date(); // ← время покупки
     const endDate = new Date(now.getTime() + planDef.days * 24 * 60 * 60 * 1000);
 
+    // Реферальная скидка (одноразовая, на первую покупку). Считаем серверно —
+    // нельзя доверять цене с клиента.
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { referralDiscount: true },
+    });
+    const discountPct = me?.referralDiscount ?? 0;
+    const amount = applyDiscount(planDef.price, discountPct);
+
     // Завершаем прежние активные подписки, чтобы активной была одна.
     await prisma.subscription.updateMany({
       where: { userId, isActive: true },
@@ -89,17 +99,28 @@ export async function POST(req: NextRequest) {
           endDate,
           isActive: true,
           autoRenew: true,
+          amount,
           // Заглушка идентификатора платежа — заменится реальным id транзакции.
           paymentId: `demo-${now.getTime()}`,
         },
       }),
-      prisma.user.update({ where: { id: userId }, data: { plan: tier } }),
+      // Скидка одноразовая: после покупки обнуляем.
+      prisma.user.update({ where: { id: userId }, data: { plan: tier, referralDiscount: 0 } }),
     ]);
+
+    // Фиксируем конверсию реферала (не критично — не валим оплату).
+    try {
+      await recordReferralConversion(userId, amount);
+    } catch (e) {
+      console.error('Referral conversion failed:', e);
+    }
 
     return NextResponse.json({
       success: true,
       plan: tier,
       purchasedAt: now.toISOString(),
+      amount,
+      discountPct,
       subscription,
     }, { status: 201 });
   } catch (error) {

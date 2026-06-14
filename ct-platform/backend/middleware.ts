@@ -21,6 +21,7 @@ const protectedRoutes = [
   '/api/subscription',
   '/api/olympiad/progress',
   '/api/notifications',
+  '/api/referrals/me',
   '/api/auth/verify-email',
   '/api/auth/resend-code',
 ];
