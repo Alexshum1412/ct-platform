@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import {
   MapPin, School, Calendar, Edit2, Save, Award, TrendingUp, BookOpen,
   Clock, Target, Crown, Flame, Trophy, BarChart3, LogOut, CheckCircle, Camera,
-  Medal, History, XCircle, ChevronRight, UserRound, Gift,
+  Medal, History, XCircle, ChevronRight, UserRound, Gift, Eye,
 } from 'lucide-react';
 import { PageHeader } from '@/components/PageHeader';
 import {
@@ -22,10 +22,12 @@ import { AvatarUpload } from '@/components/profile/AvatarUpload';
 import { ReferralCard } from '@/components/profile/ReferralCard';
 import { useAppStore } from '@/store/useAppStore';
 import {
-  userApi, apiClient, olympiadApi, subscriptionApi, practiceHistoryApi,
-  type OlympiadProgress, type PracticeHistoryItem,
+  userApi, apiClient, examApi, olympiadApi, subscriptionApi, practiceHistoryApi,
+  type OlympiadProgress, type PracticeHistoryItem, type ExamAttemptDetail,
 } from '@/lib/api/client';
 import { LEVEL_META, LEVEL_ORDER } from '@/components/olympiad/levels';
+import { ExamReview, type ExamReviewItem } from '@/components/exam/ExamReview';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 interface TopicStat { topicId: string; topicName: string; totalSolved: number; correctCount: number; accuracy: number }
 
@@ -53,6 +55,7 @@ interface Achievement {
 interface ExamHistory {
   id: string; subjectName: string; subjectColor: string; percentage: number;
   score: number; maxScore: number; startedAt: string; completedAt: string;
+  examId?: string | null; examTitle?: string | null; subjectSlug?: string; totalTime?: number;
 }
 
 const rarityColors: Record<string, string> = {
@@ -78,6 +81,18 @@ export function ProfilePage() {
   const [practice, setPractice] = useState<PracticeHistoryItem[]>([]);
   const [practiceTotal, setPracticeTotal] = useState(0);
   const [practiceLoadingMore, setPracticeLoadingMore] = useState(false);
+  // Просмотр прошлой попытки экзамена (свои ответы + разбор).
+  const [reviewAttempt, setReviewAttempt] = useState<ExamAttemptDetail | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
+  const openReview = async (attemptId: string) => {
+    if (!token) return;
+    setReviewLoading(true);
+    setReviewAttempt(null);
+    const res = await examApi.getAttempt(attemptId, token);
+    setReviewLoading(false);
+    if (res.data) setReviewAttempt(res.data);
+  };
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -209,6 +224,34 @@ export function ProfilePage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-6xl">
+        {/* Просмотр прошлой попытки экзамена — свои ответы + пошаговый разбор */}
+        <Dialog open={reviewLoading || !!reviewAttempt} onOpenChange={(o) => { if (!o) { setReviewAttempt(null); setReviewLoading(false); } }}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {reviewAttempt ? (reviewAttempt.examTitle || `${reviewAttempt.subjectName} — разбор`) : 'Загрузка разбора…'}
+              </DialogTitle>
+            </DialogHeader>
+            {reviewLoading ? (
+              <div className="py-12 text-center text-muted-foreground">
+                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                Загружаем ваши ответы…
+              </div>
+            ) : reviewAttempt ? (
+              <div>
+                <div className="flex flex-wrap gap-4 text-sm mb-4 p-3 rounded-lg bg-muted/40">
+                  <span>Результат: <span className="font-semibold">{reviewAttempt.score}/{reviewAttempt.maxScore}</span></span>
+                  <span>·</span>
+                  <span className={reviewAttempt.percentage >= 60 ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'}>{reviewAttempt.percentage}%</span>
+                  <span>·</span>
+                  <span className="text-muted-foreground">{new Date(reviewAttempt.startedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+                </div>
+                <ExamReview items={reviewAttempt.items as ExamReviewItem[]} slug={reviewAttempt.subjectSlug || undefined} />
+              </div>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+
         {/* Подтверждение удаления аккаунта — AlertDialog (фокус-треп, Esc, aria) */}
         <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
           <AlertDialogContent>
@@ -602,17 +645,23 @@ export function ProfilePage() {
               <div className="space-y-3">
                 {examHistory.map((exam, i) => (
                   <motion.div key={exam.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
-                    <Card>
+                    <Card
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => void openReview(exam.id)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); void openReview(exam.id); } }}
+                      className="cursor-pointer transition-colors hover:border-primary/50 hover:bg-muted/30"
+                    >
                       <CardContent className="p-4 flex items-center gap-4">
                         <div className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-lg font-bold shrink-0" style={{ background: exam.subjectColor }}>
                           {exam.percentage}%
                         </div>
-                        <div className="flex-1">
-                          <p className="font-medium">{exam.subjectName}</p>
-                          <p className="text-sm text-muted-foreground">{exam.score}/{exam.maxScore} правильных</p>
-                          <p className="text-xs text-muted-foreground">{new Date(exam.startedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{exam.examTitle || exam.subjectName}</p>
+                          <p className="text-sm text-muted-foreground">{exam.score}/{exam.maxScore} правильных · {new Date(exam.startedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                          <p className="text-xs text-primary mt-0.5 flex items-center gap-1"><Eye className="w-3 h-3" />Посмотреть ответы и разбор</p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <div className={`text-lg font-bold ${exam.percentage >= 60 ? 'text-green-600' : 'text-red-500'}`}>{exam.percentage >= 60 ? '✓ Сдан' : '✗ Не сдан'}</div>
                           <Progress value={exam.percentage} className="h-1.5 w-20 mt-1" />
                         </div>

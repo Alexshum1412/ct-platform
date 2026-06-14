@@ -28,9 +28,18 @@ export async function GET(req: NextRequest) {
       subjectMap[s.slug] = s;
     }
 
+    // Названия конкретных экзаменов (для пометки, какой вариант сдавали).
+    const examIds = Array.from(new Set(attempts.map(a => a.examId).filter(Boolean))) as string[];
+    const exams = examIds.length
+      ? await prisma.exam.findMany({ where: { id: { in: examIds } }, select: { id: true, title: true } })
+      : [];
+    const examTitleById = new Map(exams.map(e => [e.id, e.title]));
+
     return NextResponse.json(attempts.map(a => ({
       id: a.id,
       subjectId: a.subjectId,
+      examId: a.examId,
+      examTitle: a.examId ? (examTitleById.get(a.examId) ?? null) : null,
       subjectName: subjectMap[a.subjectId]?.name ?? 'Неизвестный предмет',
       subjectColor: subjectMap[a.subjectId]?.color ?? '#6366f1',
       subjectSlug: subjectMap[a.subjectId]?.slug ?? '',

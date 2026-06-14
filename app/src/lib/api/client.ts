@@ -296,7 +296,41 @@ export const examApi = {
     apiClient<{ examIds: string[] }>(
       `/exam/completed${subjectId ? `?subjectId=${subjectId}` : ''}`, { token },
     ),
+
+  // Полный разбор прошлой попытки (свои ответы + решения) для истории экзаменов.
+  getAttempt: (id: string, token: string) =>
+    apiClient<ExamAttemptDetail>(`/exam/attempt/${id}`, { token }),
 };
+
+export interface ExamReviewItemDTO {
+  questionId: string;
+  content: string;
+  imageUrl?: string | null;
+  options?: { id: string; text: string }[] | null;
+  part?: string | null;
+  topicId?: string | null;
+  subtopicId?: string | null;
+  userAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  explanation?: string | null;
+  solution?: string | null;
+}
+export interface ExamAttemptDetail {
+  id: string;
+  examId: string | null;
+  examTitle: string | null;
+  subjectSlug: string;
+  subjectName: string;
+  subjectColor: string;
+  score: number;
+  maxScore: number;
+  percentage: number;
+  totalTime: number;
+  startedAt: string;
+  completedAt: string | null;
+  items: ExamReviewItemDTO[];
+}
 
 // ===================== Olympiad API (олимпиадная подготовка) =====================
 

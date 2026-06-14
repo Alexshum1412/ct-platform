@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, BookOpen, Play, Pause } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, PanelLeftClose, PanelLeftOpen, Maximize2, Minimize2, Play, Pause, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { MathFormula } from '@/components/ui/MathFormula';
 import { ExamTimer } from '@/components/exam/ExamTimer';
+import { ExamReview, type ExamReviewItem } from '@/components/exam/ExamReview';
+import { ReportModal } from '@/components/question/ReportModal';
 import { getSubjectBySlug, fetchExamById, type ExamDetail } from '@/data/subjects';
 import { examApi } from '@/lib/api/client';
 import { useAppStore } from '@/store/useAppStore';
@@ -58,6 +60,8 @@ export function ExamPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
 
   const [examLimitError, setExamLimitError] = useState<string | null>(null);
+  // Жалоба на задание прямо во время экзамена.
+  const [reportQuestionId, setReportQuestionId] = useState<string | null>(null);
   // Результаты сдачи приходят С СЕРВЕРА: правильных ответов в выдаче экзамена
   // больше нет (закрыта возможность подсмотреть их в Network во время экзамена).
   const [serverResults, setServerResults] = useState<ExamSubmitResult | null>(null);
@@ -351,8 +355,25 @@ export function ExamPage() {
 
     const passed = serverResults.score >= examConfig.passingScore;
     const questionById = new Map(examQuestions.map(q => [q.id, q]));
-    const wrongResults = serverResults.results.filter(r => !r.isCorrect);
     const testScore = serverResults.testScore ?? null;
+    // Полный разбор: серверные результаты + контент заданий (для решений/теории).
+    const reviewItems: ExamReviewItem[] = serverResults.results.map(r => {
+      const q = questionById.get(r.questionId);
+      return {
+        questionId: r.questionId,
+        content: q?.content ?? '',
+        imageUrl: q?.imageUrl ?? null,
+        options: q?.options ?? null,
+        part: q?.part ?? null,
+        topicId: q?.topicId ?? null,
+        subtopicId: q?.subtopicId ?? null,
+        userAnswer: r.userAnswer,
+        correctAnswer: r.correctAnswer,
+        isCorrect: r.isCorrect,
+        explanation: r.explanation,
+        solution: r.solution,
+      };
+    });
 
     return (
       <div className="min-h-screen bg-background">
@@ -407,97 +428,14 @@ export function ExamPage() {
                   Пройти ещё раз
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                Результат и ваши ответы сохранены — их можно пересмотреть в профиле, раздел «История экзаменов».
+              </p>
             </CardContent>
           </Card>
 
-          {/* Review Section */}
-          {wrongResults.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                <h2 className="text-xl font-bold">📝 Разбор ошибок ({wrongResults.length})</h2>
-                <Button
-                  size="sm"
-                  onClick={() => navigate(`/practice/${slug}?ids=${wrongResults.map(r => r.questionId).join(',')}`)}
-                  className="gap-1.5"
-                >
-                  <Play className="w-3.5 h-3.5" />Тренировать только ошибки
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {wrongResults.map((r, i) => {
-                  const q = questionById.get(r.questionId);
-                  const userAnswerText = q?.options?.find(o => o.id === r.userAnswer)?.text ?? r.userAnswer;
-                  const correctAnswerText = q?.options?.find(o => o.id === r.correctAnswer)?.text ?? r.correctAnswer;
-                  return (
-                    <motion.div
-                      key={r.questionId}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.04 }}
-                    >
-                      <Card>
-                        <CardContent className="p-5">
-                          <div className="flex items-start gap-3 mb-3">
-                            <div className="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 font-bold flex items-center justify-center shrink-0 text-sm">
-                              {i + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              {q && (
-                                <div className="text-base font-medium mb-3">
-                                  <MathFormula formula={q.content} />
-                                  {q.imageUrl && (
-                                    <img
-                                      src={/^(https?:|data:)/.test(q.imageUrl) ? q.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${q.imageUrl}`}
-                                      alt="Иллюстрация к заданию"
-                                      loading="lazy"
-                                      className="mt-2 w-full max-h-56 object-contain rounded-lg border border-border bg-muted/30"
-                                    />
-                                  )}
-                                </div>
-                              )}
-                              <div className="space-y-2">
-                                <div className="flex items-start gap-2 text-sm p-3 rounded-lg bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                                  <span className="text-red-600 font-semibold shrink-0">✗</span>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Ваш ответ:</p>
-                                    <p>{userAnswerText ? <MathFormula formula={userAnswerText} inline /> : '(не отвечено)'}</p>
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2 text-sm p-3 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30">
-                                  <span className="text-green-600 font-semibold shrink-0">✓</span>
-                                  <div>
-                                    <p className="text-xs text-muted-foreground mb-0.5">Правильный ответ:</p>
-                                    <p><MathFormula formula={correctAnswerText} inline /></p>
-                                  </div>
-                                </div>
-                                {r.explanation && (
-                                  <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30 text-sm">
-                                    <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mb-1">💡 Объяснение:</p>
-                                    <MathFormula formula={r.explanation} />
-                                  </div>
-                                )}
-                              </div>
-                              {/* Quick links: revise theory or re-solve this exact question */}
-                              <div className="flex flex-wrap gap-2 mt-3">
-                                {q?.topicId && (
-                                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/theory/${slug}/${q.topicId}`)}>
-                                    <BookOpen className="w-3.5 h-3.5" /> Теория по теме
-                                  </Button>
-                                )}
-                                <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => navigate(`/practice/${slug}?ids=${r.questionId}`)}>
-                                  <Play className="w-3.5 h-3.5" /> Решить заново
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          {/* Полный разбор — все задания с пошаговыми решениями */}
+          <ExamReview items={reviewItems} slug={slug} />
         </div>
       </div>
     );
@@ -520,9 +458,20 @@ export function ExamPage() {
         <Card>
           <CardContent className="p-6 sm:p-8">
             <div className="mb-6">
-              <span className="text-sm text-muted-foreground tabular-nums">
-                Вопрос {currentQuestionIndex + 1} из {examQuestions.length}
-              </span>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  Вопрос {currentQuestionIndex + 1} из {examQuestions.length}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReportQuestionId(currentQuestion.id)}
+                  className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-500 transition-colors shrink-0"
+                  title="Пожаловаться на задание"
+                >
+                  <Flag className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Пожаловаться</span>
+                </button>
+              </div>
               <div className="mt-2">
                 <MathFormula formula={currentQuestion.content} className="text-xl sm:text-2xl font-medium leading-relaxed" />
               </div>
@@ -618,6 +567,14 @@ export function ExamPage() {
     </Card>
   );
 
+  const reportModal = (
+    <ReportModal
+      questionId={reportQuestionId ?? ''}
+      isOpen={!!reportQuestionId}
+      onClose={() => setReportQuestionId(null)}
+    />
+  );
+
   // ============================ FOCUS MODE ============================
   // Distraction-free exam: only the timer, the question & the answers.
   if (focusMode) {
@@ -647,6 +604,7 @@ export function ExamPage() {
           />
           {isPaused ? pausedCard : <>{examQuestionCard}{examNav}</>}
         </main>
+        {reportModal}
       </div>
     );
   }
@@ -762,6 +720,7 @@ export function ExamPage() {
           </div>
         </div>
       </main>
+      {reportModal}
     </div>
   );
 }

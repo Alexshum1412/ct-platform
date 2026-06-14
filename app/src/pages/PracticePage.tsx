@@ -433,7 +433,7 @@ export function PracticePage() {
             onAnswer={(a) => handleAnswer(a, q)}
             onResult={handleResult}
             onReport={() => setReportQuestionId(q.id)}
-            onShowTheory={q.topicId ? () => navigate(`/theory/${slug}/${q.topicId}`) : undefined}
+            onShowTheory={q.topicId ? () => navigate(`/theory/${slug}/${q.topicId}${q.subtopicId ? `?subtopic=${q.subtopicId}` : ''}`) : undefined}
             dailyExhausted={dailyExhausted}
             onUpgrade={() => setShowPremiumModal(true)}
           />
@@ -466,7 +466,7 @@ export function PracticePage() {
             onResult={handleResult}
             onNext={handleNext}
             onReport={() => setReportQuestionId(currentQuestion.id)}
-            onShowTheory={currentQuestion.topicId ? () => navigate(`/theory/${slug}/${currentQuestion.topicId}`) : undefined}
+            onShowTheory={currentQuestion.topicId ? () => navigate(`/theory/${slug}/${currentQuestion.topicId}${currentQuestion.subtopicId ? `?subtopic=${currentQuestion.subtopicId}` : ''}`) : undefined}
             dailyExhausted={dailyExhausted}
             onUpgrade={() => setShowPremiumModal(true)}
           />

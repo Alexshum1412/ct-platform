@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -117,7 +117,7 @@ function ExampleBlock({ example, index }: { example: Example; index: number }) {
 }
 
 // Theory Card component
-function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subjectColor: string; onPractice?: () => void }) {
+function TheoryCard({ theory, subjectColor, onPractice, onPracticeSubtopic }: { theory: Theory; subjectColor: string; onPractice?: () => void; onPracticeSubtopic?: () => void }) {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="pb-4">
@@ -211,15 +211,26 @@ function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subj
           </div>
         )}
 
-        {/* Practice Button */}
-        <div className="pt-4 border-t border-border">
+        {/* Practice Buttons — отдельно по подтеме и по всей теме (без путаницы) */}
+        <div className="pt-4 border-t border-border space-y-2">
+          {onPracticeSubtopic && (
+            <Button
+              className="w-full text-white"
+              style={{ background: subjectColor }}
+              onClick={onPracticeSubtopic}
+            >
+              <Play className="w-4 h-4 mr-2" />
+              Практика по подтеме «{theory.title}»
+            </Button>
+          )}
           <Button
+            variant={onPracticeSubtopic ? 'outline' : 'default'}
             className="w-full"
-            style={{ background: subjectColor }}
+            style={onPracticeSubtopic ? undefined : { background: subjectColor }}
             onClick={onPractice}
           >
             <Play className="w-4 h-4 mr-2" />
-            Практиковать эту тему
+            Практиковать всю тему
           </Button>
         </div>
       </CardContent>
@@ -230,7 +241,11 @@ function TheoryCard({ theory, subjectColor, onPractice }: { theory: Theory; subj
 export function TheoryPage() {
   const { slug, topicId } = useParams<{ slug: string; topicId?: string }>();
   const navigate = useNavigate();
-  
+  const [searchParams] = useSearchParams();
+  // Подтема, к которой нужно прокрутить (из кнопки «перейти к теории» в задании).
+  const [pendingScroll, setPendingScroll] = useState<string | null>(searchParams.get('subtopic'));
+  const [highlightSub, setHighlightSub] = useState<string | null>(null);
+
   // Получаем предмет
   const subject = slug ? getSubjectBySlug(slug) : undefined;
   
@@ -304,6 +319,32 @@ export function TheoryPage() {
     void fetchTheoryByTopicId(topic.id).then(setTheoryItems);
     void toggleTopic(topic.id);
   };
+
+  // Клик по подтеме в боковом меню → прокрутка к её теории (НЕ сразу в практику).
+  const goToSubtopicTheory = async (topicOfSub: string, subId: string) => {
+    if (selectedTopic !== topicOfSub) {
+      setSelectedTopic(topicOfSub);
+      const theory = await fetchTheoryByTopicId(topicOfSub);
+      setTheoryItems(theory);
+    }
+    setPendingScroll(subId);
+  };
+
+  // После загрузки теории прокручиваем к нужной подтеме и подсвечиваем её.
+  useEffect(() => {
+    if (!pendingScroll || isLoading || theoryItems.length === 0) return;
+    const target = pendingScroll;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`theory-sub-${target}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setHighlightSub(target);
+        setTimeout(() => setHighlightSub((h) => (h === target ? null : h)), 2200);
+      }
+      setPendingScroll(null);
+    }, 150);
+    return () => clearTimeout(t);
+  }, [pendingScroll, isLoading, theoryItems]);
 
   // ---------------------------------------------------
   // РЕНДЕР
@@ -395,19 +436,28 @@ export function TheoryPage() {
                             >
                               <div className="pl-3 pr-2 pb-2 space-y-0.5">
                                 {subs.map(sub => (
-                                  <button
+                                  <div
                                     key={sub.id}
-                                    onClick={() => navigate(`/practice/${slug}?subtopic=${sub.id}`)}
-                                    className="w-full flex items-center justify-between gap-2 px-3 py-1.5 text-xs rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors text-left"
+                                    className="group w-full flex items-center justify-between gap-1 px-2 py-1 text-xs rounded-lg hover:bg-muted transition-colors"
                                   >
-                                    <span className="flex items-center gap-1.5 truncate">
+                                    <button
+                                      onClick={() => void goToSubtopicTheory(topic.id, sub.id)}
+                                      className="flex items-center gap-1.5 min-w-0 flex-1 text-left text-muted-foreground hover:text-foreground py-0.5"
+                                      title="Открыть теорию по подтеме"
+                                    >
                                       <ChevronRight className="w-3 h-3 shrink-0" />
                                       <span className="truncate">{sub.name}</span>
-                                    </span>
+                                    </button>
                                     {sub.questionsCount > 0 && (
-                                      <span className="text-[10px] text-muted-foreground shrink-0">{sub.questionsCount}</span>
+                                      <button
+                                        onClick={() => navigate(`/practice/${slug}?subtopic=${sub.id}`)}
+                                        className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] text-primary opacity-60 hover:opacity-100 hover:bg-primary/10 transition-all"
+                                        title="Перейти к практике по подтеме"
+                                      >
+                                        <Play className="w-2.5 h-2.5" />{sub.questionsCount}
+                                      </button>
                                     )}
-                                  </button>
+                                  </div>
                                 ))}
                               </div>
                             </motion.div>
@@ -427,14 +477,19 @@ export function TheoryPage() {
               theoryItems.map((theory: Theory, index: number) => (
                 <motion.div
                   key={theory.id}
+                  id={theory.subtopicId ? `theory-sub-${theory.subtopicId}` : undefined}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
+                  transition={{ delay: Math.min(index, 6) * 0.08 }}
+                  className={`scroll-mt-40 rounded-2xl transition-shadow ${
+                    highlightSub && highlightSub === theory.subtopicId ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : ''
+                  }`}
                 >
                   <TheoryCard
                     theory={theory}
                     subjectColor={subject.color}
                     onPractice={() => navigate(`/practice/${slug}${selectedTopic ? `?topic=${selectedTopic}` : ''}`)}
+                    onPracticeSubtopic={theory.subtopicId ? () => navigate(`/practice/${slug}?subtopic=${theory.subtopicId}`) : undefined}
                   />
                 </motion.div>
               ))
