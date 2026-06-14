@@ -161,12 +161,6 @@ export const dailyApi = {
   getStatus: (token: string) => apiClient('/users/daily', { token }),
 };
 
-// Leaderboard API
-export const leaderboardApi = {
-  getGlobal: (limit = 10) => apiClient(`/leaderboard?type=global&limit=${limit}`),
-  getBySubject: (subjectId: string) => apiClient(`/leaderboard?type=subject&subjectId=${subjectId}`),
-  getByCity: (city: string) => apiClient(`/leaderboard?type=city&city=${city}`),
-};
 
 // User API
 export const userApi = {
@@ -254,6 +248,40 @@ export const subscriptionApi = {
   purchase: (plan: 'monthly' | 'yearly', token: string) =>
     apiClient<{ success: boolean; plan: string; purchasedAt: string; subscription: { startDate: string; endDate: string } }>(
       '/subscription', { method: 'POST', body: { plan }, token },
+    ),
+};
+
+// Leaderboard API — рейтинги по разным метрикам
+export type LbMetric = 'mastery' | 'xp' | 'solved' | 'accuracy' | 'streak';
+export type LbPeriod = 'all' | 'week' | 'season';
+export interface LbRow {
+  rank: number | null;
+  userId: string;
+  name: string;
+  avatar: string | null;
+  level: number;
+  xp: number;
+  solved: number;
+  total: number;
+  accuracy: number;
+  maxStreak: number;
+  mastery: number;
+  city: string | null;
+  value: number;
+}
+export interface LbResponse {
+  metric: LbMetric;
+  period: LbPeriod;
+  totalRanked: number;
+  minAccuracySolved: number;
+  leaderboard: LbRow[];
+  me: (LbRow & { eligible: boolean; outOf: number }) | null;
+}
+export const leaderboardApi = {
+  list: (metric: LbMetric, period: LbPeriod, limit = 50, token?: string | null) =>
+    apiClient<LbResponse>(
+      `/leaderboard?metric=${metric}&period=${period}&limit=${limit}`,
+      token ? { token } : {},
     ),
 };
 

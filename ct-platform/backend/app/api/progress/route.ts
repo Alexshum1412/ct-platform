@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { FREE_DAILY_QUESTIONS as FREE_DAILY_LIMIT } from '@/lib/limits';
 import { getEffectivePlan } from '@/lib/plan';
 import { normalizeAnswer } from '@/lib/utils';
+import { XP_PER_CORRECT, levelFromXp, nextStreakDays } from '@/lib/gamification';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,7 +68,19 @@ export async function POST(req: NextRequest) {
     // Единая нормализация (как в экзамене): trim/lowercase/запятая→точка —
     // раньше « 5» или «А» вместо «а» засчитывались как ошибка.
     const isCorrect = normalizeAnswer(parsed.data.answer) === normalizeAnswer(question.correctAnswer);
-    const xpGain = isCorrect && prevAttempts === 0 ? 10 : 0;
+    // Опыт — только за ПЕРВЫЙ верный ответ на задание (без накрутки повторами).
+    const xpGain = isCorrect && prevAttempts === 0 ? XP_PER_CORRECT : 0;
+
+    // Текущее состояние геймификации — нужно, чтобы пересчитать level из xp
+    // (раньше level застывал на 1) и вести daily-streak (раньше не велся вовсе).
+    const me = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, streakDays: true, lastStudyDate: true },
+    });
+    const now = new Date();
+    const newXp = (me?.xp ?? 0) + xpGain;
+    const newLevel = levelFromXp(newXp);
+    const newStreak = nextStreakDays(me?.streakDays ?? 0, me?.lastStudyDate ?? null, now);
 
     const [progress] = await prisma.$transaction([
       prisma.userProgress.create({
@@ -89,7 +102,16 @@ export async function POST(req: NextRequest) {
           ...(isCorrect ? { timesCorrect: { increment: 1 } } : {}),
         },
       }),
-      ...(xpGain > 0 ? [prisma.user.update({ where: { id: userId }, data: { xp: { increment: xpGain } } })] : []),
+      // Всегда обновляем геймификацию: xp (+xpGain), level (из xp), daily-streak.
+      prisma.user.update({
+        where: { id: userId },
+        data: {
+          ...(xpGain > 0 ? { xp: { increment: xpGain } } : {}),
+          level: newLevel,
+          streakDays: newStreak,
+          lastStudyDate: now,
+        },
+      }),
     ]);
 
     // Свежий дневной счётчик — необязательно (не валим запрос при сбое чтения).

@@ -1,548 +1,155 @@
 /**
- * Страница лидерборда
- * 
- * Показывает рейтинги пользователей по разным категориям:
- * - Общий рейтинг (топ-10)
- * - По предметам
- * - По городам
- * 
- * Примечание: Рейтинг по школам и отделениям удалён
- * по требованию приватности пользователей
- * 
- * Ссылки на API:
- * - GET /api/leaderboard/global - общий рейтинг
- * - GET /api/leaderboard/subjects - по предметам
- * - GET /api/leaderboard/cities - по городам
- * - GET /api/leaderboard/me - позиция текущего пользователя
+ * Лидерборд — рейтинги по нескольким метрикам:
+ *  Мастерство (объём×точность), Опыт (XP), Решено, Точность, Серия.
+ * Период: всё время / неделя / сезон (XP — всегда за всё время).
+ * Данные: GET /api/leaderboard?metric=&period= (skill-метрики считаются из
+ * истории ответов, поэтому корректны даже после сброса XP).
  */
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { API_BASE_URL } from '@/lib/api/client';
-import { 
-  Trophy, 
-  Medal, 
-  Award,
-  Users,
-  MapPin,
-  Flame
+import {
+  Trophy, Medal, Crown, Flame, Target, Zap, Gem, CheckCircle2, MapPin, Sparkles,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/PageHeader';
-import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppStore } from '@/store/useAppStore';
+import { leaderboardApi, type LbMetric, type LbPeriod, type LbRow, type LbResponse } from '@/lib/api/client';
 
-// =====================================================
-// ТИПЫ ДАННЫХ
-// =====================================================
+const METRICS: { id: LbMetric; name: string; icon: typeof Gem; unit?: string; hint: string }[] = [
+  { id: 'mastery', name: 'Мастерство', icon: Gem, hint: 'Баланс объёма и точности: верных² / всего ответов' },
+  { id: 'xp', name: 'Опыт', icon: Zap, unit: 'XP', hint: 'Очки за верные ответы (за всё время)' },
+  { id: 'solved', name: 'Решено', icon: CheckCircle2, hint: 'Количество верных ответов' },
+  { id: 'accuracy', name: 'Точность', icon: Target, unit: '%', hint: 'Доля верных ответов (мин. 10 решений)' },
+  { id: 'streak', name: 'Серия', icon: Flame, hint: 'Макс. серия верных ответов подряд' },
+];
 
-interface LeaderboardUser {
-  rank: number;
-  userId: string;
-  name: string;
-  avatar?: string;
-  xp: number;
-  solved: number;
-  accuracy: number;
-  city?: string;
-  streak: number;
-  isAnonymous?: boolean;
-}
+const PERIODS: { id: LbPeriod; label: string }[] = [
+  { id: 'all', label: 'Всё время' },
+  { id: 'week', label: 'Неделя' },
+  { id: 'season', label: 'Сезон' },
+];
 
-interface SubjectLeader {
-  rank: number;
-  subjectId: string;
-  name: string;
-  topUser: string;
-  xp: number;
-  participants: number;
-}
-
-interface CityLeader {
-  rank: number;
-  name: string;
-  totalXP: number;
-  users: number;
-  topUser: string;
-}
-
-interface UserPosition {
-  rank: number;
-  xp: number;
-  xpToday: number;
-  percentile: number;
-}
-
-// =====================================================
-// КОНФИГУРАЦИЯ ФИЛЬТРОВ
-// =====================================================
-
-const filters = [
-  { id: 'global', name: 'Общий', icon: Trophy },
-  { id: 'subject', name: 'По предметам', icon: Award },
-  { id: 'city', name: 'По городам', icon: MapPin },
-] as const;
-
-// =====================================================
-// API ФУНКЦИИ
-// =====================================================
-
-/**
- * Получить общий лидерборд с API
- * 
- * ССЫЛКА: GET /api/leaderboard/global?limit=10
- */
-async function fetchGlobalLeaderboard(period: string = 'all'): Promise<LeaderboardUser[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard?type=global&limit=10&period=${period}`);
-    if (!response.ok) throw new Error('Failed to fetch leaderboard');
-    const data = await response.json();
-    return data.leaderboard ?? [];
-  } catch (error) {
-    console.error('Error fetching global leaderboard:', error);
-    return [];
-  }
-}
-
-/**
- * Получить лидерборд по предметам с API
- * 
- * ССЫЛКА: GET /api/leaderboard/subjects
- */
-async function fetchSubjectLeaderboard(): Promise<SubjectLeader[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard?type=subject&limit=10`);
-    if (!response.ok) throw new Error('Failed to fetch subject leaderboard');
-    const data = await response.json();
-    return (data.leaderboard ?? []).map((entry: LeaderboardUser) => ({
-      rank: entry.rank,
-      subjectId: 'all',
-      name: 'Все предметы',
-      topUser: entry.name,
-      xp: entry.xp,
-      participants: entry.solved,
-    }));
-  } catch (error) {
-    console.error('Error fetching subject leaderboard:', error);
-    return [];
-  }
-}
-
-/**
- * Получить лидерборд по городам с API
- * 
- * ССЫЛКА: GET /api/leaderboard/cities
- */
-async function fetchCityLeaderboard(): Promise<CityLeader[]> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/leaderboard?type=city&limit=10`);
-    if (!response.ok) throw new Error('Failed to fetch city leaderboard');
-    const data = await response.json();
-    return data.leaderboard ?? [];
-  } catch (error) {
-    console.error('Error fetching city leaderboard:', error);
-    return [];
-  }
-}
-
-/**
- * Получить позицию текущего пользователя
- *
- * ССЫЛКА: GET /api/leaderboard/me
- */
-async function fetchUserPosition(): Promise<UserPosition | null> {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) return null;
-    const response = await fetch(`${API_BASE_URL}/leaderboard/me`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    if (!response.ok) return null;
-    return await response.json();
-  } catch {
-    return null;
-  }
-}
-
-// =====================================================
-// УТИЛИТЫ
-// =====================================================
-
-const getRankIcon = (rank: number) => {
-  if (rank === 1) return <Trophy className="w-6 h-6 text-amber-500" />;
-  if (rank === 2) return <Medal className="w-6 h-6 text-gray-400" />;
-  if (rank === 3) return <Medal className="w-6 h-6 text-amber-700" />;
-  return <span className="w-6 h-6 flex items-center justify-center font-bold text-muted-foreground">{rank}</span>;
-};
-
-const getRankStyle = (rank: number) => {
-  if (rank === 1) return 'bg-gradient-to-r from-amber-100 to-amber-50 dark:from-amber-900/30 dark:to-amber-900/10 border-amber-200';
-  if (rank === 2) return 'bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-800/30 dark:to-gray-800/10 border-gray-200';
-  if (rank === 3) return 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/10 border-amber-200';
-  return '';
-};
-
-// =====================================================
-// КОМПОНЕНТ LeaderboardPage
-// =====================================================
+const initials = (name: string) => name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+const fmt = (metric: LbMetric, v: number) => (metric === 'accuracy' ? `${v}%` : v.toLocaleString('ru-RU'));
 
 export function LeaderboardPage() {
-  const { isAuthenticated } = useAppStore();
-  
-  // Состояние фильтра
-  const [activeFilter, setActiveFilter] = useState<typeof filters[number]['id']>('global');
-  // Период общего рейтинга: вся история / неделя (сброс в понедельник) / сезон (3 месяца)
-  const [period, setPeriod] = useState<'all' | 'week' | 'season'>('all');
-  
-  // Данные лидербордов
-  const [globalLeaderboard, setGlobalLeaderboard] = useState<LeaderboardUser[]>([]);
-  const [subjectLeaderboard, setSubjectLeaderboard] = useState<SubjectLeader[]>([]);
-  const [cityLeaderboard, setCityLeaderboard] = useState<CityLeader[]>([]);
-  const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
-  
-  // Состояние загрузки
+  const { isAuthenticated, token } = useAppStore();
+  const [metric, setMetric] = useState<LbMetric>('mastery');
+  const [period, setPeriod] = useState<LbPeriod>('all');
+  const [data, setData] = useState<LbResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Загрузка данных при монтировании и смене фильтра
   useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      
-      // Загружаем все данные параллельно
-      const [
-        global,
-        subjects,
-        cities,
-        position
-      ] = await Promise.all([
-        fetchGlobalLeaderboard(period),
-        fetchSubjectLeaderboard(),
-        fetchCityLeaderboard(),
-        isAuthenticated ? fetchUserPosition() : Promise.resolve(null),
-      ]);
+    let cancelled = false;
+    setIsLoading(true);
+    void leaderboardApi.list(metric, period, 50, token).then((r) => {
+      if (!cancelled) { setData(r.data ?? null); setIsLoading(false); }
+    });
+    return () => { cancelled = true; };
+  }, [metric, period, token]);
 
-      setGlobalLeaderboard(global);
-      setSubjectLeaderboard(subjects);
-      setCityLeaderboard(cities);
-      setUserPosition(position);
-
-      setIsLoading(false);
-    };
-
-    loadData();
-  }, [isAuthenticated, period]);
-
-  // ===================================================
-  // РЕНДЕР
-  // ===================================================
+  const metricCfg = METRICS.find((m) => m.id === metric)!;
+  const rows = data?.leaderboard ?? [];
+  const me = data?.me ?? null;
+  const top3 = rows.slice(0, 3);
+  const rest = rows.slice(3);
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8">
-        {/* Заголовок */}
         <PageHeader
           icon={Trophy}
           title="Лидерборд"
-          subtitle="Соревнуйтесь с другими учениками: общий, недельный и сезонный рейтинги, предметы и города"
+          subtitle="Соревнуйтесь по мастерству, опыту, точности и сериям — за всё время, неделю или сезон"
           accent="from-amber-500 to-orange-500"
         />
 
-        {/* Фильтры */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          {filters.map((filter) => (
+        {/* Выбор метрики */}
+        <div className="flex flex-wrap justify-center gap-2 mb-4">
+          {METRICS.map((m) => (
             <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all ${
-                activeFilter === filter.id
-                  ? 'bg-primary text-white'
-                  : 'bg-muted hover:bg-muted/80'
+              key={m.id}
+              onClick={() => setMetric(m.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                metric === m.id ? 'bg-primary text-white shadow-md' : 'bg-muted hover:bg-muted/70 text-muted-foreground hover:text-foreground'
               }`}
             >
-              <filter.icon className="w-4 h-4" />
-              <span className="text-sm font-medium">{filter.name}</span>
+              <m.icon className="w-4 h-4" />{m.name}
             </button>
           ))}
         </div>
 
-        {/* Индикатор загрузки */}
-        {isLoading && (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
-          </div>
-        )}
-
-        {/* ================================================= */}
-        {/* ОБЩИЙ ЛИДЕРБОРД                                 */}
-        {/* ================================================= */}
-        {/* Период общего рейтинга */}
-        {activeFilter === 'global' && (
-          <div className="flex flex-col items-center gap-1.5 mb-6 -mt-2">
+        {/* Период (для XP скрыт — он за всё время) + подсказка по метрике */}
+        <div className="flex flex-col items-center gap-2 mb-8">
+          {metric !== 'xp' && (
             <div className="inline-flex rounded-full border bg-muted/40 p-1">
-              {([['all', 'Вся история'], ['week', 'Неделя'], ['season', 'Сезон']] as const).map(([id, label]) => (
+              {PERIODS.map((p) => (
                 <button
-                  key={id}
-                  onClick={() => setPeriod(id)}
-                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors cursor-pointer ${
-                    period === id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  key={p.id}
+                  onClick={() => setPeriod(p.id)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    period === p.id ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {label}
+                  {p.label}
                 </button>
               ))}
             </div>
-            {period !== 'all' && (
-              <p className="text-xs text-muted-foreground">
-                {period === 'week'
-                  ? 'Очки за неделю = верные ответы с понедельника. Сбрасывается каждый понедельник.'
-                  : 'Сезонный рейтинг: верные ответы за текущий 3-месячный сезон.'}
-              </p>
-            )}
+          )}
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />{metricCfg.hint}
+          </p>
+        </div>
+
+        {/* Моя позиция */}
+        {isAuthenticated && me && !isLoading && (
+          <MyPositionCard me={me} metric={metric} />
+        )}
+
+        {isLoading ? (
+          <div className="flex justify-center py-16">
+            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
           </div>
+        ) : rows.length === 0 ? (
+          <Card><CardContent className="p-12 text-center text-muted-foreground">
+            <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            {metric === 'xp'
+              ? 'Пока никто не набрал опыт — решайте задания, чтобы открыть рейтинг!'
+              : metric === 'accuracy'
+                ? 'Пока нет участников с 10+ решёнными заданиями. Решайте, чтобы попасть в рейтинг точности!'
+                : 'Пока нет данных за этот период. Решайте задания, чтобы попасть в рейтинг!'}
+          </CardContent></Card>
+        ) : (
+          <>
+            {/* Подиум топ-3 */}
+            {top3.length === 3 && <Podium rows={top3} metric={metric} />}
+
+            {/* Остальные */}
+            <Card>
+              <CardContent className="p-0 divide-y divide-border">
+                {(top3.length === 3 ? rest : rows).map((row, i) => (
+                  <Row key={row.userId} row={row} metric={metric} index={i} highlight={row.userId === me?.userId} />
+                ))}
+                {top3.length === 3 && rest.length === 0 && (
+                  <div className="p-6 text-center text-sm text-muted-foreground">И это весь топ — займите место выше!</div>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
 
-        {activeFilter === 'global' && !isLoading && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Trophy className="w-5 h-5" />
-                {period === 'week' ? 'Топ недели' : period === 'season' ? 'Топ сезона' : 'Топ-10 учеников'}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {globalLeaderboard.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Пока нет данных для отображения
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {globalLeaderboard.map((user, index) => (
-                    <motion.div
-                      key={user.userId}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={`flex items-center gap-4 p-4 ${getRankStyle(user.rank)}`}
-                    >
-                      {/* Место */}
-                      <div className="w-10 flex justify-center">
-                        {getRankIcon(user.rank)}
-                      </div>
-
-                      {/* Аватар */}
-                      <Avatar className="w-12 h-12">
-                        {user.avatar && <AvatarImage src={user.avatar} className="object-cover" />}
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                          {user.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-
-                      {/* Информация о пользователе */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className="font-semibold truncate">
-                            {user.isAnonymous ? 'Аноним' : user.name}
-                          </h4>
-                          {user.rank <= 3 && user.streak > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Flame className="w-3 h-3 mr-1 text-orange-500" />
-                              {user.streak} дней
-                            </Badge>
-                          )}
-                        </div>
-                        {user.city && (
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3" />
-                              {user.city}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Статистика */}
-                      <div className="hidden sm:flex items-center gap-6 text-sm">
-                        <div className="text-center">
-                          <p className="font-bold text-primary">{user.xp.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">XP</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-bold">{user.solved}</p>
-                          <p className="text-xs text-muted-foreground">Решено</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-bold text-green-600">{user.accuracy}%</p>
-                          <p className="text-xs text-muted-foreground">Точность</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ================================================= */}
-        {/* ЛИДЕРБОРД ПО ПРЕДМЕТАМ                          */}
-        {/* ================================================= */}
-        {activeFilter === 'subject' && !isLoading && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjectLeaderboard.length === 0 ? (
-              <div className="col-span-full p-8 text-center text-muted-foreground">
-                Пока нет данных для отображения
-              </div>
-            ) : (
-              subjectLeaderboard.map((subject, index) => (
-                <motion.div
-                  key={subject.subjectId}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card>
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <Award className="w-5 h-5 text-primary" />
-                          </div>
-                          <div>
-                            <h4 className="font-semibold">{subject.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              <Users className="w-3 h-3 inline mr-1" />
-                              {subject.participants.toLocaleString()} участников
-                            </p>
-                          </div>
-                        </div>
-                        <Badge variant="secondary">#{subject.rank}</Badge>
-                      </div>
-                      
-                      <div className="flex items-center justify-between pt-4 border-t border-border">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Лидер</p>
-                          <p className="font-medium">{subject.topUser}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">Рекорд XP</p>
-                          <p className="font-bold text-primary">{subject.xp.toLocaleString()}</p>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))
-            )}
-          </div>
-        )}
-
-        {/* ================================================= */}
-        {/* ЛИДЕРБОРД ПО ГОРОДАМ                            */}
-        {/* ================================================= */}
-        {activeFilter === 'city' && !isLoading && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MapPin className="w-5 h-5" />
-                Топ городов
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {cityLeaderboard.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">
-                  Пока нет данных для отображения
-                </div>
-              ) : (
-                <div className="divide-y divide-border">
-                  {cityLeaderboard.map((city, index) => (
-                    <motion.div
-                      key={city.name}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={`flex items-center gap-4 p-4 ${getRankStyle(city.rank)}`}
-                    >
-                      <div className="w-10 flex justify-center">
-                        {getRankIcon(city.rank)}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <h4 className="font-semibold">{city.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Лидер: {city.topUser}
-                        </p>
-                      </div>
-                      
-                      <div className="flex items-center gap-6 text-sm">
-                        <div className="text-center">
-                          <p className="font-bold text-primary">{city.totalXP.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">Общий XP</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="font-bold">{city.users.toLocaleString()}</p>
-                          <p className="text-xs text-muted-foreground">Учеников</p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ================================================= */}
-        {/* ПОЗИЦИЯ ТЕКУЩЕГО ПОЛЬЗОВАТЕЛЯ                   */}
-        {/* ================================================= */}
-        {isAuthenticated && userPosition && !isLoading && (
-          <Card className="mt-8 border-primary/20 bg-primary/5">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold">
-                    {userPosition.rank}
-                  </div>
-                  <div>
-                    <h4 className="font-semibold">Ваша позиция</h4>
-                    <p className="text-sm text-muted-foreground">
-                      Вы в топ-{userPosition.percentile}% учеников! Продолжайте в том же духе!
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">
-                    {userPosition.xp.toLocaleString()} XP
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    +{userPosition.xpToday} за сегодня
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ================================================= */}
-        {/* ПРИЗЫВ К ДЕЙСТВИЮ (для неавторизованных)        */}
-        {/* ================================================= */}
         {!isAuthenticated && !isLoading && (
           <Card className="mt-8 border-primary/20 bg-primary/5">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <h4 className="font-semibold">Хотите попасть в топ?</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Авторизуйтесь, чтобы участвовать в рейтинге и получать награды
-                  </p>
-                </div>
-                <a
-                  href="/register"
-                  className="inline-flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
-                >
-                  Зарегистрироваться
-                </a>
+            <CardContent className="p-6 flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h4 className="font-semibold">Хотите попасть в топ?</h4>
+                <p className="text-sm text-muted-foreground">Зарегистрируйтесь, решайте задания и поднимайтесь в рейтинге.</p>
               </div>
+              <Link to="/register" className="inline-flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium">
+                Зарегистрироваться
+              </Link>
             </CardContent>
           </Card>
         )}
@@ -551,5 +158,132 @@ export function LeaderboardPage() {
   );
 }
 
-// Named export for lazy loading
+function rankColor(rank: number) {
+  if (rank === 1) return 'text-amber-500';
+  if (rank === 2) return 'text-gray-400';
+  if (rank === 3) return 'text-amber-700';
+  return 'text-muted-foreground';
+}
+
+function Podium({ rows, metric }: { rows: LbRow[]; metric: LbMetric }) {
+  // Порядок на подиуме: 2 — 1 — 3
+  const order = [rows[1], rows[0], rows[2]];
+  const heights = ['h-24', 'h-32', 'h-20'];
+  const ringColors = ['ring-gray-300', 'ring-amber-400', 'ring-amber-700/60'];
+  return (
+    <div className="grid grid-cols-3 gap-3 sm:gap-6 items-end mb-6 max-w-2xl mx-auto">
+      {order.map((row, i) => {
+        if (!row) return <div key={i} />;
+        const isFirst = i === 1;
+        return (
+          <motion.div
+            key={row.userId}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className="flex flex-col items-center"
+          >
+            <div className="relative mb-2">
+              {isFirst && <Crown className="w-6 h-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2" />}
+              <Avatar className={`${isFirst ? 'w-20 h-20' : 'w-14 h-14'} ring-4 ${ringColors[i]}`}>
+                {row.avatar && <AvatarImage src={row.avatar} className="object-cover" />}
+                <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials(row.name)}</AvatarFallback>
+              </Avatar>
+            </div>
+            <p className="font-semibold text-sm text-center truncate max-w-full px-1">{row.name}</p>
+            <p className={`text-lg font-extrabold ${rankColor(row.rank ?? 0)}`}>{fmt(metric, row.value)}</p>
+            <div className={`w-full ${heights[i]} rounded-t-xl mt-2 flex items-start justify-center pt-2 ${
+              isFirst ? 'bg-gradient-to-b from-amber-400/30 to-amber-400/5' : 'bg-gradient-to-b from-muted to-transparent'
+            }`}>
+              <span className={`text-2xl font-black ${rankColor(row.rank ?? 0)}`}>{row.rank}</span>
+            </div>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+function Row({ row, metric, index, highlight }: { row: LbRow; metric: LbMetric; index: number; highlight?: boolean }) {
+  const rank = row.rank ?? index + 1;
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.min(index, 12) * 0.03 }}
+      className={`flex items-center gap-3 sm:gap-4 p-4 ${highlight ? 'bg-primary/5' : ''}`}
+    >
+      <div className="w-8 flex justify-center shrink-0">
+        {rank <= 3
+          ? <Medal className={`w-5 h-5 ${rankColor(rank)}`} />
+          : <span className="font-bold text-muted-foreground text-sm">{rank}</span>}
+      </div>
+      <Avatar className="w-11 h-11 shrink-0">
+        {row.avatar && <AvatarImage src={row.avatar} className="object-cover" />}
+        <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">{initials(row.name)}</AvatarFallback>
+      </Avatar>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h4 className="font-semibold truncate">{row.name}</h4>
+          <span className="shrink-0 inline-flex items-center gap-0.5 text-[11px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+            <Zap className="w-3 h-3" />{row.level}
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+          {row.city && <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" />{row.city}</span>}
+          {metric !== 'solved' && <span>{row.solved} решено</span>}
+          {metric !== 'accuracy' && row.total > 0 && <span>{row.accuracy}% точн.</span>}
+          {metric !== 'streak' && row.maxStreak > 0 && <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{row.maxStreak}</span>}
+        </div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-lg font-extrabold text-primary tabular-nums">{fmt(metric, row.value)}</p>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{METRICS.find((m) => m.id === metric)!.name}</p>
+      </div>
+    </motion.div>
+  );
+}
+
+function MyPositionCard({ me, metric }: { me: NonNullable<LbResponse['me']>; metric: LbMetric }) {
+  const stats = [
+    { label: 'Опыт', value: `${me.xp} XP` },
+    { label: 'Уровень', value: me.level },
+    { label: 'Решено', value: me.solved },
+    { label: 'Точность', value: `${me.accuracy}%` },
+    { label: 'Серия', value: me.maxStreak },
+    { label: 'Мастерство', value: me.mastery },
+  ];
+  return (
+    <Card className="mb-6 border-primary/30 bg-gradient-to-br from-primary/[0.07] to-transparent">
+      <CardContent className="p-5">
+        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center font-bold text-lg shrink-0">
+              {me.rank ?? '—'}
+            </div>
+            <div>
+              <h4 className="font-semibold">Ваша позиция</h4>
+              <p className="text-sm text-muted-foreground">
+                {me.eligible && me.rank
+                  ? <>{me.rank} место из {me.outOf} · {fmt(metric, me.value)}</>
+                  : metric === 'accuracy'
+                    ? 'Решите минимум 10 заданий, чтобы попасть в рейтинг точности'
+                    : 'Решайте задания, чтобы попасть в этот рейтинг'}
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          {stats.map((s) => (
+            <div key={s.label} className="rounded-xl bg-background/70 border border-border/60 p-2.5 text-center">
+              <p className="font-bold tabular-nums">{s.value}</p>
+              <p className="text-[10px] text-muted-foreground">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default LeaderboardPage;
