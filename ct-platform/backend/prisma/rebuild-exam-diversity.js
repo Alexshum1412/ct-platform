@@ -129,8 +129,14 @@ async function main() {
     const dir = path.join(__dirname, '..', '..', '..', 'data');
     try { fs.mkdirSync(dir, { recursive: true }); } catch { /* */ }
     const file = path.join(dir, 'exams-diversity-backup.json');
-    fs.writeFileSync(file, JSON.stringify(backup, null, 2));
-    console.log('Backup written:', file);
+    // НЕ перезаписываем существующий бэкап: при повторном запуске в нём уже
+    // лежат пересобранные наборы, и оригинал (точку отката) можно потерять.
+    if (fs.existsSync(file)) {
+      console.log('Backup already exists, keeping original:', file);
+    } else {
+      fs.writeFileSync(file, JSON.stringify(backup, null, 2));
+      console.log('Backup written:', file);
+    }
   }
 
   console.log(DRY ? '\n=== DRY RUN ===' : '\n=== UPDATED ===');

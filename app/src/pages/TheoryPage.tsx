@@ -330,6 +330,13 @@ export function TheoryPage() {
     setPendingScroll(subId);
   };
 
+  // Если URL-параметр ?subtopic= меняется без размонтирования (переход с другого
+  // задания, пока мы уже на странице теории) — заново ставим цель прокрутки.
+  const subParam = searchParams.get('subtopic');
+  useEffect(() => {
+    if (subParam) setPendingScroll(subParam);
+  }, [subParam, topicId]);
+
   // После загрузки теории прокручиваем к нужной подтеме и подсвечиваем её.
   useEffect(() => {
     if (!pendingScroll || isLoading || theoryItems.length === 0) return;

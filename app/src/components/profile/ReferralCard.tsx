@@ -11,14 +11,19 @@ export function ReferralCard() {
   const [data, setData] = useState<ReferralMe | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchMe = () => {
     if (!token) return;
     setLoading(true);
+    setError(null);
     void referralApi.me(token).then((r) => {
       if (r.data) setData(r.data);
+      else setError(r.error || 'Не удалось загрузить реферальные данные');
     }).finally(() => setLoading(false));
-  }, [token]);
+  };
+
+  useEffect(fetchMe, [token]);
 
   const link = data ? `${window.location.origin}/register?ref=${data.code}` : '';
 
@@ -51,7 +56,17 @@ export function ReferralCard() {
       </Card>
     );
   }
-  if (!data) return null;
+  if (!data) {
+    return (
+      <Card>
+        <CardContent className="p-6 text-center">
+          <Gift className="w-10 h-10 mx-auto mb-3 text-muted-foreground opacity-40" />
+          <p className="text-muted-foreground mb-4">{error || 'Реферальные данные недоступны'}</p>
+          <Button variant="outline" onClick={fetchMe}>Повторить</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const stats = [
     { icon: MousePointerClick, label: 'Переходы', value: data.stats.clicks, color: 'text-blue-500' },

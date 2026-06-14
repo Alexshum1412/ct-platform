@@ -71,7 +71,7 @@ const rarityLabels: Record<string, string> = {
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { user, token, setUser, logout } = useAppStore();
+  const { user, token, setUser, logout, addNotification } = useAppStore();
   const [stats, setStats] = useState<Stats | null>(null);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [examHistory, setExamHistory] = useState<ExamHistory[]>([]);
@@ -92,6 +92,7 @@ export function ProfilePage() {
     const res = await examApi.getAttempt(attemptId, token);
     setReviewLoading(false);
     if (res.data) setReviewAttempt(res.data);
+    else addNotification({ type: 'error', title: 'Не удалось загрузить разбор', message: res.error || 'Попробуйте ещё раз.' });
   };
   const [subInfo, setSubInfo] = useState<SubscriptionInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);

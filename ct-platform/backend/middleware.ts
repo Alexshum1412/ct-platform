@@ -47,6 +47,9 @@ const unverifiedAllowed = [
   '/api/auth/verify-email',
   '/api/auth/resend-code',
   '/api/users/me',
+  // Реферальный код — безобидные read-only данные; показываем и до подтверждения
+  // email, чтобы вкладка «Рефералы» в профиле не была пустой.
+  '/api/referrals/me',
 ];
 
 // В production отсутствие NEXTAUTH_SECRET — фатальная мисконфигурация: с

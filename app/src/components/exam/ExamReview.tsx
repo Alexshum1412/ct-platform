@@ -34,6 +34,18 @@ export function ExamReview({ items, slug }: { items: ExamReviewItem[]; slug?: st
   const wrongCount = useMemo(() => items.filter((r) => !r.isCorrect).length, [items]);
   const shown = filter === 'wrong' ? items.filter((r) => !r.isCorrect) : items;
 
+  // Старые попытки (до сохранения поквестionного разбора) не содержат заданий.
+  if (items.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-muted-foreground">
+          <ListChecks className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          Подробный разбор для этой попытки недоступен.
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
