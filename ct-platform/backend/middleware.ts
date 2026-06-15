@@ -19,6 +19,7 @@ const protectedRoutes = [
   '/api/leaderboard/me',
   '/api/games/reset',
   '/api/games/balance',
+  '/api/pixel-art/purchase',
   '/api/subscription',
   '/api/olympiad/progress',
   '/api/notifications',

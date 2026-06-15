@@ -70,6 +70,11 @@ export function FinanceDashboard({ token }: { token: string | null }) {
         <MoneyCard label="За неделю" value={data.revenue.week} />
         <MoneyCard label="Сегодня" value={data.revenue.today} />
       </div>
+      {data.revenue.total === 0 && (
+        <p className="text-xs text-muted-foreground -mt-2">
+          Реальных оплат пока нет — выручка считается только по фактически уплаченным суммам подписок.
+        </p>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Подписки */}

@@ -119,6 +119,10 @@ const RoulettePage = lazy(() => import('@/pages/RoulettePage').then(m => ({ defa
 /** Секретная демо-страница «Блэкджек» (виртуальные бриллианты, без реальных денег) */
 const BlackjackPage = lazy(() => import('@/pages/BlackjackPage').then(m => ({ default: m.BlackjackPage })));
 
+/** Скрытая страница совместного пиксель-арта + архив (ссылка только в подвале) */
+const PixelArtPage = lazy(() => import('@/pages/PixelArtPage').then(m => ({ default: m.PixelArtPage })));
+const PixelArchivePage = lazy(() => import('@/pages/PixelArchivePage').then(m => ({ default: m.PixelArchivePage })));
+
 // =====================================================
 // КОНФИГУРАЦИЯ REACT QUERY
 // =====================================================
@@ -249,6 +253,11 @@ function App() {
               <Route path="/рулетка" element={<RoulettePage />} />
               <Route path="/blackjack" element={<BlackjackPage />} />
               <Route path="/блэкджек" element={<BlackjackPage />} />
+
+              {/* Скрытая страница совместного пиксель-арта + архив (ссылка только в подвале) */}
+              <Route path="/pixel-art" element={<PixelArtPage />} />
+              <Route path="/пиксель-арт" element={<PixelArtPage />} />
+              <Route path="/archive" element={<PixelArchivePage />} />
 
               {/* 
                 404 - СТРАНИЦА НЕ НАЙДЕНА 

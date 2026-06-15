@@ -660,3 +660,38 @@ export const adminNewsApi = {
   update: (id: string, data: NewsInput, token: string) => apiClient<NewsArticle>(`/admin/news/${id}`, { method: 'PATCH', body: data, token }),
   remove: (id: string, token: string) => apiClient<{ success: boolean }>(`/admin/news/${id}`, { method: 'DELETE', token }),
 };
+
+// ===================== Пиксель-арт (совместное полотно) =====================
+export interface PixelConfig {
+  grid: number; palette: string[]; startFill: string;
+  freeDaily: number; bonusCap: number; pixelPrice: number;
+}
+export interface PixelQuota {
+  used: number; bonus: number; limit: number; remaining: number;
+  free: number; bonusCap: number; resetAt: string;
+}
+export interface PixelDot { x: number; y: number; c: string }
+export interface PixelArtState {
+  config: PixelConfig; month: string; serverTime: string; incremental: boolean;
+  pixels: PixelDot[]; quota: PixelQuota;
+}
+export interface PixelArchiveItem { month: string; png: string; pixels: number; createdAt: string }
+
+export const pixelArtApi = {
+  get: (since?: string | null, token?: string | null) =>
+    apiClient<PixelArtState>(`/pixel-art${since ? `?since=${encodeURIComponent(since)}` : ''}`, token ? { token } : {}),
+  paint: (x: number, y: number, color: string, token?: string | null) =>
+    apiClient<{ ok: boolean; pixel: PixelDot; quota: PixelQuota }>(
+      '/pixel-art', { method: 'POST', body: { x, y, color }, ...(token ? { token } : {}) },
+    ),
+  // Докупка пикселей доступна ТОЛЬКО на игровых страницах (рулетка/блэкджек).
+  purchaseInfo: (token: string) =>
+    apiClient<{ pixelPrice: number; bonusCap: number; grid: number; quota: PixelQuota }>(
+      '/pixel-art/purchase', { token },
+    ),
+  purchase: (game: 'roulette' | 'blackjack', pixels: number, token: string) =>
+    apiClient<{ ok: boolean; bought: number; spent: number; balance: number; quota: PixelQuota }>(
+      '/pixel-art/purchase', { method: 'POST', body: { game, pixels }, token },
+    ),
+  archive: () => apiClient<{ archives: PixelArchiveItem[] }>('/pixel-art/archive'),
+};

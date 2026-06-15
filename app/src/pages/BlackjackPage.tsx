@@ -23,6 +23,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
 import { GameGate } from '@/components/GameGate';
 import { GameLeaderboard } from '@/components/game/GameLeaderboard';
+import { BuyPixelsCard } from '@/components/game/BuyPixelsCard';
 
 const START_BALANCE = 100;
 const CHIPS = [1, 5, 10, 25];
@@ -591,6 +592,11 @@ function BlackjackGame() {
                 )}
               </AnimatePresence>
             </div>
+          </div>
+
+          {/* Докупка пикселей для совместного полотна (обмен игровой валюты) */}
+          <div className="mt-8 sm:max-w-md">
+            <BuyPixelsCard game="blackjack" balance={balance} currency="💎" accent="from-cyan-500 to-blue-600" onSpent={setBalance} />
           </div>
 
           {/* Зал славы — крупный рейтинг по рекорду / в эфире (full-width под игрой) */}

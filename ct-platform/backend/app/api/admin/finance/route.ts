@@ -3,10 +3,15 @@ import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-// Цены тарифов (BYN) — для оценки выручки по старым подпискам без поля amount.
-const PRICE: Record<string, number> = { PREMIUM_MONTHLY: 15, PREMIUM_YEARLY: 99 };
-function subAmount(s: { plan: string; amount: number | null }): number {
-  return s.amount != null ? s.amount : (PRICE[s.plan] ?? 0);
+// Выручка считается ТОЛЬКО по фактически уплаченным суммам (Subscription.amount).
+// Никаких оценочных цен по тарифу: подписки без реальной суммы (демо-выдачи,
+// ручные админ-грейды, легаси-строки до появления поля amount) дают 0 — мы не
+// выдумываем доход, которого не было.
+function subAmount(s: { amount: number | null }): number {
+  return s.amount != null && s.amount > 0 ? s.amount : 0;
+}
+function isPaid(s: { amount: number | null }): boolean {
+  return subAmount(s) > 0;
 }
 function dayKey(d: Date): string {
   return d.toISOString().split('T')[0];
@@ -52,9 +57,10 @@ export async function GET(req: NextRequest) {
       prisma.referral.count({ where: { status: 'CONVERTED' } }),
     ]);
 
-    // Выручка и число платежей по окнам времени.
-    const revAll = allSubs.reduce((s, x) => s + subAmount(x), 0);
-    const inWindow = (since: Date) => allSubs.filter((x) => x.startDate >= since);
+    // Выручка и число платежей по окнам времени (только реально оплаченные подписки).
+    const paidSubs = allSubs.filter(isPaid);
+    const revAll = paidSubs.reduce((s, x) => s + subAmount(x), 0);
+    const inWindow = (since: Date) => paidSubs.filter((x) => x.startDate >= since);
     const revToday = inWindow(dayStart).reduce((s, x) => s + subAmount(x), 0);
     const revWeek = inWindow(weekAgo).reduce((s, x) => s + subAmount(x), 0);
     const revMonth = inWindow(monthAgo).reduce((s, x) => s + subAmount(x), 0);
@@ -72,7 +78,7 @@ export async function GET(req: NextRequest) {
       idx.set(key, days.length);
       days.push({ date: key, revenue: 0, payments: 0, registrations: 0 });
     }
-    for (const s of allSubs) {
+    for (const s of paidSubs) {
       if (s.startDate < seriesStart) continue;
       const j = idx.get(dayKey(s.startDate));
       if (j !== undefined) { days[j].revenue += subAmount(s); days[j].payments += 1; }
@@ -100,7 +106,7 @@ export async function GET(req: NextRequest) {
       },
       revenue: {
         total: round2(revAll), today: round2(revToday), week: round2(revWeek), month: round2(revMonth),
-        payments: allSubs.length, activeSubscriptions: activeSubs, byPlan, arpu,
+        payments: paidSubs.length, activeSubscriptions: activeSubs, byPlan, arpu,
       },
       referrals: {
         codes: refCodesTotal,

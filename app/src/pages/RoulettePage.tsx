@@ -23,6 +23,7 @@ import { useAppStore } from '@/store/useAppStore';
 import { gamesApi } from '@/lib/api/client';
 import { GameGate } from '@/components/GameGate';
 import { GameLeaderboard } from '@/components/game/GameLeaderboard';
+import { BuyPixelsCard } from '@/components/game/BuyPixelsCard';
 import { isMuted, toggleMuted, primeAudio, playSpin, playWin, playLose } from '@/lib/sound';
 
 // Европейское колесо (один зеро). Порядок карманов по часовой стрелке.
@@ -700,6 +701,11 @@ function RouletteGame() {
                 )}
               </AnimatePresence>
             </div>
+          </div>
+
+          {/* Докупка пикселей для совместного полотна (обмен игровой валюты) */}
+          <div className="mt-8 sm:max-w-md">
+            <BuyPixelsCard game="roulette" balance={balance} currency="монет" accent="from-amber-500 to-orange-600" onSpent={setBalance} />
           </div>
 
           {/* Зал славы — крупный рейтинг по рекорду / в эфире (full-width под игрой) */}

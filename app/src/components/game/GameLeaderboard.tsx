@@ -52,7 +52,7 @@ export function GameLeaderboard({
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h3 className="font-extrabold text-white text-xl sm:text-2xl flex items-center gap-2.5">
-              <Trophy className="w-7 h-7 text-amber-300" />Зал славы
+              <Trophy className="w-7 h-7 text-amber-300 shrink-0" />Зал славы
             </h3>
             <p className="text-white/60 text-sm mt-0.5">Лучшие игроки {game === 'blackjack' ? 'блэкджека' : 'рулетки'}</p>
           </div>
@@ -98,23 +98,23 @@ export function GameLeaderboard({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 12) * 0.03 }}
-                  className={`flex items-center gap-3 px-3.5 py-2.5 rounded-2xl border ${
+                  className={`flex items-center gap-3 min-w-0 px-3.5 py-2.5 rounded-2xl border transition-colors ${
                     r.rank === 1
                       ? 'bg-amber-400/10 border-amber-400/30'
                       : isMe ? 'bg-white/10 border-white/25' : 'bg-white/[0.04] border-white/10 hover:bg-white/[0.07]'
                   }`}
                 >
-                  <div className="w-7 text-center shrink-0">
-                    {r.rank === 1 ? <Crown className="w-6 h-6 text-amber-400 mx-auto" />
-                      : r.rank <= 3 ? <Medal className={`w-5 h-5 mx-auto ${r.rank === 2 ? 'text-gray-300' : 'text-amber-700'}`} />
-                      : <span className="text-base font-bold text-white/40">{r.rank}</span>}
+                  <div className="w-7 shrink-0 flex items-center justify-center">
+                    {r.rank === 1 ? <Crown className="w-6 h-6 text-amber-400" />
+                      : r.rank <= 3 ? <Medal className={`w-5 h-5 ${r.rank === 2 ? 'text-gray-300' : 'text-amber-700'}`} />
+                      : <span className="text-base font-bold text-white/40 tabular-nums">{r.rank}</span>}
                   </div>
                   <Avatar className="w-10 h-10 shrink-0">
                     {r.avatar && <AvatarImage src={r.avatar} className="object-cover" />}
                     <AvatarFallback className="bg-white/10 text-white text-sm font-bold">{initials(r.name)}</AvatarFallback>
                   </Avatar>
                   <span className="flex-1 min-w-0 truncate font-semibold text-white/90">{r.name}{isMe && <span className="text-white/50 font-normal"> · вы</span>}</span>
-                  <span className="shrink-0 font-extrabold text-white text-lg tabular-nums">{valueOf(r).toLocaleString('ru-RU')}</span>
+                  <span className="shrink-0 font-extrabold text-white text-base sm:text-lg tabular-nums">{valueOf(r).toLocaleString('ru-RU')}</span>
                 </motion.div>
               );
             })}
@@ -122,11 +122,11 @@ export function GameLeaderboard({
         )}
 
         {me && (
-          <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between">
-            <span className="text-white/60">{metric === 'balance' ? 'Ваш текущий баланс' : 'Ваш рекорд'}</span>
-            <span className="flex items-center gap-2.5">
-              {me.rank && <span className="text-white/50 text-sm">#{me.rank} из {me.total}</span>}
-              <span className="font-extrabold text-white text-xl tabular-nums">{(metric === 'balance' ? me.balance : me.peak).toLocaleString('ru-RU')}</span>
+          <div className="mt-4 pt-4 border-t border-white/10 flex items-center justify-between gap-3">
+            <span className="text-white/60 min-w-0 truncate">{metric === 'balance' ? 'Ваш текущий баланс' : 'Ваш рекорд'}</span>
+            <span className="flex items-center gap-2.5 shrink-0">
+              {me.rank && <span className="text-white/50 text-sm whitespace-nowrap">#{me.rank} из {me.total}</span>}
+              <span className="font-extrabold text-white text-lg sm:text-xl tabular-nums">{(metric === 'balance' ? me.balance : me.peak).toLocaleString('ru-RU')}</span>
               <span className="text-white/50">{currency}</span>
             </span>
           </div>

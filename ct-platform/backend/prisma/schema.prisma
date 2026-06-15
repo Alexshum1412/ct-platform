@@ -803,3 +803,56 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@map("audit_logs")
 }
+
+// ==================== СОВМЕСТНЫЙ ПИКСЕЛЬ-АРТ ====================
+// Скрытое коллективное полотно (в духе r/place). Хранится РАЗРЕЖЕННО — только
+// закрашенные клетки; пустые считаются белыми. Новый пиксель перезаписывает
+// старый по той же координате (@@unique([x, y])).
+model Pixel {
+  id        String   @id @default(cuid())
+  x         Int
+  y         Int
+  color     String   // hex из фиксированной палитры, напр. "#FF0000"
+  ip        String?  // кто закрасил (идентификация по IP)
+  userId    String?  // если был авторизован
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@unique([x, y])
+  @@index([updatedAt])
+  @@map("pixels")
+}
+
+// Дневная квота закраски по IP. used — потрачено сегодня, bonus — докуплено
+// (в мини-играх). Лимит на день = базовый + bonus. Сброс — новый день (новая строка).
+model PixelQuota {
+  id    String @id @default(cuid())
+  ip    String
+  date  String // ISO "YYYY-MM-DD" по серверному времени
+  used  Int    @default(0)
+  bonus Int    @default(0)
+
+  @@unique([ip, date])
+  @@map("pixel_quotas")
+}
+
+// Архив полотна: 1-го числа месяца снимок текущего состояния → PNG (base64,
+// т.к. ФС Render эфемерна) под меткой "YYYY-MM", после чего pixels очищается.
+model PixelArchive {
+  id        String   @id @default(cuid())
+  month     String   @unique // "YYYY-MM" — месяц, который заархивирован
+  png       String   // data:image/png;base64,...
+  pixels    Int      @default(0) // сколько клеток было закрашено
+  createdAt DateTime @default(now())
+
+  @@map("pixel_archives")
+}
+
+// Служебная строка (фиксированный id) — к какому месяцу относится текущее полотно.
+// Используется для ленивого месячного перехода (на случай, если cron не настроен).
+model PixelMeta {
+  id    String @id // фиксированный ключ "pixel-canvas"
+  month String // "YYYY-MM" текущего полотна
+
+  @@map("pixel_meta")
+}
