@@ -73,7 +73,9 @@ export function LeaderboardPage() {
               key={m.id}
               onClick={() => setMetric(m.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                metric === m.id ? 'bg-primary text-white shadow-md' : 'bg-muted hover:bg-muted/70 text-muted-foreground hover:text-foreground'
+                metric === m.id
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/25 scale-[1.03]'
+                  : 'bg-muted hover:bg-muted/70 text-muted-foreground hover:text-foreground'
               }`}
             >
               <m.icon className="w-4 h-4" />{m.name}
@@ -184,8 +186,18 @@ function Podium({ rows, metric }: { rows: LbRow[]; metric: LbMetric }) {
             className="flex flex-col items-center"
           >
             <div className="relative mb-2">
-              {isFirst && <Crown className="w-6 h-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2" />}
-              <Avatar className={`${isFirst ? 'w-20 h-20' : 'w-14 h-14'} ring-4 ${ringColors[i]}`}>
+              {isFirst && (
+                <>
+                  <motion.div
+                    aria-hidden
+                    className="absolute inset-0 rounded-full bg-amber-400/40 blur-xl"
+                    animate={{ opacity: [0.4, 0.75, 0.4], scale: [1, 1.12, 1] }}
+                    transition={{ duration: 2.4, repeat: Infinity }}
+                  />
+                  <Crown className="w-6 h-6 text-amber-500 absolute -top-5 left-1/2 -translate-x-1/2 drop-shadow" />
+                </>
+              )}
+              <Avatar className={`relative ${isFirst ? 'w-20 h-20' : 'w-14 h-14'} ring-4 ${ringColors[i]}`}>
                 {row.avatar && <AvatarImage src={row.avatar} className="object-cover" />}
                 <AvatarFallback className="bg-primary/10 text-primary font-bold">{initials(row.name)}</AvatarFallback>
               </Avatar>

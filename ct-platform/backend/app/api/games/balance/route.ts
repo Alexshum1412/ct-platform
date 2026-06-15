@@ -64,16 +64,22 @@ export async function PUT(req: NextRequest) {
     if (!Number.isFinite(n)) return NextResponse.json({ error: 'Некорректный баланс' }, { status: 400 });
     const balance = Math.max(0, Math.min(MAX_BALANCE, Math.floor(n)));
 
-    // peak — рекорд: растёт, но не падает (для рейтинга по лучшему результату).
-    const existing = await prisma.gameBalance.findUnique({ where: { userId_game: { userId, game } } });
-    const peak = Math.max(existing?.peak ?? START_BALANCE, balance);
-
-    const row = await prisma.gameBalance.upsert({
+    // peak — рекорд: растёт, но НИКОГДА не падает. Обновляем атомарно (без
+    // read-then-write гонки): сначала пишем баланс, затем поднимаем peak одним
+    // условным UPDATE (Postgres блокирует строку), если новый баланс выше рекорда.
+    await prisma.gameBalance.upsert({
       where: { userId_game: { userId, game } },
-      update: { balance, peak },
-      create: { userId, game, balance, peak },
+      update: { balance },
+      create: { userId, game, balance, peak: Math.max(balance, START_BALANCE) },
     });
-    return NextResponse.json({ balance: row.balance, peak: row.peak });
+    if (balance > START_BALANCE) {
+      await prisma.gameBalance.updateMany({
+        where: { userId, game, peak: { lt: balance } },
+        data: { peak: balance },
+      });
+    }
+    const row = await prisma.gameBalance.findUnique({ where: { userId_game: { userId, game } } });
+    return NextResponse.json({ balance: row?.balance ?? balance, peak: row?.peak ?? balance });
   } catch (error) {
     console.error('Save game balance error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });

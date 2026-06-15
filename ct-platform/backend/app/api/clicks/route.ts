@@ -54,6 +54,20 @@ export async function POST(req: NextRequest) {
       update: { count: { increment: inc } },
     });
 
+    // Персональный учёт кликов (для рейтинга кликеров) — только у авторизованных.
+    // x-user-id выставляет middleware из валидного токена; гостевые клики анонимны.
+    const userId = req.headers.get('x-user-id');
+    if (userId) {
+      const date = new Date().toISOString().slice(0, 10);
+      try {
+        await prisma.userClickDay.upsert({
+          where: { userId_date: { userId, date } },
+          create: { userId, date, count: inc },
+          update: { count: { increment: inc } },
+        });
+      } catch { /* персональный учёт не критичен — общий счётчик уже обновлён */ }
+    }
+
     return NextResponse.json({ total: row.count });
   } catch (error) {
     console.error('Increment clicks error:', error);

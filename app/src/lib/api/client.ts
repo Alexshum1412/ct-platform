@@ -200,11 +200,12 @@ export const clicksApi = {
       return null;
     }
   },
-  add: async (count = 1): Promise<{ total: number; throttled: boolean } | null> => {
+  // token (если есть) → клик засчитывается персонально для рейтинга кликеров.
+  add: async (count = 1, token?: string | null): Promise<{ total: number; throttled: boolean } | null> => {
     try {
       const r = await fetch(`${API_BASE_URL}/clicks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ count }),
       });
       const d = await r.json().catch(() => ({}));
@@ -215,7 +216,16 @@ export const clicksApi = {
       return null;
     }
   },
+  leaderboard: (period: ClickPeriod, token?: string | null) =>
+    apiClient<ClickLeaderboard>(`/clicks/leaderboard?period=${period}`, token ? { token } : {}),
 };
+export type ClickPeriod = 'day' | 'week' | 'month' | 'year' | 'all';
+export interface ClickLeaderboardRow { rank: number; userId: string; name: string; avatar: string | null; clicks: number }
+export interface ClickLeaderboard {
+  period: ClickPeriod;
+  leaderboard: ClickLeaderboardRow[];
+  me: { rank: number | null; clicks: number; total: number } | null;
+}
 
 // Demo-game balance API (persisted balance + auth-protected daily reset limit; premium = unlimited)
 export interface GameResetStatus {
@@ -237,12 +247,13 @@ export const gamesApi = {
     apiClient<{ balance: number; peak: number; reset: GameResetStatus }>(`/games/balance?game=${game}`, { token }),
   saveBalance: (game: 'roulette' | 'blackjack', balance: number, token: string) =>
     apiClient<{ balance: number; peak: number }>('/games/balance', { method: 'PUT', body: { game, balance }, token }),
-  leaderboard: (game: 'roulette' | 'blackjack', token?: string | null) =>
-    apiClient<GameLeaderboard>(`/games/leaderboard?game=${game}`, token ? { token } : {}),
+  leaderboard: (game: 'roulette' | 'blackjack', metric: 'peak' | 'balance' = 'peak', token?: string | null) =>
+    apiClient<GameLeaderboard>(`/games/leaderboard?game=${game}&metric=${metric}`, token ? { token } : {}),
 };
 export interface GameLeaderboardRow { rank: number; userId: string; name: string; avatar: string | null; peak: number; balance: number }
 export interface GameLeaderboard {
   game: string;
+  metric: 'peak' | 'balance';
   startBalance: number;
   leaderboard: GameLeaderboardRow[];
   me: { rank: number | null; peak: number; balance: number; total: number } | null;

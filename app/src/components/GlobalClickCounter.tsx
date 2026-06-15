@@ -11,6 +11,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { MousePointerClick, Users } from 'lucide-react';
 import { clicksApi } from '@/lib/api/client';
+import { useAppStore } from '@/store/useAppStore';
+import { ClickLeaderboard } from '@/components/ClickLeaderboard';
 
 const FLUSH_MS = 900;   // как часто отправлять накопленные клики
 const POLL_MS = 4000;   // как часто подтягивать общий счётчик
@@ -31,6 +33,11 @@ export function GlobalClickCounter() {
   const pendingRef = useRef(0);
   const flushing = useRef(false);
   const throttleTimer = useRef<number | null>(null);
+  // Токен в ref, чтобы flush оставался стабильным, но всегда слал актуальный токен
+  // (авторизованные клики засчитываются персонально в рейтинг кликеров).
+  const token = useAppStore((s) => s.token);
+  const tokenRef = useRef(token);
+  useEffect(() => { tokenRef.current = token; }, [token]);
 
   useEffect(() => { pendingRef.current = pending; }, [pending]);
 
@@ -39,7 +46,7 @@ export function GlobalClickCounter() {
     const n = Math.min(pendingRef.current, MAX_PER_FLUSH); // не больше лимита backend за раз
     if (n <= 0) return;
     flushing.current = true;
-    const res = await clicksApi.add(n);
+    const res = await clicksApi.add(n, tokenRef.current);
     flushing.current = false;
     if (res) {
       // 200 или 429(throttled): в обоих случаях вычитаем отправленное —
@@ -69,7 +76,7 @@ export function GlobalClickCounter() {
       clearInterval(flusher);
       if (throttleTimer.current) window.clearTimeout(throttleTimer.current);
       // Финальная попытка отправить остаток (fire-and-forget)
-      if (pendingRef.current > 0) void clicksApi.add(Math.min(pendingRef.current, MAX_PER_FLUSH));
+      if (pendingRef.current > 0) void clicksApi.add(Math.min(pendingRef.current, MAX_PER_FLUSH), tokenRef.current);
     };
   }, [flush]);
 
@@ -153,6 +160,9 @@ export function GlobalClickCounter() {
               : 'Счётчик хранится на сервере и обновляется в реальном времени для всех.'}
           </p>
         </div>
+
+        {/* Рейтинг кликеров (персональный, по периодам) */}
+        <ClickLeaderboard />
       </div>
     </section>
   );

@@ -52,6 +52,7 @@ model User {
   referralDiscount  Int       @default(0) // % скидки на первую покупку (15 если пришёл по коду)
   ownedReferralCodes ReferralCode[]    @relation("RefCodeOwner")
   referralReceived   Referral?         @relation("RefUser")
+  clickDays         UserClickDay[]
 
   xp            Int       @default(0)
   level         Int       @default(1)
@@ -585,6 +586,21 @@ model GlobalCounter {
   updatedAt DateTime @updatedAt
 
   @@map("global_counters")
+}
+
+// Клики авторизованного пользователя по дням — для рейтинга кликов
+// за день/неделю/месяц/год/всё время (агрегируем по окну дат).
+model UserClickDay {
+  id     String @id @default(cuid())
+  userId String
+  date   String // ISO "YYYY-MM-DD"
+  count  Int    @default(0)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@index([date])
+  @@map("user_click_days")
 }
 
 // ==================== GAME BALANCE RESET LIMIT ====================

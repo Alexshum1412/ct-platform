@@ -16,11 +16,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Неизвестная игра' }, { status: 400 });
     }
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20));
+    // metric=peak — рейтинг по рекорду (по умолчанию); metric=balance — «в эфире»
+    // по текущему балансу. В обоих случаях показываем только тех, кто превзошёл старт.
+    const metric = searchParams.get('metric') === 'balance' ? 'balance' : 'peak';
     const userId = req.headers.get('x-user-id');
 
     const rows = await prisma.gameBalance.findMany({
       where: { game, peak: { gt: START } },
-      orderBy: [{ peak: 'desc' }, { balance: 'desc' }, { updatedAt: 'asc' }],
+      orderBy: metric === 'balance'
+        ? [{ balance: 'desc' }, { peak: 'desc' }, { updatedAt: 'asc' }]
+        : [{ peak: 'desc' }, { balance: 'desc' }, { updatedAt: 'asc' }],
       take: limit,
       include: { user: { select: { id: true, name: true, image: true } } },
     });
@@ -38,15 +43,20 @@ export async function GET(req: NextRequest) {
     if (userId) {
       const mine = await prisma.gameBalance.findUnique({ where: { userId_game: { userId, game } } });
       if (mine) {
-        const ahead = mine.peak > START
-          ? await prisma.gameBalance.count({ where: { game, peak: { gt: mine.peak } } })
+        const eligible = mine.peak > START;
+        const ahead = eligible
+          ? await prisma.gameBalance.count({
+              where: metric === 'balance'
+                ? { game, peak: { gt: START }, balance: { gt: mine.balance } }
+                : { game, peak: { gt: mine.peak } },
+            })
           : null;
         const total = await prisma.gameBalance.count({ where: { game, peak: { gt: START } } });
         me = { rank: ahead === null ? null : ahead + 1, peak: mine.peak, balance: mine.balance, total };
       }
     }
 
-    return NextResponse.json({ game, startBalance: START, leaderboard, me });
+    return NextResponse.json({ game, metric, startBalance: START, leaderboard, me });
   } catch (error) {
     console.error('Game leaderboard error:', error);
     return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
