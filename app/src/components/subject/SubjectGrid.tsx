@@ -11,7 +11,7 @@ interface SubjectGridProps {
 interface ApiSubject {
   id: string;
   slug: string;
-  stats: { questionsCount: number; topicsCount: number; rating: number };
+  stats: { questionsCount: number; topicsCount: number; subtopicsCount?: number; rating: number };
 }
 
 export function SubjectGrid({ onSubjectClick }: SubjectGridProps) {

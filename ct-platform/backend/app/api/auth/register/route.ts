@@ -46,6 +46,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Имя должно быть уникальным (регистронезависимо).
+    const nameTaken = await prisma.user.findFirst({
+      where: { name: { equals: name, mode: 'insensitive' } },
+      select: { id: true },
+    });
+    if (nameTaken) {
+      return NextResponse.json(
+        { error: 'Это имя уже занято — выберите другое', code: 'NAME_TAKEN' },
+        { status: 409 }
+      );
+    }
+
     // Hash password
     const hashedPassword = await hashPassword(password);
 

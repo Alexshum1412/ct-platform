@@ -59,6 +59,17 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Validation error', details: parsed.error.flatten() }, { status: 400 });
     }
 
+    // Имя уникально: если меняют — проверяем, что не занято другим пользователем.
+    if (parsed.data.name) {
+      const taken = await prisma.user.findFirst({
+        where: { name: { equals: parsed.data.name, mode: 'insensitive' }, id: { not: userId } },
+        select: { id: true },
+      });
+      if (taken) {
+        return NextResponse.json({ error: 'Это имя уже занято — выберите другое', code: 'NAME_TAKEN' }, { status: 409 });
+      }
+    }
+
     const user = await prisma.user.update({
       where: { id: userId },
       data: parsed.data,

@@ -623,3 +623,40 @@ export interface AdminFinance {
 export const adminFinanceApi = {
   get: (token: string) => apiClient<AdminFinance>('/admin/finance', { token }),
 };
+
+// ===================== Баннеры =====================
+export interface Banner {
+  id: string; title: string; content: string; imageUrl: string | null;
+  type: string; location: string; size: string; active: boolean; dismissible: boolean;
+  startsAt: string | null; endsAt: string | null; linkUrl: string | null; linkLabel: string | null;
+  priority: number; createdAt: string;
+}
+export type BannerInput = Partial<Omit<Banner, 'id' | 'createdAt'>>;
+export const bannersApi = {
+  active: () => apiClient<{ items: Banner[] }>('/banners'),
+};
+export const adminBannerApi = {
+  list: (token: string) => apiClient<{ items: Banner[] }>('/admin/banners', { token }),
+  create: (data: BannerInput, token: string) => apiClient<Banner>('/admin/banners', { method: 'POST', body: data, token }),
+  update: (id: string, data: BannerInput, token: string) => apiClient<Banner>(`/admin/banners/${id}`, { method: 'PATCH', body: data, token }),
+  remove: (id: string, token: string) => apiClient<{ success: boolean }>(`/admin/banners/${id}`, { method: 'DELETE', token }),
+};
+
+// ===================== Новости =====================
+export type NewsCategory = 'PERMANENT' | 'NEWS' | 'UPDATE';
+export interface NewsArticle {
+  id: string; title: string; excerpt: string | null; content: string; imageUrl: string | null;
+  category: NewsCategory; published: boolean; pinned: boolean; createdAt: string;
+}
+export type NewsInput = Partial<Omit<NewsArticle, 'id' | 'createdAt'>>;
+export const newsApi = {
+  list: (category?: NewsCategory | 'ALL') =>
+    apiClient<{ items: NewsArticle[] }>(`/news${category && category !== 'ALL' ? `?category=${category}` : ''}`),
+  get: (id: string) => apiClient<NewsArticle>(`/news/${id}`),
+};
+export const adminNewsApi = {
+  list: (token: string) => apiClient<{ items: NewsArticle[] }>('/admin/news', { token }),
+  create: (data: NewsInput, token: string) => apiClient<NewsArticle>('/admin/news', { method: 'POST', body: data, token }),
+  update: (id: string, data: NewsInput, token: string) => apiClient<NewsArticle>(`/admin/news/${id}`, { method: 'PATCH', body: data, token }),
+  remove: (id: string, token: string) => apiClient<{ success: boolean }>(`/admin/news/${id}`, { method: 'DELETE', token }),
+};

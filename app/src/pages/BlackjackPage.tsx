@@ -442,8 +442,6 @@ function BlackjackGame() {
               </CardContent>
             </Card>
 
-            {/* Зал славы — рейтинг по рекорду бриллиантов */}
-            <GameLeaderboard game="blackjack" currency="💎" accent="from-cyan-500/30" />
           </div>
 
           {/* Правая колонка: стол + действия + скрываемая помощь */}
@@ -593,6 +591,11 @@ function BlackjackGame() {
                 )}
               </AnimatePresence>
             </div>
+          </div>
+
+          {/* Зал славы — крупный рейтинг по рекорду / в эфире (full-width под игрой) */}
+          <div className="mt-8">
+            <GameLeaderboard game="blackjack" currency="💎" accent="from-cyan-500/30" />
           </div>
         </div>
       </div>

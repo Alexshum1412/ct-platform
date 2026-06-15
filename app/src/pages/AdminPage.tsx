@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Shield, Plus, Edit2, Trash2, Search, BookOpen, Users, BarChart3,
-  CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye, Crown,
+  CheckCircle, XCircle, FileText, Loader2, AlertCircle, Eye,
   TrendingUp, Award, Flag, FolderTree, Mail, ClipboardList, Trophy, History,
-  Wallet, Gift,
+  Wallet, Gift, Newspaper, Megaphone,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +29,8 @@ import { OlympiadManager } from '@/components/admin/OlympiadManager';
 import { AuditLogViewer } from '@/components/admin/AuditLogViewer';
 import { ReferralManager } from '@/components/admin/ReferralManager';
 import { FinanceDashboard } from '@/components/admin/FinanceDashboard';
+import { NewsManager } from '@/components/admin/NewsManager';
+import { BannerManager } from '@/components/admin/BannerManager';
 import type { Question } from '@/types';
 
 interface AdminStats {
@@ -503,6 +505,8 @@ export function AdminPage() {
                 <TabsTrigger value="stats" className="gap-2"><BarChart3 className="w-4 h-4" />Аналитика</TabsTrigger>
                 <TabsTrigger value="finance" className="gap-2"><Wallet className="w-4 h-4" />Финансы</TabsTrigger>
                 <TabsTrigger value="referrals" className="gap-2"><Gift className="w-4 h-4" />Рефералы</TabsTrigger>
+                <TabsTrigger value="news" className="gap-2"><Newspaper className="w-4 h-4" />Новости</TabsTrigger>
+                <TabsTrigger value="banners" className="gap-2"><Megaphone className="w-4 h-4" />Баннеры</TabsTrigger>
               </>
             )}
             <TabsTrigger value="messages" className="gap-2"><Mail className="w-4 h-4" />Сообщения</TabsTrigger>
@@ -974,11 +978,25 @@ export function AdminPage() {
                               )}
                             </td>
                             <td className="p-2">
-                              {u.plan !== 'FREE' ? (
-                                <Badge className="bg-amber-100 text-amber-700"><Crown className="w-3 h-3 mr-1" />Premium</Badge>
-                              ) : (
-                                <Badge variant="outline">Free</Badge>
-                              )}
+                              <select
+                                value={u.plan}
+                                onChange={async (e) => {
+                                  const plan = e.target.value;
+                                  const r = await fetch(`${API_BASE_URL}/admin/users/${u.id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                    body: JSON.stringify({ plan }),
+                                  });
+                                  if (r.ok) setUsers(prev => prev.map(x => x.id === u.id ? { ...x, plan } : x));
+                                  else alert((await r.json().catch(() => null))?.error ?? 'Не удалось изменить план');
+                                }}
+                                className={`h-8 rounded-lg border border-input px-2 text-xs ${u.plan !== 'FREE' ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-medium' : 'bg-background'}`}
+                                title="Выдать / снять Premium"
+                              >
+                                <option value="FREE">Free</option>
+                                <option value="PREMIUM_MONTHLY">Premium (месяц)</option>
+                                <option value="PREMIUM_YEARLY">Premium (год)</option>
+                              </select>
                             </td>
                             <td className="p-2">Lv.{u.level} ({u.xp} XP)</td>
                             <td className="p-2">{u.solvedCount}</td>
@@ -1200,6 +1218,18 @@ export function AdminPage() {
           {!isModerator && (
             <TabsContent value="referrals">
               <ReferralManager token={token} />
+            </TabsContent>
+          )}
+
+          {!isModerator && (
+            <TabsContent value="news">
+              <NewsManager token={token} />
+            </TabsContent>
+          )}
+
+          {!isModerator && (
+            <TabsContent value="banners">
+              <BannerManager token={token} />
             </TabsContent>
           )}
 

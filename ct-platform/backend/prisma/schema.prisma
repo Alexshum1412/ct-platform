@@ -484,6 +484,7 @@ model ReferralCode {
   signups     Int      @default(0)        // регистраций по коду
   conversions Int      @default(0)        // оплат среди приглашённых
   revenue     Float    @default(0)        // суммарная выручка приглашённых, BYN
+  premiumRewarded Boolean @default(false) // выдан ли уже бесплатный месяц за 5 оплат
 
   owner       User?      @relation("RefCodeOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   referrals   Referral[]
@@ -601,6 +602,49 @@ model UserClickDay {
   @@unique([userId, date])
   @@index([date])
   @@map("user_click_days")
+}
+
+// Временные баннеры (ЧП, техработы, реклама) — управляются из админки.
+model Banner {
+  id          String    @id @default(cuid())
+  title       String
+  content     String                          // текст/markdown
+  imageUrl    String?                         // base64 data URL или внешняя ссылка
+  type        String    @default("info")      // info | warning | maintenance | promo | success
+  location    String    @default("top")       // top | bottom | modal
+  size        String    @default("medium")    // small | medium | large
+  active      Boolean   @default(true)
+  dismissible Boolean   @default(true)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  linkUrl     String?
+  linkLabel   String?
+  priority    Int       @default(0)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active])
+  @@map("banners")
+}
+
+// Новостная лента: статьи и полезная информация — управляются из админки.
+model NewsArticle {
+  id          String   @id @default(cuid())
+  title       String
+  excerpt     String?
+  content     String
+  imageUrl    String?
+  category    String   @default("NEWS")       // PERMANENT | NEWS | UPDATE
+  published   Boolean  @default(true)
+  pinned      Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([category])
+  @@index([published])
+  @@map("news_articles")
 }
 
 // ==================== GAME BALANCE RESET LIMIT ====================

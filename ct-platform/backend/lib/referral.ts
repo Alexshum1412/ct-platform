@@ -81,11 +81,45 @@ export async function attributeSignup(
         data: { referredByCode: refCode.code, referralDiscount: refCode.discountPct },
       }),
     ]);
+    // Награда пригласившему: +1000 в каждую мини-игру (только у личных кодов с владельцем).
+    if (refCode.ownerId) {
+      try { await grantSignupReward(refCode.ownerId); } catch (e) { console.error('Signup reward failed:', e); }
+    }
     return { discountPct: refCode.discountPct };
   } catch {
     // уникальный конфликт (гонка) либо иная ошибка — реферал не критичен
     return null;
   }
+}
+
+export const SIGNUP_GAME_REWARD = 1000;       // валюты в каждую игру за приглашение
+export const PREMIUM_REWARD_THRESHOLD = 5;    // оплат по коду для бесплатного месяца
+
+/** +1000 в баланс каждой мини-игры пригласившему (рекорд тоже растёт). */
+async function grantSignupReward(ownerId: string): Promise<void> {
+  for (const game of ['roulette', 'blackjack']) {
+    const row = await prisma.gameBalance.upsert({
+      where: { userId_game: { userId: ownerId, game } },
+      create: { userId: ownerId, game, balance: 100 + SIGNUP_GAME_REWARD, peak: 100 + SIGNUP_GAME_REWARD },
+      update: { balance: { increment: SIGNUP_GAME_REWARD } },
+    });
+    if (row.balance > row.peak) {
+      await prisma.gameBalance.update({ where: { userId_game: { userId: ownerId, game } }, data: { peak: row.balance } });
+    }
+  }
+}
+
+/** Бесплатный месяц Premium (продлевает активную подписку, если она есть). */
+async function grantFreeMonth(userId: string): Promise<void> {
+  const now = new Date();
+  const active = await prisma.subscription.findFirst({ where: { userId, isActive: true }, orderBy: { endDate: 'desc' } });
+  const base = active && active.endDate > now ? active.endDate : now;
+  const endDate = new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+  await prisma.subscription.updateMany({ where: { userId, isActive: true }, data: { isActive: false } });
+  await prisma.subscription.create({
+    data: { userId, plan: 'PREMIUM_MONTHLY', startDate: now, endDate, isActive: true, autoRenew: false, amount: 0, paymentId: 'referral-reward' },
+  });
+  await prisma.user.update({ where: { id: userId }, data: { plan: 'PREMIUM_MONTHLY' } });
 }
 
 /**
@@ -106,6 +140,24 @@ export async function recordReferralConversion(userId: string, amount: number): 
       data: { conversions: { increment: 1 }, revenue: { increment: amount } },
     }),
   ]);
+
+  // 5 оплат по коду → бесплатный месяц Premium владельцу кода (однократно).
+  const code = await prisma.referralCode.findUnique({ where: { id: referral.codeId } });
+  if (code && code.ownerId && !code.premiumRewarded && code.conversions >= PREMIUM_REWARD_THRESHOLD) {
+    // Атомарный guard: переводим флаг false→true одним updateMany, чтобы не выдать дважды.
+    const reserved = await prisma.referralCode.updateMany({
+      where: { id: code.id, premiumRewarded: false },
+      data: { premiumRewarded: true },
+    });
+    if (reserved.count > 0) {
+      try { await grantFreeMonth(code.ownerId); }
+      catch (e) {
+        console.error('Free-month reward failed:', e);
+        // откатываем флаг, чтобы попытаться снова при следующей конверсии
+        await prisma.referralCode.updateMany({ where: { id: code.id }, data: { premiumRewarded: false } }).catch(() => {});
+      }
+    }
+  }
 }
 
 /** Регистрирует переход по реферальной ссылке (для статистики). Тихо игнорирует ошибки. */

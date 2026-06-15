@@ -6,6 +6,7 @@ import { FeaturesSection } from '@/sections/FeaturesSection';
 import { OlympiadSection } from '@/sections/OlympiadSection';
 import { HowItWorksSection } from '@/sections/HowItWorksSection';
 import { PremiumSection } from '@/sections/PremiumSection';
+import { NewsSection } from '@/sections/NewsSection';
 import { CTASection } from '@/sections/CTASection';
 import { FooterSection } from '@/sections/FooterSection';
 import type { Subject } from '@/types';
@@ -37,6 +38,8 @@ export function HomePage() {
       </div>
       {/* Premium сразу после каталога предметов — главная точка монетизации */}
       <PremiumSection />
+      {/* Новостная лента — сразу после блока Premium */}
+      <NewsSection />
       <FeaturesSection />
       <OlympiadSection />
       <HowItWorksSection />

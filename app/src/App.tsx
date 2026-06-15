@@ -87,6 +87,8 @@ const AchievementsPage = lazy(() => import('@/pages/AchievementsPage').then(m =>
 
 /** Таблица лидеров */
 const LeaderboardPage = lazy(() => import('@/pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
+const NewsFeedPage = lazy(() => import('@/pages/NewsPage').then(m => ({ default: m.NewsFeedPage })));
+const NewsArticlePage = lazy(() => import('@/pages/NewsPage').then(m => ({ default: m.NewsArticlePage })));
 
 /** Юридические документы */
 const TermsPage = lazy(() => import('@/pages/TermsPage').then(m => ({ default: m.TermsPage })));
@@ -220,6 +222,8 @@ function App() {
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/achievements" element={<AchievementsPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/news" element={<NewsFeedPage />} />
+              <Route path="/news/:id" element={<NewsArticlePage />} />
 
               {/* 
                 АДМИН-ПАНЕЛЬ 

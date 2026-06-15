@@ -70,6 +70,11 @@ export function SubjectCard({ subject, index, onClick }: SubjectCardProps) {
           <Badge variant="secondary" className="text-xs font-medium">
             {subject.stats.topicsCount} {subject.stats.topicsCount === 1 ? 'тема' : subject.stats.topicsCount < 5 ? 'темы' : 'тем'}
           </Badge>
+          {!!subject.stats.subtopicsCount && (
+            <Badge variant="secondary" className="text-xs font-medium">
+              {subject.stats.subtopicsCount} {subject.stats.subtopicsCount === 1 ? 'подтема' : subject.stats.subtopicsCount < 5 ? 'подтемы' : 'подтем'}
+            </Badge>
+          )}
         </div>
         
         {/* Action Button */}

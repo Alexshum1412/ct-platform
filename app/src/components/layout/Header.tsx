@@ -157,6 +157,9 @@ export function Header() {
             <Link to="/leaderboard" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/leaderboard') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
               Рейтинг
             </Link>
+            <Link to="/news" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/news') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
+              Новости
+            </Link>
             <Link to="/contact" className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${isActive('/contact') ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted'}`}>
               Контакты
             </Link>
@@ -312,6 +315,7 @@ export function Header() {
                 { to: '/theory', label: 'Теория' },
                 { to: '/olympiad', label: 'Олимпиады' },
                 { to: '/leaderboard', label: 'Рейтинг' },
+                { to: '/news', label: 'Новости' },
                 { to: '/favorites', label: 'Избранное' },
                 { to: '/achievements', label: 'Достижения' },
                 { to: '/contact', label: 'Контакты' },

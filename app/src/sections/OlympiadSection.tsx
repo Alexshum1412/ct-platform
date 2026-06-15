@@ -25,11 +25,11 @@ export function OlympiadSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.55 }}
-          className="relative overflow-hidden rounded-3xl bg-slate-950 text-white p-8 md:p-14 shadow-2xl"
+          className="relative overflow-hidden rounded-3xl bg-indigo-950 text-white p-8 md:p-14 shadow-2xl"
         >
-          {/* Аврора на тёмном */}
-          <div className="absolute -top-24 -left-20 w-96 h-96 rounded-full bg-amber-500/25 blur-[90px] pointer-events-none" />
-          <div className="absolute -bottom-28 -right-16 w-[28rem] h-[28rem] rounded-full bg-violet-600/30 blur-[100px] pointer-events-none" />
+          {/* Аврора на тёмном (холодная палитра — отличается от премиум-блока) */}
+          <div className="absolute -top-24 -left-20 w-96 h-96 rounded-full bg-sky-500/25 blur-[90px] pointer-events-none" />
+          <div className="absolute -bottom-28 -right-16 w-[28rem] h-[28rem] rounded-full bg-cyan-500/25 blur-[100px] pointer-events-none" />
           <div
             className="absolute inset-0 opacity-[0.07] pointer-events-none"
             style={{
@@ -44,13 +44,13 @@ export function OlympiadSection() {
           <div className="relative grid lg:grid-cols-2 gap-10 items-center">
             {/* Текст + CTA */}
             <div>
-              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-amber-400/15 border border-amber-400/25 text-amber-300 text-sm font-semibold mb-6">
+              <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-sky-400/15 border border-sky-400/25 text-sky-300 text-sm font-semibold mb-6">
                 <Trophy className="w-4 h-4" />
                 Олимпиадная подготовка
               </span>
               <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] leading-tight font-extrabold mb-4">
                 От школьного этапа —{' '}
-                <span className="bg-gradient-to-r from-amber-300 to-orange-400 bg-clip-text text-transparent">до республики</span>
+                <span className="bg-gradient-to-r from-sky-300 to-cyan-300 bg-clip-text text-transparent">до республики</span>
               </h2>
               <p className="text-white/70 text-lg mb-8 max-w-xl">
                 Задачи всех этапов республиканской олимпиады с пошаговыми разборами,
@@ -61,7 +61,7 @@ export function OlympiadSection() {
                 <Button
                   size="lg"
                   onClick={() => navigate('/olympiad')}
-                  className="btn-shine bg-amber-400 text-slate-950 hover:bg-amber-300 gap-2 text-base font-bold px-7 shadow-xl shadow-amber-500/20"
+                  className="btn-shine bg-sky-400 text-slate-950 hover:bg-sky-300 gap-2 text-base font-bold px-7 shadow-xl shadow-sky-500/25"
                 >
                   <Medal className="w-5 h-5" />
                   Открыть раздел
@@ -95,11 +95,11 @@ export function OlympiadSection() {
                     <p className="font-bold text-sm">{l.short}</p>
                   </div>
                   <p className="text-white/60 text-xs">этап олимпиады</p>
-                  <p className="mt-3 text-amber-300 font-extrabold text-lg">+{l.points} <span className="text-xs font-semibold text-white/50">очков за задачу</span></p>
+                  <p className="mt-3 text-cyan-300 font-extrabold text-lg">+{l.points} <span className="text-xs font-semibold text-white/50">очков за задачу</span></p>
                 </motion.div>
               ))}
               <div className="col-span-2 flex items-center gap-2 text-white/60 text-sm px-1">
-                <Sparkles className="w-4 h-4 text-amber-300 shrink-0" />
+                <Sparkles className="w-4 h-4 text-cyan-300 shrink-0" />
                 Решайте задачи, копите очки и поднимайтесь в отдельном рейтинге олимпиадников
               </div>
             </div>

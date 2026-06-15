@@ -19,6 +19,16 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Подтемы привязаны к темам (subjectId у них нет) — считаем через темы.
+    const topicsAll = await prisma.topic.findMany({ select: { id: true, subjectId: true } });
+    const subjectByTopic = new Map(topicsAll.map(t => [t.id, t.subjectId]));
+    const grouped = await prisma.subtopic.groupBy({ by: ['topicId'], _count: { id: true } });
+    const subtopicsBySubject = new Map<string, number>();
+    for (const g of grouped) {
+      const sid = subjectByTopic.get(g.topicId);
+      if (sid) subtopicsBySubject.set(sid, (subtopicsBySubject.get(sid) ?? 0) + g._count.id);
+    }
+
     // Format response
     const formattedSubjects = subjects.map(subject => ({
       id: subject.id,
@@ -33,6 +43,7 @@ export async function GET(req: NextRequest) {
       stats: {
         questionsCount: subject._count.questions,
         topicsCount: subject._count.topics,
+        subtopicsCount: subtopicsBySubject.get(subject.id) ?? 0,
         rating: 0, // deprecated, kept for backwards compat
       },
     }));

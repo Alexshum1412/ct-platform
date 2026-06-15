@@ -585,8 +585,6 @@ function RouletteGame() {
               </CardContent>
             </Card>
 
-            {/* Зал славы — рейтинг по рекорду баланса */}
-            <GameLeaderboard game="roulette" currency="монет" accent="from-amber-500/30" />
           </div>
 
           {/* Правая колонка: игровое поле + правила/шансы */}
@@ -702,6 +700,11 @@ function RouletteGame() {
                 )}
               </AnimatePresence>
             </div>
+          </div>
+
+          {/* Зал славы — крупный рейтинг по рекорду / в эфире (full-width под игрой) */}
+          <div className="mt-8">
+            <GameLeaderboard game="roulette" currency="монет" accent="from-amber-500/30" />
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ export interface Subject {
   stats: {
     questionsCount: number;
     topicsCount: number;
+    subtopicsCount?: number;
     rating: number;
   };
 }
