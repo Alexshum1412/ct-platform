@@ -91,10 +91,17 @@ export function Header() {
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled 
-          ? 'bg-background/95 backdrop-blur-md shadow-sm border-b border-border' 
+        scrolled
+          ? 'bg-background/95 backdrop-blur-md shadow-sm border-b border-border'
           : 'bg-background'
       }`}
+      // Учитываем вырез/«остров» сверху и боковые вырезы в ландшафте: на устройствах
+      // без выреза env(...) = 0, поэтому на десктопе и обычных экранах ничего не меняется.
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
     >
       <div className="container">
         <div className="flex items-center justify-between h-16">

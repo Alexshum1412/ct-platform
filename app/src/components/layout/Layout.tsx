@@ -31,8 +31,16 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-background">
       <Header />
       {/* In Focus mode the global header is hidden, so the offset is removed too.
-          On mobile, pb-16 leaves room for the bottom tab bar. */}
-      <main className={focusMode ? '' : 'pt-16 pb-16 lg:pb-0'}>
+          Top offset clears the fixed header + верхний вырез; bottom offset reserves
+          the mobile tab-bar height + нижний safe-area (домашний индикатор iPhone),
+          иначе нижняя часть контента пряталась за навигацией. На lg таб-бара нет. */}
+      <main
+        className={
+          focusMode
+            ? ''
+            : 'pt-[calc(4rem_+_env(safe-area-inset-top))] pb-[calc(4rem_+_env(safe-area-inset-bottom))] lg:pb-0'
+        }
+      >
         {/* Временные баннеры (ЧП/техработы/реклама) — управляются из админки */}
         {!focusMode && <BannerDisplay />}
         {/* Напоминание подтвердить email (для вошедших, но не подтверждённых) */}

@@ -86,6 +86,10 @@
     font-size: 16px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    /* Дублируем защиту от горизонтального скролла и на html: position:fixed/absolute
+       элементы позиционируются относительно вьюпорта, а не body, поэтому clip только
+       на body их «вылет» не ловит. clip (а не hidden) сохраняет работу position:sticky. */
+    overflow-x: clip;
   }
 
   /* =====================================================================
@@ -129,6 +133,38 @@
   select {
     cursor: pointer;
   }
+
+  /* =====================================================================
+     MOBILE OVERFLOW SAFETY NET (global)
+     Любой одиночный «широкий» элемент — картинка, встроенное видео, canvas
+     игры, таблица или длинная формула — раньше мог распереть карточку/страницу
+     и обрезать условие задания справа. Эти правила гарантируют, что медиа и
+     таблицы никогда не выходят за контейнер. Element-селекторы (специфичность
+     0,0,1) проигрывают любой utility-классу (.h-full и т.п.), поэтому осознанно
+     заданные размеры не ломаются.
+     ===================================================================== */
+  img,
+  svg,
+  video,
+  canvas,
+  iframe,
+  table {
+    max-width: 100%;
+  }
+  img,
+  video {
+    height: auto;
+  }
+
+  /* Длинные слова/URL/идентификаторы в учебном тексте не должны распирать строку */
+  p,
+  li,
+  h1, h2, h3, h4, h5, h6,
+  blockquote,
+  figcaption,
+  dd, dt {
+    overflow-wrap: break-word;
+  }
 }
 
 @layer utilities {
@@ -139,6 +175,16 @@
   /* Constrain long-form reading content for comfortable line length */
   .reading-width {
     max-width: 72ch;
+  }
+
+  /* Минимальная зона нажатия для иконочных кнопок на тач-устройствах (WCAG 2.5.5 /
+     рекомендации Apple/Google ~44px). Центрирует содержимое, не меняя его размер. */
+  .tap-target {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .gradient-primary {
@@ -324,6 +370,20 @@
 .math-formula {
   font-family: 'KaTeX_Math', 'Times New Roman', serif;
   font-style: italic;
+}
+
+/* KaTeX overflow safety (plain CSS, вне @layer — чтобы Tailwind не трогал правила).
+   Блочные формулы ($$…$$ / display) скроллятся ВНУТРИ своей рамки на узких экранах,
+   а не распирают карточку задания и не обрезают условие справа. Инлайновые формулы
+   ограничены шириной контейнера. */
+.katex-display {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 2px; /* запас под полосу прокрутки, чтобы не резало нижние индексы */
+}
+.katex {
+  max-width: 100%;
 }
 
 /* Preserve spaces and line breaks in question text */

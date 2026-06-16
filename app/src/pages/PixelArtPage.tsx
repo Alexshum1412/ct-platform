@@ -302,7 +302,7 @@ export function PixelArtPage() {
                   <Button onClick={initialLoad} variant="outline"><RefreshCw className="w-4 h-4 mr-2" />Повторить</Button>
                 </div>
               ) : (
-                <div className="relative mx-auto" style={{ width: boxW ? boxW * zoom : '100%', height: boxW ? boxW * zoom : 'auto' }}>
+                <div className="relative mx-auto max-w-full" style={{ width: boxW ? boxW * zoom : '100%', height: boxW ? boxW * zoom : 'auto', maxWidth: '100%' }}>
                   <canvas ref={baseRef} width={grid} height={grid} className="block" style={{ width: '100%', height: '100%', imageRendering: 'pixelated' }} />
                   <canvas
                     ref={overlayRef}

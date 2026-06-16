@@ -393,9 +393,9 @@ export const QuestionCard = memo(function QuestionCard({
         }
       }}
     >
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3 flex-wrap">
+      <CardHeader className="pb-3 px-4 sm:px-6">
+        <div className="flex items-start justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap min-w-0">
             <Badge variant="outline" className="font-mono">
               #{question.externalId || question.id}
             </Badge>
@@ -427,11 +427,12 @@ export const QuestionCard = memo(function QuestionCard({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
             <button
               onClick={handleToggleFavorite}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              className="tap-target rounded-lg hover:bg-muted transition-colors"
               title="В избранное"
+              aria-label="Добавить в избранное"
             >
               <Star
                 className={`w-5 h-5 transition-colors ${
@@ -444,16 +445,18 @@ export const QuestionCard = memo(function QuestionCard({
             {onShowTheory && (
               <button
                 onClick={onShowTheory}
-                className="p-2 rounded-lg hover:bg-muted transition-colors"
+                className="tap-target rounded-lg hover:bg-muted transition-colors"
                 title="Показать теорию"
+                aria-label="Показать теорию по теме"
               >
                 <BookOpen className="w-5 h-5 text-muted-foreground" />
               </button>
             )}
             <button
               onClick={handleReport}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              className="tap-target rounded-lg hover:bg-muted transition-colors"
               title="Пометить на разбор"
+              aria-label="Пометить задание на разбор"
             >
               <Flag className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -539,7 +542,7 @@ export const QuestionCard = memo(function QuestionCard({
         )}
       </CardHeader>
       
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 px-4 sm:px-6">
         {/* Уже решено ранее — повторное решение недоступно (только просмотр) */}
         {reviewMode && (
           <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/50 p-4">
