@@ -123,6 +123,9 @@ const BlackjackPage = lazy(() => import('@/pages/BlackjackPage').then(m => ({ de
 const PixelArtPage = lazy(() => import('@/pages/PixelArtPage').then(m => ({ default: m.PixelArtPage })));
 const PixelArchivePage = lazy(() => import('@/pages/PixelArchivePage').then(m => ({ default: m.PixelArchivePage })));
 
+/** Публичный профиль пользователя (открывается из рейтингов) */
+const PublicProfilePage = lazy(() => import('@/pages/PublicProfilePage').then(m => ({ default: m.PublicProfilePage })));
+
 // =====================================================
 // КОНФИГУРАЦИЯ REACT QUERY
 // =====================================================
@@ -258,6 +261,9 @@ function App() {
               <Route path="/pixel-art" element={<PixelArtPage />} />
               <Route path="/пиксель-арт" element={<PixelArtPage />} />
               <Route path="/archive" element={<PixelArchivePage />} />
+
+              {/* Публичный профиль (из рейтингов) */}
+              <Route path="/u/:id" element={<PublicProfilePage />} />
 
               {/* 
                 404 - СТРАНИЦА НЕ НАЙДЕНА 

@@ -856,3 +856,32 @@ model PixelMeta {
 
   @@map("pixel_meta")
 }
+
+// Вклад пользователя в полотно за месяц (счётчик закрашенных клеток). Ключ по
+// (userId, month) → сохраняется ИСТОРИЧЕСКИ: рейтинг каждого месяца остаётся
+// после архивации полотна. Анонимные (без userId) закраски не учитываются.
+model PixelContribution {
+  id     String @id @default(cuid())
+  userId String
+  month  String // "YYYY-MM"
+  count  Int    @default(0)
+
+  @@unique([userId, month])
+  @@index([month])
+  @@map("pixel_contributions")
+}
+
+// Лайки/дизлайки профилей. value: 1 = лайк, -1 = дизлайк. Одна реакция на пару
+// (от кого, кому) — повторная меняет/снимает оценку.
+model ProfileReaction {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  value      Int      // 1 | -1
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+  @@map("profile_reactions")
+}

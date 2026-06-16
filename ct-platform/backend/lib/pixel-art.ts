@@ -38,12 +38,16 @@ export const PALETTE: string[] = [
   '#99D9EA', // светло-голубой
   '#7092BE', // сине-серый
 ];
-const PALETTE_SET = new Set(PALETTE.map((c) => c.toUpperCase()));
-
 export const META_ID = 'pixel-canvas';
 
+// Принимаем ЛЮБОЙ корректный #RRGGBB (расширенная RGB-палитра на фронте);
+// 16 фиксированных цветов остаются «быстрыми» пресетами в UI.
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 export function isValidColor(c: unknown): c is string {
-  return typeof c === 'string' && PALETTE_SET.has(c.toUpperCase());
+  return typeof c === 'string' && HEX_RE.test(c);
+}
+export function normalizeColor(c: string): string {
+  return c.toUpperCase();
 }
 
 export function inBounds(x: unknown, y: unknown): boolean {
@@ -147,4 +151,14 @@ export async function quotaStatus(ip: string) {
     bonusCap: BONUS_CAP,
     resetAt: nextMidnightISO(),
   };
+}
+
+/** Засчитать вклад авторизованного игрока в полотно за месяц (для рейтинга). */
+export async function bumpContribution(userId: string | null | undefined, month: string, by = 1) {
+  if (!userId || by <= 0) return;
+  await prisma.pixelContribution.upsert({
+    where: { userId_month: { userId, month } },
+    update: { count: { increment: by } },
+    create: { userId, month, count: by },
+  });
 }

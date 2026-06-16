@@ -6,9 +6,10 @@
  */
 
 import { useState, useCallback, memo } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History, Lock, Crown } from 'lucide-react';
+import { CheckCircle, XCircle, Star, HelpCircle, BookOpen, Clock, TrendingUp, Lightbulb, ChevronDown, Flag, Video, Play, ExternalLink, Check, History, Lock, Crown, ZoomIn, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,11 @@ import type { Question } from '@/types';
  * (старые/админские записи), а пошаговый уровень — под ключами stepby ИЛИ
  * stepByStep. Приводим всё к массивам, чтобы рендер не падал на `.map`.
  */
+/** data:/http(s): URL — как есть; относительный путь — через VITE_API_URL. */
+function resolveImg(src: string): string {
+  return /^(https?:|data:)/.test(src) ? src : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${src}`;
+}
+
 function normalizeHints(hints: Question['hints']): Record<string, string[]> {
   if (!hints) return {};
   const raw = hints as Record<string, string | string[] | undefined>;
@@ -261,6 +267,8 @@ export const QuestionCard = memo(function QuestionCard({
   const [showStats, setShowStats] = useState(false);
   /** Идёт проверка (ожидаем ответ сервера) — блокируем повторные нажатия */
   const [checking, setChecking] = useState(false);
+  /** Изображение, открытое на весь экран (лайтбокс) */
+  const [zoomImg, setZoomImg] = useState<string | null>(null);
 
   // Получаем функции из глобального store
   const { toggleFavorite, favorites, isQuestionSolved, getQuestionResult, addSolvedQuestion, requireAuth } = useAppStore();
@@ -469,28 +477,45 @@ export const QuestionCard = memo(function QuestionCard({
           />
         </div>
 
-        {/* Image attached to question */}
+        {/* Иллюстрация к заданию. Рамка «обнимает» картинку (w-fit), без пустых
+            полей по бокам, на мобильных занимает всю ширину; тап — увеличение. */}
         {question.imageUrl && (
-          <div className="mt-4 rounded-xl overflow-hidden border border-border bg-muted/30">
-            <img
-              src={/^(https?:|data:)/.test(question.imageUrl) ? question.imageUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${question.imageUrl}`}
-              alt="Иллюстрация к заданию"
-              loading="lazy"
-              className="w-full max-h-72 object-contain"
-            />
-          </div>
+          <figure className="mt-4 mx-auto w-fit max-w-full">
+            <button
+              type="button"
+              onClick={() => setZoomImg(resolveImg(question.imageUrl!))}
+              title="Нажмите, чтобы увеличить"
+              className="block w-full rounded-xl overflow-hidden border border-border bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow hover:shadow-md"
+            >
+              <img
+                src={resolveImg(question.imageUrl)}
+                alt="Иллюстрация к заданию"
+                loading="lazy"
+                className="block max-w-full h-auto max-h-[70vh] object-contain mx-auto"
+              />
+            </button>
+            <figcaption className="text-center text-xs text-muted-foreground mt-1.5 flex items-center justify-center gap-1">
+              <ZoomIn className="w-3 h-3" /> нажмите, чтобы увеличить
+            </figcaption>
+          </figure>
         )}
         {question.images && question.images.length > 0 && (
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {question.images.map((img, i) => (
-              <div key={i} className="rounded-lg overflow-hidden border border-border bg-muted/30">
+              <button
+                key={i}
+                type="button"
+                onClick={() => setZoomImg(resolveImg(img))}
+                title="Нажмите, чтобы увеличить"
+                className="rounded-lg overflow-hidden border border-border bg-muted/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-shadow hover:shadow-md"
+              >
                 <img
-                  src={/^(https?:|data:)/.test(img) ? img : `${import.meta.env.VITE_API_URL || 'http://localhost:3000'}${img}`}
+                  src={resolveImg(img)}
                   alt={`Изображение ${i + 1}`}
                   loading="lazy"
-                  className="w-full max-h-64 object-contain"
+                  className="block w-full h-auto max-h-[60vh] object-contain mx-auto"
                 />
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -885,6 +910,33 @@ export const QuestionCard = memo(function QuestionCard({
           )}
         </div>
       </CardContent>
+
+      {/* Лайтбокс изображения — через портал в body, чтобы overflow-hidden карточки
+          и трансформации framer-motion не обрезали полноэкранный слой. */}
+      {zoomImg && createPortal(
+        <div
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setZoomImg(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Просмотр изображения"
+        >
+          <img
+            src={zoomImg}
+            alt="Изображение задания (увеличено)"
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setZoomImg(null)}
+            className="absolute top-4 right-4 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            aria-label="Закрыть"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>,
+        document.body,
+      )}
     </Card>
   );
 });

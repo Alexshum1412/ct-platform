@@ -185,6 +185,7 @@ function Podium({ rows, metric }: { rows: LbRow[]; metric: LbMetric }) {
             transition={{ delay: i * 0.1 }}
             className="flex flex-col items-center"
           >
+            <Link to={`/u/${row.userId}`} className="flex flex-col items-center hover:opacity-90 transition-opacity">
             <div className="relative mb-2">
               {isFirst && (
                 <>
@@ -203,6 +204,7 @@ function Podium({ rows, metric }: { rows: LbRow[]; metric: LbMetric }) {
               </Avatar>
             </div>
             <p className="font-semibold text-sm text-center truncate max-w-full px-1">{row.name}</p>
+            </Link>
             <p className={`text-lg font-extrabold ${rankColor(row.rank ?? 0)}`}>{fmt(metric, row.value)}</p>
             <div className={`w-full ${heights[i]} rounded-t-xl mt-2 flex items-start justify-center pt-2 ${
               isFirst ? 'bg-gradient-to-b from-amber-400/30 to-amber-400/5' : 'bg-gradient-to-b from-muted to-transparent'
@@ -223,7 +225,10 @@ function Row({ row, metric, index, highlight }: { row: LbRow; metric: LbMetric; 
       initial={{ opacity: 0, x: -16 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: Math.min(index, 12) * 0.03 }}
-      className={`flex items-center gap-3 sm:gap-4 p-4 ${highlight ? 'bg-primary/5' : ''}`}
+    >
+    <Link
+      to={`/u/${row.userId}`}
+      className={`flex items-center gap-3 sm:gap-4 p-4 hover:bg-muted/50 transition-colors ${highlight ? 'bg-primary/5' : ''}`}
     >
       <div className="w-8 flex justify-center shrink-0">
         {rank <= 3
@@ -252,6 +257,7 @@ function Row({ row, metric, index, highlight }: { row: LbRow; metric: LbMetric; 
         <p className="text-lg font-extrabold text-primary tabular-nums">{fmt(metric, row.value)}</p>
         <p className="text-[10px] text-muted-foreground uppercase tracking-wide">{METRICS.find((m) => m.id === metric)!.name}</p>
       </div>
+    </Link>
     </motion.div>
   );
 }

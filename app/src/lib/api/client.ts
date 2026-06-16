@@ -681,9 +681,16 @@ export const pixelArtApi = {
   get: (since?: string | null, token?: string | null) =>
     apiClient<PixelArtState>(`/pixel-art${since ? `?since=${encodeURIComponent(since)}` : ''}`, token ? { token } : {}),
   paint: (x: number, y: number, color: string, token?: string | null) =>
-    apiClient<{ ok: boolean; pixel: PixelDot; quota: PixelQuota }>(
+    apiClient<{ ok: boolean; pixel: PixelDot; placed: number; requested: number; quota: PixelQuota }>(
       '/pixel-art', { method: 'POST', body: { x, y, color }, ...(token ? { token } : {}) },
     ),
+  // Пакетная закраска (инструменты «линия»/«прямоугольник»/«кисть»).
+  paintBatch: (pixels: PixelDot[], token?: string | null) =>
+    apiClient<{ ok: boolean; placed: number; requested: number; pixels: PixelDot[]; quota: PixelQuota }>(
+      '/pixel-art', { method: 'POST', body: { pixels: pixels.map((p) => ({ x: p.x, y: p.y, color: p.c })) }, ...(token ? { token } : {}) },
+    ),
+  leaderboard: (month?: string | null, token?: string | null) =>
+    apiClient<PixelLeaderboard>(`/pixel-art/leaderboard${month ? `?month=${month}` : ''}`, token ? { token } : {}),
   // Докупка пикселей доступна ТОЛЬКО на игровых страницах (рулетка/блэкджек).
   purchaseInfo: (token: string) =>
     apiClient<{ pixelPrice: number; bonusCap: number; grid: number; quota: PixelQuota }>(
@@ -694,4 +701,31 @@ export const pixelArtApi = {
       '/pixel-art/purchase', { method: 'POST', body: { game, pixels }, token },
     ),
   archive: () => apiClient<{ archives: PixelArchiveItem[] }>('/pixel-art/archive'),
+};
+
+export interface PixelLeaderboardRow { rank: number; userId: string; name: string; avatar: string | null; count: number }
+export interface PixelLeaderboard {
+  month: string;
+  months: string[];
+  leaderboard: PixelLeaderboardRow[];
+  me: { rank: number | null; count: number } | null;
+}
+
+// ===================== Публичные профили + реакции =====================
+export interface PublicProfile {
+  user: {
+    id: string; name: string | null; image: string | null; createdAt: string;
+    xp: number; level: number; streakDays: number; city: string | null; grade: number | null;
+    isPremium: boolean; isStaff: boolean;
+  };
+  stats: { solvedTotal: number; correctTotal: number; accuracy: number; achievements: number; pixels: number };
+  reactions: { likes: number; dislikes: number; mine: number; isSelf: boolean };
+}
+export const publicProfileApi = {
+  get: (id: string, token?: string | null) =>
+    apiClient<PublicProfile>(`/users/${id}/public`, token ? { token } : {}),
+  react: (id: string, value: 1 | -1 | 0, token: string) =>
+    apiClient<{ likes: number; dislikes: number; mine: number }>(
+      `/users/${id}/reaction`, { method: 'POST', body: { value }, token },
+    ),
 };
